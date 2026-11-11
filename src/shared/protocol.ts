@@ -280,6 +280,8 @@ export interface DebugMessage {
 export interface JoinOptions {
   /** Preferred team; the server may seat the player elsewhere or as spectator. */
   team?: Team;
+  /** Watch without a seat: the client receives the public view only. */
+  spectate?: boolean;
 }
 
 export const ROOM_NAME = 'match';

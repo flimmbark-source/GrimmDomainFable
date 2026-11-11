@@ -71,7 +71,7 @@ export class MatchRoom extends Room {
 
   override onJoin(client: Client, options?: JoinOptions): void {
     const team: Team | undefined = TEAMS.find((t) => t === options?.team);
-    const slot = this.match.join(client.sessionId, team);
+    const slot = options?.spectate === true ? null : this.match.join(client.sessionId, team);
     const welcome: WelcomeMessage = { tickRate: TICK_RATE, mapId: this.match.map.id, slot };
     client.send(MSG.welcome, welcome);
     console.log(`[match ${this.roomId}] ${client.sessionId} joined as ${slot === null ? 'spectator' : `slot ${slot}`}`);
