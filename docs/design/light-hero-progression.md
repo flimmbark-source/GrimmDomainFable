@@ -1,6 +1,6 @@
 # Light Hero progression: shared foundation and character identity
 
-**Status:** Hybrid Light progression confirmed (D-042 through D-049), Forest Witch pilgrimage and ritual decisions (D-050 through D-062), and Goblin economy plus occupiable/reclaimable hidden tavern and one-switch uprising and guard counterplay (D-063 through D-067). Exact costs, item pools and unapproved mechanics remain open.
+**Status:** Hybrid Light progression confirmed (D-042 through D-049), Forest Witch pilgrimage and ritual decisions (D-050 through D-062), and Goblin economy, secret tavern recapture, and two-scale theft progression (D-063 through D-068). Exact costs, item pools and unapproved mechanics remain open.
 **Authority:** [Decision register](../decisions.md), particularly D-005, D-010, D-013, D-023, D-042, D-043, D-044, D-045, D-046, D-047, D-048 and D-049.
 **Timing:** M2 should introduce a small credible shared progression loop; M3 can develop differentiated character identity. Do not interrupt current gameplay engineering to implement unapproved mechanics.
 
@@ -32,6 +32,13 @@
 The GDD contains outdated or exploratory mechanics, including **permanent Light Hero elimination** that has been superseded by the body/ghost revival design (D-032 onward), and a fixed Dark victory condition tied to timer rather than the confirmed awakening/final battle. Old mechanic values and named abilities should be treated as **design candidates**, not silently hardcoded.
 
 The four character identities and core loops are **already documented**. Do not ask the creator to choose a newly invented archetype before reading those sections. The next useful step is a **system-by-system reconciliation**, preserving each distinctive loop while resolving conflicts with our confirmed shared resource, sanctuary and stealth mechanics.
+
+### Goblin Outlaw theft loop (CONFIRMED: D-068)
+
+- **Frequent opportunistic theft:** the Goblin can steal valuables through quick, risky interactions with appropriate targets such as distracted or exposed individuals. These support recurring personal-gold income without requiring a full mission every time.
+- **Larger planned heists:** the Goblin can identify a richer opportunity, learn guard patterns or defenses, infiltrate the location, take treasure, and escape. Bigger potential rewards must come with meaningfully different planning, exposure or escape demands rather than only a longer interaction timer.
+- **Economy and stealth:** theft proceeds belong to the Goblin (D-063). Larger **team** world objectives still contribute common resources according to D-044/D-046. Both scales use legitimate vision, cover, sound and attention rules (D-012 through D-014), not unconditional invisibility or omniscient alarm triggers.
+- **Open:** exact theft targets, where heists appear, repeatability, reward scaling, failure and detection consequences, overlapping team objectives, how patrols respond, and any protection against farming easy targets. No numeric values are canon.
 
 ### Goblin Outlaw personal-gold economy (CONFIRMED: D-063)
 
@@ -65,7 +72,7 @@ The four character identities and core loops are **already documented**. Do not 
 
 ## Open choices
 1. **Pledge accounting and anti-abuse before coding:** decide withdrawal, reservation, purchase thresholds, expiry and handling competing major proposals. Voluntary pledges authorize major spending (D-049), with no separate vote. Exact contribution weights and allowance caps remain open.
-2. **Character progression reconciliation:** preserve the original Goblin Outlaw, Alchemist, Exiled Knight and Forest Witch. The Witch's shrine progression is confirmed through D-062, and **the Goblin's personal-gold economy and reversible Dark tavern occupation with denizen-assisted counterattack are confirmed in D-063 through D-066**. Resolve exact tavern defense activation/recapture, and the remaining Alchemist recipes/Knight Valor interactions against the current shared economy and stealth rules without replacing their GDD concepts.
+2. **Character progression reconciliation:** preserve the original Goblin Outlaw, Alchemist, Exiled Knight and Forest Witch. The Witch's shrine progression is confirmed through D-062, and **the Goblin's personal-gold economy, reversible tavern occupation and uprising, and opportunistic theft plus larger heists are confirmed in D-063 through D-068**. Resolve concrete theft targets/alerts, tavern defense balance, and the remaining Alchemist recipes/Knight Valor interactions against the current shared economy and stealth rules without replacing their GDD concepts.
 3. **Reward structure:** power ceiling, ability progression, unlock pacing, upgrade choices, and whether upgrades can be lost on death.
 4. **Sanctuary role:** purchases, rituals, ability training, or character-specific interactions with purified landmarks?
 5. **Match pacing:** ensure one Hero cannot dominate by repeated farming while others are occupied. Progress must remain practical in a multiplayer 4v4 match.
