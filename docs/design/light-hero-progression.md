@@ -1,18 +1,18 @@
 # Light Hero progression: shared foundation and character identity
 
-**Status:** Hybrid structure confirmed (D-042); progression economy and individual mechanics are **not yet approved**.
-**Authority:** [Decision register](../decisions.md), particularly D-005, D-010, D-013, D-023 and D-042.
+**Status:** Hybrid structure and shared equipment/resource foundation confirmed (D-042/D-043); acquisition, economy and individual mechanics are **not yet approved**.
+**Authority:** [Decision register](../decisions.md), particularly D-005, D-010, D-013, D-023, D-042 and D-043.
 **Timing:** M2 should introduce a small credible shared progression loop; M3 can develop differentiated character identity. Do not interrupt current gameplay engineering to implement unapproved mechanics.
 
 ## Confirmed
-- Every Light Hero participates in a **shared foundational progression layer**.
-- Each Light Hero also has a **distinct character-specific progression system**. Characters can advance through different activities and resources.
+- Every Light Hero participates in a **shared foundational progression layer of equipment and resources** (D-043). This provides a common acquisition and improvement language without requiring an XP bar or identical equipment loadouts.
+- Each Light Hero also has a **distinct character-specific progression system**. Characters can advance through different activities and resources, and can use shared materials/equipment in different ways. Specific class-specific uses remain proposals, not approved kits.
 - Light Heroes grow strong enough to threaten the Dark Lord and castle, while the Dark side hunts them and accelerates awakening.
 - Light-controlled sanctuaries provide recovery **and character progression opportunities** (D-023); exactly how they contribute is open.
 - Character differences must preserve shared stealth, cover and detection foundations (D-013).
 
 ## Open choices
-1. **Shared layer:** conventional XP/levels, equipment and resources, world milestones, or another system?
+1. **Acquisition sources for the confirmed shared layer:** scattered exploration/loot, world objectives and sites, or a hybrid? Define how rewards are earned and contested, not yet amounts.
 2. **Character identity:** progression actions/resources for each playable Hero. The existing roadmap lists Goblin, Alchemist, Knight and Witch as illustrative candidates, **not by itself final canon**.
 3. **Reward structure:** power ceiling, ability progression, unlock pacing, upgrade choices, and whether upgrades can be lost on death.
 4. **Sanctuary role:** purchases, rituals, ability training, or character-specific interactions with purified landmarks?
@@ -28,4 +28,4 @@
 - **Do not treat example class systems, materials, currency numbers, or XP curves as approved.**
 
 ## Next design gate
-Choose the **shared foundational progression mechanic** before specifying class-specific economies.
+Choose **how Light Heroes acquire equipment and resources** (exploration, location objectives or hybrid) before defining recipes, merchants, class economies and inventory rules.
