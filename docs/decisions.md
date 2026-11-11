@@ -22,6 +22,7 @@
 | D-013 | Light Hero stealth foundation | **Universal sight, cover and detection rules for all Light Heroes**, with character-specific modifiers and abilities. Exact per-character differences and tuning values are not yet approved |
 | D-014 | Detection feedback | **Environmental and audio cues plus a subtle local attention indicator** for the Light Hero when a monster is noticing them. Exact presentation, timing and tuning remain to be playtested. Do not use this UI to reveal unseen enemy positions |
 | D-015 | Dark Lord's core role | **Dormant ruler and ultimate castle objective/final boss.** The four playable Dark Heroes defend him and the castle. The creator finds an active AI-controlled Dark Lord concept appealing, but **has not approved it as a mechanic** |
+| D-016 | Awakening outcome | **Awakening begins a dangerous final boss confrontation, not an automatic Dark victory.** Surviving Light Heroes still have an opportunity to defeat the Dark Lord. Awakening trigger, boss behavior, Dark Hero participation, and timer/defeat rules remain unresolved |
 
 ## Provisional engineering direction (requires Fable technical validation)
 - Browser-based Three.js + TypeScript renderer/client and Vite toolchain.
@@ -33,7 +34,7 @@
 - A narrow initial playable test may use a subset of the eight slots, but the full product remains 4v4.
 
 ## Unresolved rules (do NOT silently decide these as canon)
-1. **Core role decided in D-015:** dormant ruler, final boss and central objective. **Unresolved:** exactly how awakening is triggered, the boss fight works, and whether any indirect AI influence/kingdom corruption while sleeping is part of the game.
+1. **Core role decided in D-015:** dormant ruler, final boss and central objective. **D-016 confirms** awakening triggers a final boss confrontation rather than instant Dark victory. **Unresolved:** what triggers awakening, how the boss fight and Dark Hero participation work, and whether indirect influence/kingdom corruption exists while sleeping.
 2. What camera(s) and controls does each Light Hero have? What triggers switching? How is aiming balanced against high-level RTS control?
 3. How does the Dark Hero switch between physical action and macro-command? Does game time continue while commanding?
 4. What constitutes Dark victory if Light Heroes die? Revival/elimination rules, disconnects, and timeout/corruption behavior.
