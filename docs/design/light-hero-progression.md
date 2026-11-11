@@ -1,7 +1,7 @@
 # Light Hero progression: shared foundation and character identity
 
-**Status:** Hybrid structure and shared equipment/resource foundation confirmed (D-042 through D-048); specific economy and individual mechanics are **not yet approved**.
-**Authority:** [Decision register](../decisions.md), particularly D-005, D-010, D-013, D-023, D-042, D-043, D-044, D-045, D-046, D-047 and D-048.
+**Status:** Hybrid structure and shared equipment/resource foundation confirmed (D-042 through D-049); specific economy and individual mechanics are **not yet approved**.
+**Authority:** [Decision register](../decisions.md), particularly D-005, D-010, D-013, D-023, D-042, D-043, D-044, D-045, D-046, D-047, D-048 and D-049.
 **Timing:** M2 should introduce a small credible shared progression loop; M3 can develop differentiated character identity. Do not interrupt current gameplay engineering to implement unapproved mechanics.
 
 ## Confirmed
@@ -14,10 +14,11 @@
 - **Hybrid resource ownership (D-046):** personal equipment, special ingredients and character-specific materials belong to the collecting Light Hero. Common resources earned through major objectives contribute to a **shared team pool**. Trade permissions, which rewards are classified as common, and protections against one player draining the pool are not yet approved.
 - **Hybrid shared spending (D-047):** routine/small shared-pool purchases do **not** require a team-wide vote each time; costly/major investments require team authorization. **Prevent repeated minor purchases from draining the pool.**
 - **Confirmed (D-048): hybrid spending allowances.** Every Light Hero earns a **baseline allowance from team successes**, plus **bonus spending rights for meaningful individual contributions**. Allowances can fund the player's smaller purchases or be **pledged voluntarily** to a major team purchase. They are **permissions to draw down actual shared resources, not additional currency**. Spending consumes the shared resource pool **exactly once** and reduces the relevant allocation. A contribution system must recognize scouting, support, defense and cooperation, not just last hits. Exact ratios, events, caps, resets and approval conditions remain unresolved.
+- **Confirmed (D-049): voluntary pledges approve major investments.** A major investment proceeds when the pledges add up to its required allowance commitment **and** sufficient actual shared resources remain. **No second team vote.** An allowance already pledged must not simultaneously be spent on a minor purchase, and a completed purchase deducts the actual pool only once. How to reserve/release pledges, deal with changing pool balance, prevent spam proposals, and handle simultaneous purchases remains open for design and server validation.
 - Character differences must preserve shared stealth, cover and detection foundations (D-013).
 
 ## Open choices
-1. **How to authorize major shared purchases:** a majority team vote, voluntary pledges from spending allowances, or a mixed mechanism? The hybrid baseline-plus-contribution allowance is confirmed (D-048), but contribution weights, allowance caps, and team approval rules remain open.
+1. **Pledge accounting and anti-abuse before coding:** decide withdrawal, reservation, purchase thresholds, expiry and handling competing major proposals. Voluntary pledges authorize major spending (D-049), with no separate vote. Exact contribution weights and allowance caps remain open.
 2. **Character identity:** progression actions/resources for each playable Hero. The existing roadmap lists Goblin, Alchemist, Knight and Witch as illustrative candidates, **not by itself final canon**.
 3. **Reward structure:** power ceiling, ability progression, unlock pacing, upgrade choices, and whether upgrades can be lost on death.
 4. **Sanctuary role:** purchases, rituals, ability training, or character-specific interactions with purified landmarks?
@@ -33,4 +34,4 @@
 - **Do not treat example class systems, materials, currency numbers, or XP curves as approved.**
 
 ## Next design gate
-Choose **how team members authorize a major purchase** using their limited spending allowances, then establish contribution measurement, anti-farming, caps and resource accounting before implementation.
+Move to the **character-specific Light Hero progression loop** for a first representative Hero. Separately resolve pledge accounting, contribution measurement, anti-farming, allowance caps and major proposal limits before implementing the shared economy.
