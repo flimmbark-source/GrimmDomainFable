@@ -50,7 +50,8 @@ const hero = () => page.evaluate(() => {
 });
 // Since M1 a Light client is only sent monsters its hero can see, so the
 // patrol is observed from a Dark seat in a second tab.
-const darkPage = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+// Kept tiny: in a software-rendered browser a second full-size tab halves the frame rate.
+const darkPage = await browser.newPage({ viewport: { width: 160, height: 90 }, deviceScaleFactor: 1 });
 const monster = () => darkPage.evaluate(() => {
   const g = window.__grimm;
   const m = g.snapshot().actors.find((a) => a.kind === 'monster');
