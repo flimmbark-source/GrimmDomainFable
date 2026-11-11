@@ -1,6 +1,6 @@
 # Grimm Dominion
 
-**Status:** pre-production. This repository is the canonical workspace for developing Grimm Dominion as a complete, original game, using Fable/Claude Code for implementation and ChatGPT plus the creator for gameplay direction, review, and production specifications.
+**Status:** kickoff decisions confirmed, first engineering milestone defined; no running game code committed yet. This repository is the canonical workspace for developing Grimm Dominion as a complete, original game, using Fable/Claude Code for implementation and ChatGPT plus the creator for gameplay direction, review, and production specifications.
 
 ## Vision currently established
 - Asymmetric dark-fairytale strategy/action game built around hunting, hiding, growing stronger, and a castle assault.
@@ -23,5 +23,18 @@ The original document contains conflicting and exploratory choices. It is a sour
 - Every implementation milestone must yield runnable code, verification evidence, known limitations, and a commit.
 - Do not claim a playable build before it has actually been launched and tested.
 
-## Next action
-Resolve the foundational questions in [decisions](docs/decisions.md), then approve the initial technology/architecture spike. No game implementation has yet been committed.
+## Confirmed production parameters (2026-11-11)
+- **4 Dark Heroes vs 4 Light Heroes**.
+- Dark Heroes physically act in the world **and** command autonomous monsters via RTS-style controls.
+- Light Heroes use a **switchable/hybrid camera/control approach**. Exact switching behavior is still open.
+- **PC browser first**, with permanent solo/co-op bots and bots filling vacant slots.
+- Light Heroes gather power to defeat the Dark Lord in the central castle. Dark Heroes hunt and prevent the assault.
+- Implementation runs through **Claude Code with repository access**.
+
+## Start development
+1. Read [confirmed and open decisions](docs/decisions.md).
+2. Follow the [production roadmap](docs/production/roadmap.md).
+3. Implement [M0: browser 3D + authoritative simulation feasibility spike](docs/production/M0-architecture-spike.md) via [GitHub issue #2](https://github.com/flimmbark-source/GrimmDomainFable/issues/2).
+4. Separately, creator + ChatGPT develop the [M1 hunting/detection specification](https://github.com/flimmbark-source/GrimmDomainFable/issues/3).
+
+**Do not claim a running prototype yet.** The first execution and verification belong to M0.
