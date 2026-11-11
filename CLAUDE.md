@@ -11,15 +11,17 @@ Read `README.md`, `docs/decisions.md`, and `docs/production/roadmap.md` before w
 - **PC browser first**, original **classic Warcraft III-inspired 3D** art direction; no original Warcraft assets.
 - Godot, 2D-first prototyping, and mobile-first launches were rejected.
 
-## Current assignment
-**Start work on [M0](docs/production/M0-architecture-spike.md)**, tracked by [issue #2](https://github.com/flimmbark-source/GrimmDomainFable/issues/2). This is a narrow running production increment, not the full game and not a disposable artifact.
+## Current assignment and status
+M0 code and automated test evidence exist in [implementation status](docs/implementation-status.md), integrated for review via [draft PR #5](https://github.com/flimmbark-source/GrimmDomainFable/pull/5). Do **not** restart M0 or overwrite newer design decisions. First verify the integrated build and close outstanding review findings from [issue #2](https://github.com/flimmbark-source/GrimmDomainFable/issues/2).
 
-1. Validate a real local browser 3D build with the currently supported rendering/toolchain APIs.
-2. Validate a minimal authoritative server with slots for four Dark and four Light players.
-3. Wire a fixed-timestep simulation and typed commands to one real 3D scene.
-4. Establish reusable original-stylized asset inputs, actor movement and collision, one autonomous patrol.
-5. Demonstrate RTS camera and hero camera technically without deciding how final switches work.
-6. Verify on a real browser, run automated tests, commit code, report evidence and limitations.
+Next engineering focus, after the M0 gate, is authoritative navigation, line-of-sight, perception, stale sightings and server projection from [M1 playtest specification](docs/design/hunting-perception-v1-playtest-spec.md). Keep the M2 energy economy explicit: evil deeds produce one-time drops; landmark and constructible corruption sources raise passive rate (D-017 to D-021).
+
+1. Revalidate the integrated local browser 3D build with the pinned toolchain and current dependencies.
+2. Verify that the authoritative server retains slots for four Dark and four Light players.
+3. Keep the existing fixed-timestep simulation, typed commands, and real 3D scene working.
+4. Check asset imports, actor movement/collision, and the autonomous patrol in a real desktop browser.
+5. Verify both experimental camera modes without deciding how final switches work.
+6. Run integrated checks and record reproducible evidence, known defects, and remaining M0 acceptance gaps.
 
 Check the installed dependencies and current Colyseus docs rather than copying older incompatible API examples.
 
