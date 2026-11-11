@@ -6,7 +6,7 @@
 
 ## Confirmed player experience
 - When a Light Hero dies, they leave a **physical body at the place of death** and control a **ghost**. Death does **not** automatically force them to stop playing or wait on an indefinite respawn timer.
-- **Body route:** they can be revived at the location of their body. The source or action enabling this revival (another hero, ritual, item, self-action) is not yet selected.
+- **Body route (D-034):** **another living Light Hero** must travel to the fallen body and revive its owner there. The ghost **cannot independently self-revive at its own body**. Exact channel, cost, equipment requirement, interruption and bot rescue behavior remain unresolved.
 - **Spirit journey route:** the player can **move their ghost to an uncorrupted sanctuary** and revive there. Whether revival happens immediately on arrival or requires a ritual/cost remains open.
 - **Candidate extension, not canon:** an uncorrupted church in a village might also serve as a ghost revival destination. Church presence, availability, faction control and behaviors are not approved.
 - Player had selected **C: rescue and limited revival** before proposing the body/ghost system. Preserve meaningful death consequences, team cooperation and possible defeat without assuming specific revival caps or currencies.
@@ -17,7 +17,7 @@ The body route encourages teammates to rescue someone in danger, creating a chan
 
 ## Design and security risks to resolve before coding
 1. **Ghost perception and scouting:** D-033 confirms spiritual landmark perception and limited spiritual interactions, **not unrestricted enemy scouting**. A free-moving invulnerable ghost that can observe enemy positions could bypass all established stealth and fog-of-war rules (D-012/D-013). Do not implement unrestricted world vision or broadcast enemy coordinates from a ghost. The specific spirit senses and interactions still require explicit design approval.
-2. **Body revival interaction:** Decide whether allies must reach/guard the body, whether the ghost can return to it, whether enemies can occupy/move/corrupt the body, and whether a death site remains accessible.
+2. **Body revival interaction:** D-034 requires another **living Light Hero** to reach the body and revive the fallen player; ghost self-revival there is not allowed. Resolve whether allies must guard/channel at the body, whether enemies can occupy/move/corrupt the body, what interrupt conditions apply, whether a death site remains accessible, and how bot allies handle rescue.
 3. **Ghost travel and sanctuary eligibility:** Define where ghosts can travel, whether physical obstacles/terrain or special wards affect them, what counts as 'uncorrupted', whether the destination needs Light ownership, and how a newly corrupted sanctuary affects a ghost in transit.
 4. **Revival stakes and match end:** Decide time, resources, disadvantages, limited uses or rising costs, and the exact condition for total Light defeat. The game cannot assume permanent elimination or infinite free revival.
 5. **Simulation model:** Keep life/body/ghost/revival state authoritative in the server and deterministic. Clients should not fabricate revival outcomes; tests must ensure hidden enemy locations do not leak through ghost perspective or a shared team feed.
@@ -34,7 +34,7 @@ Living Light Hero
 Body and ghost coexist while dead. Whether the body disappears on sanctuary revival, persists as an interactable object, or has consequences is not yet decided.
 
 ## Next design gate
-**Who or what can revive a Light Hero at the fallen body?** Decide whether rescue requires a living ally, can be initiated by the player's ghost, or permits both under different costs and risks. Then define specific spirit abilities, resurrection costs and limitations.
+**What dangers or obstacles can a traveling ghost face before reaching an uncorrupted sanctuary?** Preserve the independent ghost route even in solo play. Then define the revival resource cost, who can interrupt a body rescue, and what spiritual abilities are available.
 
 ## Future acceptance examples (not immediate implementation ticket)
 - A death creates one body and one ghost under server authority and does not accidentally duplicate playable heroes.
