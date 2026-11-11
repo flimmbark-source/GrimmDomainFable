@@ -3,8 +3,11 @@
  * a slot: it reads the same projected Snapshot a human client would receive
  * for that slot and returns the same command type a human client sends.
  *
- * This M0 bot only wanders between map points; real bot behaviour (and bot
- * difficulty / takeover rules) is future, undecided work.
+ * This bot is deliberately simple. A Light bot wanders and visits caches it
+ * believes are full; a Dark bot wanders and walks to the newest shared
+ * sighting alert. Both act only on their own projected snapshot, so a bot
+ * knows exactly what a human in that seat would know and nothing more. Real
+ * bot behaviour (difficulty, takeover rules) is future, undecided work.
  */
 import type { Command, Snapshot } from '../protocol.ts';
 import type { MapDef } from './map.ts';
@@ -15,10 +18,12 @@ export interface BotMemory {
   rng: number;
   /** Tick at which the bot may issue its next order. */
   nextDecisionTick: number;
+  /** Newest sighting alert this bot has already reacted to. */
+  lastAlertId: number;
 }
 
 export function createBotMemory(seed: number): BotMemory {
-  return { rng: (seed ^ 0x51ed270b) >>> 0, nextDecisionTick: 30 };
+  return { rng: (seed ^ 0x51ed270b) >>> 0, nextDecisionTick: 30, lastAlertId: 0 };
 }
 
 function nextRandom(memory: BotMemory): number {
@@ -36,9 +41,23 @@ function nextRandom(memory: BotMemory): number {
 export function botThink(memory: BotMemory, view: Snapshot, map: MapDef): Command | null {
   if (!view.you || view.tick < memory.nextDecisionTick) return null;
   const me = view.actors.find((a) => a.id === view.you?.actorId);
-  if (!me || me.order) return null; // still walking to the last point
+  if (!me) return null;
+
+  // Dark: a fresh confirmed sighting (D-012 alert) is worth walking to.
+  const alert = view.evidence.filter((e) => e.kind === 'sighting' && e.id > memory.lastAlertId).at(-1);
+  if (alert) {
+    memory.lastAlertId = alert.id;
+    memory.nextDecisionTick = view.tick + 90;
+    return { type: 'moveTo', x: alert.x, z: alert.z };
+  }
+  if (me.order) return null; // still walking to the last point
 
   memory.nextDecisionTick = view.tick + 45 + Math.floor(nextRandom(memory) * 90);
+  if (view.you.team === 'light' && nextRandom(memory) < 0.4) {
+    const full = view.sites.filter((site) => site.available);
+    const site = full[Math.floor(nextRandom(memory) * full.length)];
+    if (site) return { type: 'moveTo', x: site.x, z: site.z };
+  }
   const range = map.halfSize - 4;
   for (let attempt = 0; attempt < 8; attempt++) {
     const x = (nextRandom(memory) * 2 - 1) * range;

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { SLOT_COUNT, SLOTS_PER_TEAM, parseCommand, teamOfSlot, type Snapshot } from '../src/shared/protocol.ts';
-import { FOREST_CLEARING } from '../src/shared/sim/map.ts';
+import { FOREST_CROSSING } from '../src/shared/sim/map.ts';
 import { projectSnapshot, viewerForSlot } from '../src/shared/sim/projection.ts';
 import { createSim, findFreeSlot, occupySlot, step, vacateSlot, type SimState } from '../src/shared/sim/simulation.ts';
 import { Match } from '../src/server/match.ts';
 
-const MAP_ID = FOREST_CLEARING.id;
+const MAP_ID = FOREST_CROSSING.id;
 
 describe('slots (D-001: 4 Dark vs 4 Light)', () => {
   it('has exactly eight slots: four Dark, four Light', () => {
@@ -49,10 +49,12 @@ describe('slots (D-001: 4 Dark vs 4 Light)', () => {
 
 /** Every key that may ever appear in something sent to a client. */
 const ALLOWED_KEYS = new Set([
-  'tick', 'you', 'slots', 'actors',
-  'slot', 'team', 'actorId',
+  'tick', 'you', 'slots', 'actors', 'sites', 'evidence', 'sounds',
+  'slot', 'team', 'actorId', 'attention', 'spotted', 'carried', 'whistleCooldown',
   'id', 'occupant',
   'kind', 'x', 'z', 'dirX', 'dirZ', 'moving', 'radius', 'order',
+  'sneaking', 'monster', 'mood', 'owner', 'mode',
+  'available', 'progress', 'source', 'subject', 'volume',
 ]);
 
 function collectKeys(value: unknown, out = new Set<string>()): Set<string> {
@@ -81,7 +83,7 @@ function busySim(): SimState {
   return sim;
 }
 
-describe('view projection (privacy stub)', () => {
+describe('view projection (allow-list and orders)', () => {
   const sim = busySim();
   const views: Record<string, Snapshot> = {
     public: projectSnapshot(sim, null),
@@ -102,7 +104,7 @@ describe('view projection (privacy stub)', () => {
       const json = JSON.stringify(view);
       expect(json, name).not.toContain(String(sim.seed));
       expect(json, name).not.toContain(String(sim.rng));
-      for (const key of ['rng', 'seed', 'intent', 'patrol', 'waitTicks', 'waypoint', 'stuckTicks', 'nextActorId']) {
+      for (const key of ['rng', 'seed', 'intent', 'brain', 'path', 'targets', 'lastSeen', 'search', 'assignment', 'waitTicks', 'waypoint', 'stuckTicks', 'nextActorId', 'stealth', 'noises', 'events']) {
         expect(json, `${name}:${key}`).not.toContain(`"${key}"`);
       }
     }
@@ -125,13 +127,24 @@ describe('view projection (privacy stub)', () => {
     expect(json).not.toContain('19.5'); // teammate's destination (sharing rules undecided)
   });
 
-  it('the monster\'s destination goes to Dark viewers only', () => {
-    const monsterOrder = (v: Snapshot) => v.actors.find((a) => a.kind === 'monster')!.order;
-    const brain = sim.actors.find((a) => a.kind === 'monster')!;
-    expect(brain.intent.type).toBe('goto');
-    expect(monsterOrder(views.dark0!)).toBeDefined();
-    expect(monsterOrder(views.light4!)).toBeUndefined();
-    expect(monsterOrder(views.public!)).toBeUndefined();
+  it('the monster\'s destination goes to its owner only (D-012)', () => {
+    const scout = sim.actors.find((a) => a.kind === 'monster')!;
+    expect(scout.brain!.ownerSlot).toBe(0);
+    // Give it somewhere to go, then look at every viewer's copy of it.
+    const walking = createSim({ seed: 5, mapId: MAP_ID });
+    for (const slot of [0, 1, 4]) occupySlot(walking, slot, 'human');
+    step(walking, [{ slot: 0, command: { type: 'monsterOrder', actorId: scout.id, order: 'guard', x: 12.25, z: 6.75 } }]);
+    step(walking, []);
+    const copy = (slot: number | null) => projectSnapshot(walking, viewerForSlot(walking, slot)).actors.find((a) => a.kind === 'monster');
+    expect(copy(0)!.order).toEqual({ x: 12.25, z: 6.75 });
+    expect(copy(0)!.mode).toBe('return');
+    // A Dark teammate sees the allied monster, but not where it is going.
+    expect(copy(1)).toBeDefined();
+    expect(copy(1)!.order).toBeUndefined();
+    expect(copy(1)!.mode).toBeUndefined();
+    for (const slot of [4, null]) {
+      expect(JSON.stringify(projectSnapshot(walking, viewerForSlot(walking, slot)))).not.toContain('12.25');
+    }
   });
 
   it('snapshots are detached copies: mutating one cannot touch the simulation', () => {
@@ -174,9 +187,8 @@ describe('match host authority', () => {
     // Alice tries to drive Bob's slot.
     expect(match.submit('alice', { type: 'moveDir', dx: 1, dz: 0, slot: 0 })).toBe(true);
     for (let i = 0; i < 30; i++) match.advance();
-    const after = match.snapshotFor(null);
-    const bob = after.actors.find((a) => a.slot === 0)!;
-    const alice = after.actors.find((a) => a.slot === 4)!;
+    const bob = match.snapshotFor('bob').actors.find((a) => a.slot === 0)!;
+    const alice = match.snapshotFor('alice').actors.find((a) => a.slot === 4)!;
     expect({ x: bob.x, z: bob.z }).toEqual({ x: bobBefore.x, z: bobBefore.z });
     expect(alice.x).toBeGreaterThan(-3 + 5);
   });
@@ -202,11 +214,13 @@ describe('match host authority', () => {
 
   it('bots act through the same command path and move their heroes', () => {
     const match = new Match({ seed: 11, mapId: MAP_ID, botSlots: [1, 5] });
-    const start = match.snapshotFor(null).actors.filter((a) => a.kind === 'hero').map((a) => ({ x: a.x, z: a.z }));
+    // Server-side inspection: the public view no longer shows hidden heroes.
+    const heroes = () => match.inspect().actors.filter((a) => a.kind === 'hero').map((a) => ({ x: a.x, z: a.z }));
+    const start = heroes();
     for (let i = 0; i < 300; i++) match.advance();
     const view = match.snapshotFor(null);
     expect(view.slots.filter((s) => s.occupant === 'bot').map((s) => s.id)).toEqual([1, 5]);
-    const end = view.actors.filter((a) => a.kind === 'hero').map((a) => ({ x: a.x, z: a.z }));
+    const end = heroes();
     expect(end).toHaveLength(2);
     end.forEach((p, i) => expect(Math.hypot(p.x - start[i]!.x, p.z - start[i]!.z)).toBeGreaterThan(1));
   });
@@ -217,7 +231,7 @@ describe('match host authority', () => {
     match.leave('alice');
     const view = match.snapshotFor(null);
     expect(view.slots.every((s) => s.occupant === 'empty')).toBe(true);
-    expect(view.actors.filter((a) => a.kind === 'hero')).toHaveLength(0);
+    expect(match.inspect().actors.filter((a) => a.kind === 'hero')).toHaveLength(0);
     expect(match.join('carol', 'light')).toBe(4);
   });
 });

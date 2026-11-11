@@ -8,7 +8,7 @@ import { defineRoom, defineServer, type Server } from 'colyseus';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MSG, ROOM_NAME, type Command, type Snapshot, type WelcomeMessage } from '../src/shared/protocol.ts';
 import { HERO_SPEED, TICK_RATE } from '../src/shared/sim/simulation.ts';
-import { MatchRoom } from '../src/server/MatchRoom.ts';
+import { MatchConfig, MatchRoom } from '../src/server/MatchRoom.ts';
 
 const PORT = 26000 + Math.floor(Math.random() * 2000);
 let server: Server;
@@ -41,7 +41,7 @@ async function join(team: 'dark' | 'light'): Promise<TestClient> {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 beforeAll(async () => {
-  server = defineServer({ rooms: { [ROOM_NAME]: defineRoom(MatchRoom, { seed: 77, botSlots: [] }) }, greet: false });
+  server = defineServer({ rooms: { [ROOM_NAME]: defineRoom(MatchRoom, { config: new MatchConfig({ seed: 77, botSlots: [] }) }) }, greet: false });
   await server.listen(PORT);
 });
 

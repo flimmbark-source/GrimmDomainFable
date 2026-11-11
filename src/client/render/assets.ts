@@ -13,7 +13,7 @@ import type { PropKind } from '../../shared/sim/map.ts';
 import { bake, type Part } from './bake.ts';
 import { PALETTE as P } from './palette.ts';
 
-export type AssetId = PropKind | 'hero_light' | 'hero_dark' | 'monster_beast' | 'castle';
+export type AssetId = PropKind | 'hero_light' | 'hero_dark' | 'monster_beast' | 'castle' | 'cache';
 
 /** Ids served from /public/models instead of a procedural builder. */
 export const GLB_MODELS: Partial<Record<AssetId, string>> = {
@@ -70,6 +70,56 @@ function rockParts(): Part[] {
     { geo: blob(0.95, 0), color: P.rock, pos: [0, 0.45, 0], scale: [1.05, 0.75, 0.9], rot: [0.3, 0.4, 0.1] },
     { geo: blob(0.55, 0), color: P.rock, pos: [0.65, 0.25, 0.35], scale: [1, 0.7, 1], rot: [0.9, 0.2, 0.5] },
     { geo: blob(0.4, 0), color: P.moss, pos: [-0.2, 0.92, 0.05], scale: [1.3, 0.3, 1.1], shade: 0.1 },
+  ];
+}
+
+/** Taller than a hero, so it reads as something you can hide behind.
+ *  Footprint radius 1.5 at scale 1 (matches the map collider). */
+function boulderParts(): Part[] {
+  return [
+    { geo: blob(1.5, 1), color: P.rock, pos: [0, 1.25, 0], scale: [1, 1.25, 1], rot: [0.2, 0.5, 0.1], shade: 0.4 },
+    { geo: blob(0.9, 0), color: P.rock, pos: [0.75, 0.5, 0.7], scale: [1, 0.8, 1], rot: [0.7, 0.2, 0.4] },
+    { geo: blob(0.7, 0), color: P.moss, pos: [-0.3, 2.65, 0.1], scale: [1.4, 0.3, 1.2], shade: 0.1 },
+  ];
+}
+
+/**
+ * Bramble hedge and ruined wall are modelled on a 2 x 2 footprint and are
+ * stretched by the renderer to the map collider's half extents, so what you
+ * see is exactly what blocks movement and sight.
+ */
+function thicketParts(): Part[] {
+  const parts: Part[] = [];
+  const lumps: [number, number, number, number][] = [
+    [-0.62, 1.15, -0.25, 0.62], [-0.2, 1.5, 0.3, 0.66], [0.25, 1.3, -0.3, 0.64], [0.66, 1.2, 0.25, 0.6],
+    [-0.7, 0.6, 0.45, 0.5], [0.05, 0.65, -0.55, 0.52], [0.7, 0.6, -0.5, 0.5], [0.3, 0.6, 0.55, 0.5],
+    [-0.35, 2.0, -0.1, 0.5], [0.45, 2.05, 0.05, 0.48],
+  ];
+  lumps.forEach(([x, y, z, r], i) => parts.push({ geo: blob(r, 0), color: i % 3 === 0 ? P.pineDark : P.thicket, pos: [x, y, z], scale: [1.25, 1.15, 1.6], rot: [i, i * 2, 0], shade: 0.35 }));
+  for (const [x, z, lean] of [[-0.8, 0, 0.3], [0.1, 0.4, -0.25], [0.8, -0.2, 0.2]] as const) {
+    parts.push({ geo: cyl(0.02, 0.05, 1.3, 4), color: P.barkDark, pos: [x, 2.5, z], rot: [lean, 0, lean], shade: 0 });
+  }
+  return parts;
+}
+
+function ruinWallParts(): Part[] {
+  const heights = [2.5, 3.0, 2.7, 1.5, 2.9, 2.3];
+  const parts: Part[] = heights.map((h, i) => ({
+    geo: box(2 / heights.length + 0.01, h, 1.9), color: i % 2 ? P.ruin : P.ruinDark, pos: [-1 + (i + 0.5) * (2 / heights.length), h / 2, 0], shade: 0.35,
+  }));
+  parts.push({ geo: box(2, 0.35, 2), color: P.ruinDark, pos: [0, 0.17, 0], shade: 0.1 });
+  parts.push({ geo: blob(0.25, 0), color: P.moss, pos: [-0.5, 3.0, 0], scale: [1, 0.4, 3], shade: 0.1 });
+  return parts;
+}
+
+/** Supply cache: a banded chest. Placeholder for whatever M2 resources become. */
+function cacheParts(): Part[] {
+  return [
+    { geo: box(1.3, 0.7, 0.85), color: P.leather, pos: [0, 0.4, 0] },
+    { geo: cyl(0.43, 0.43, 1.3, 8), color: P.timber, pos: [0, 0.78, 0], rot: [0, 0, Math.PI / 2], scale: [1, 1, 1], shade: 0.15 },
+    { geo: box(0.14, 0.95, 0.9), color: P.lightTeamTrim, pos: [-0.4, 0.55, 0], shade: 0 },
+    { geo: box(0.14, 0.95, 0.9), color: P.lightTeamTrim, pos: [0.4, 0.55, 0], shade: 0 },
+    { geo: box(0.2, 0.25, 0.1), color: P.steel, pos: [0, 0.72, 0.45], shade: 0 },
   ];
 }
 
@@ -183,6 +233,10 @@ const BUILDERS: Record<AssetId, () => Part[]> = {
   tree_oak: oakParts,
   tree_dead: deadTreeParts,
   rock: rockParts,
+  boulder: boulderParts,
+  thicket: thicketParts,
+  ruin_wall: ruinWallParts,
+  cache: cacheParts,
   standing_stone: standingStoneFallbackParts,
   crooked_house: crookedHouseParts,
   castle: castleParts,
