@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-031, D-039 through D-041, and D-050 through D-062 and D-071 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-031, D-039 through D-041, and D-050 through D-062 and D-071/D-072 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -105,6 +105,7 @@ If Dark Heroes establish many corruption sources, **passive production** can sno
 Light Heroes **can sabotage corruption sources/Dark operations to reduce passive Dark Energy production**. Possible activities include purifying corrupted locations, interrupting rituals, or destroying rate-producing infrastructure. **Do not subtract already accumulated Dark Energy** when sabotage succeeds. Exact targets, costs, source restoration, and whether sabotage prevents future deeds are **not confirmed**.
 
 - **Confirmed (D-071):** the Goblin can choose **strategic major heists targeting Dark operations**, as an alternative to treasure heists for personal loot. Strategic heists offer a meaningful Light-team benefit by disrupting enemy activity. Which operations can be raided and what effects follow are **not yet approved**. If a heist interferes with a passive Dark Energy source, it must affect **future production only**, never subtract accumulated Dark Energy (D-019). Do not presume each Dark-operation raid affects the awakening rate, grants additional personal gold or automatically yields shared resources; keep D-063's distinct ledgers.
+- **Confirmed (D-072):** the Goblin's **primary strategic heist target is Dark logistics**, including supply caches, deliveries and operational equipment. These raids are intended to create a meaningful Light-team advantage by disrupting Dark army operations. They **do not automatically** imply a Dark supply meter, a resource transfer, an awakening-rate penalty, or a fixed army debuff; the underlying Dark logistics model, specific effects and persistence are unapproved. Intelligence theft or corruption sabotage is **not the Goblin's primary approved specialization**, but neither category is categorically forbidden.
 
 The strategic purpose is to give Light Heroes a choice between gathering personal power, slowing Dark growth and making an early castle assault. This should bring the two teams into contested areas without turning the match into endlessly reversing the meter.
 
