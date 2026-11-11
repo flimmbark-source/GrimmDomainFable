@@ -14,6 +14,8 @@ export interface InputHost {
   heroPosition(): THREE.Vector3 | null;
   toggleDebug(): void;
   onModeChanged(mode: CameraMode): void;
+  /** Id of a monster this player owns (Dark side), or null. */
+  ownedMonster(): number | null;
 }
 
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -21,6 +23,7 @@ const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 export class InputController {
   private readonly keys = new Set<string>();
   private lastDir = { dx: 0, dz: 0 };
+  private sneaking = false;
   private dragging = false;
   private readonly raycaster = new THREE.Raycaster();
 
@@ -69,6 +72,11 @@ export class InputController {
       if (hero) this.host.rig.focusOn(hero);
     }
     if (e.code === 'KeyX' && !e.repeat) this.host.send({ type: 'stop' });
+    if (e.code === 'KeyF' && !e.repeat) this.host.send({ type: 'whistle' });
+    if (e.code === 'KeyP' && !e.repeat) {
+      const monster = this.host.ownedMonster();
+      if (monster !== null) this.host.send({ type: 'monsterOrder', actorId: monster, order: 'patrol' });
+    }
     this.keys.add(e.code);
   }
 
@@ -78,12 +86,16 @@ export class InputController {
       this.dragging = true;
       return;
     }
-    // RTS view: left or right click orders the hero to that ground point.
+    // RTS view: a click orders the hero to that ground point. For a Dark
+    // player who owns a monster, the RIGHT button posts that monster there.
     const rect = this.host.canvas.getBoundingClientRect();
     const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(ndc, rig.camera);
     const hit = this.raycaster.ray.intersectPlane(GROUND, new THREE.Vector3());
-    if (hit) this.host.send({ type: 'moveTo', x: hit.x, z: hit.z });
+    if (!hit) return;
+    const monster = e.button === 2 ? this.host.ownedMonster() : null;
+    if (monster !== null) this.host.send({ type: 'monsterOrder', actorId: monster, order: 'guard', x: hit.x, z: hit.z });
+    else this.host.send({ type: 'moveTo', x: hit.x, z: hit.z });
   }
 
   private axis(positive: string[], negative: string[]): number {
@@ -94,6 +106,12 @@ export class InputController {
   /** Call once per rendered frame. */
   update(dt: number): void {
     const rig = this.host.rig;
+    // Hold Shift to sneak, in either view.
+    const sneak = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
+    if (sneak !== this.sneaking) {
+      this.sneaking = sneak;
+      this.host.send({ type: 'setGait', sneak });
+    }
     const right = this.axis(['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']);
     const forward = this.axis(['KeyW', 'ArrowUp'], ['KeyS', 'ArrowDown']);
 

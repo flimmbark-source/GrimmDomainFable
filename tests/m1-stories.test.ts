@@ -254,12 +254,14 @@ describe('M1-04 breaking sight: the Scout searches what it last saw, never the t
     expect(a.trace.map((t) => t.split(',')[4]).filter((m, i, all) => m !== all[i - 1])).toEqual(['search', 'return', 'patrol']);
   });
 
-  it('an escape that walks back into view is found again: cover has to be real', () => {
+  it('an escape that walks back into the search is found again: cover has to be real', () => {
     const w = confirmedChase(11);
     escapeBehindHouse(w);
-    // Sneak back to the side of the house while the Scout is still searching there.
-    step(w.sim, [cmd(LIGHT, { type: 'setGait', sneak: true }), cmd(LIGHT, { type: 'moveTo', x: -14, z: -3 })]);
-    expect(runUntil(w.sim, () => w.brain.mode === 'chase', 1500)).toBeGreaterThan(0);
+    expect(runUntil(w.sim, () => w.brain.mode === 'search', 900)).toBeGreaterThanOrEqual(0);
+    // Walk back to where the Scout is looking.
+    const spot = w.brain.search!.points[0]!;
+    step(w.sim, [cmd(LIGHT, { type: 'moveTo', x: spot.x, z: spot.z })]);
+    expect(runUntil(w.sim, () => w.brain.mode === 'chase', 900)).toBeGreaterThan(0);
   });
 });
 

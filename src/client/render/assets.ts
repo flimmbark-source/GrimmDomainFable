@@ -95,9 +95,9 @@ function thicketParts(): Part[] {
     [-0.7, 0.6, 0.45, 0.5], [0.05, 0.65, -0.55, 0.52], [0.7, 0.6, -0.5, 0.5], [0.3, 0.6, 0.55, 0.5],
     [-0.35, 2.0, -0.1, 0.5], [0.45, 2.05, 0.05, 0.48],
   ];
-  lumps.forEach(([x, y, z, r], i) => parts.push({ geo: blob(r, 0), color: i % 3 === 0 ? P.pineDark : P.thicket, pos: [x, y, z], scale: [1.25, 1.15, 1.6], rot: [i, i * 2, 0], shade: 0.35 }));
+  lumps.forEach(([x, y, z, r], i) => parts.push({ geo: blob(r, 0), color: i % 3 === 0 ? P.pineDark : P.thicket, pos: [x, y * 1.35, z], scale: [1.25, 1.5, 1.6], rot: [i, i * 2, 0], shade: 0.3 }));
   for (const [x, z, lean] of [[-0.8, 0, 0.3], [0.1, 0.4, -0.25], [0.8, -0.2, 0.2]] as const) {
-    parts.push({ geo: cyl(0.02, 0.05, 1.3, 4), color: P.barkDark, pos: [x, 2.5, z], rot: [lean, 0, lean], shade: 0 });
+    parts.push({ geo: cyl(0.02, 0.05, 1.3, 4), color: P.barkDark, pos: [x, 3.3, z], rot: [lean, 0, lean], shade: 0 });
   }
   return parts;
 }

@@ -81,7 +81,10 @@ export const TUNING = {
     scout: {
       radius: 0.7,
       walkSpeed: 3.2,
-      chaseSpeed: 5.4,
+      // Deliberately slower than a running hero (6.0). Measured on the crossing
+      // map: at 5.4 a spotted hero could never shake the Scout by any route; at
+      // 4.6 a covered route loses it in about 10 s and open ground in about 13 s.
+      chaseSpeed: 4.6,
       viewRange: 14,
       viewHalfArcCos: 0.5,
       proximityRadius: 2,
@@ -92,7 +95,7 @@ export const TUNING = {
     brute: {
       radius: 1.0,
       walkSpeed: 2.6,
-      chaseSpeed: 4.4,
+      chaseSpeed: 3.6,
       viewRange: 9,
       viewHalfArcCos: 0.5,
       proximityRadius: 2.5,

@@ -1,4 +1,5 @@
-// Real-browser acceptance check for the running game (M0).
+// Real-browser regression check for the M0 foundations (3D client, input,
+// collision, both cameras). The M1 hunt scenario is scripts/browser-check-m1.mjs.
 //
 //   npm run dev            (or: npm run build && npm start)
 //   npm run verify:browser [url]      default url: http://localhost:5173
@@ -47,7 +48,10 @@ const hero = () => page.evaluate(() => {
   const me = s.actors.find((a) => a.id === s.you.actorId);
   return { sim: { x: me.x, z: me.z }, moving: me.moving, rendered: g.renderedPosition(me.id), tick: s.tick };
 });
-const monster = () => page.evaluate(() => {
+// Since M1 a Light client is only sent monsters its hero can see, so the
+// patrol is observed from a Dark seat in a second tab.
+const darkPage = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+const monster = () => darkPage.evaluate(() => {
   const g = window.__grimm;
   const m = g.snapshot().actors.find((a) => a.kind === 'monster');
   return { sim: { x: m.x, z: m.z }, rendered: g.renderedPosition(m.id) };
@@ -64,6 +68,8 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 try {
   await page.goto(url);
   await page.waitForFunction(() => window.__grimm?.ready && window.__grimm.snapshot()?.you, null, { timeout: 30000 });
+  await darkPage.goto(`${url}${url.includes('?') ? '&' : '?'}team=dark`);
+  await darkPage.waitForFunction(() => window.__grimm?.ready && window.__grimm.snapshot()?.you, null, { timeout: 30000 });
   await page.waitForTimeout(1500);
 
   // 1. The 3D client is really running in the browser.

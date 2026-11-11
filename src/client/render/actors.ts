@@ -4,7 +4,7 @@
  * cosmetic motion (walk bob). It never moves an actor on its own authority.
  */
 import * as THREE from 'three';
-import type { ActorView, Snapshot } from '../../shared/protocol.ts';
+import type { ActorView, MonsterMood, Snapshot } from '../../shared/protocol.ts';
 import type { AssetId, AssetLibrary } from './assets.ts';
 import { PALETTE as P } from './palette.ts';
 
@@ -21,6 +21,44 @@ interface ActorVisual {
   model: THREE.Object3D;
   yaw: number;
   walkPhase: number;
+  /** Monsters: the mood sign floating over the head ("?", "!", "..."). */
+  sign?: THREE.Sprite;
+  mood?: MonsterMood;
+  signAge: number;
+  /** 0..1 fade-in after coming into view. */
+  appear: number;
+}
+
+/** Posture signs: the in-world cue for what a monster is doing (D-014). */
+const SIGNS: Record<MonsterMood, { text: string; color: string } | null> = {
+  calm: null,
+  suspicious: { text: '?', color: '#ffd84a' },
+  alarmed: { text: '!', color: '#ff4b2e' },
+  searching: { text: '…', color: '#ff9d3c' },
+};
+const signTextures = new Map<MonsterMood, THREE.Texture>();
+
+function signTexture(mood: MonsterMood): THREE.Texture | null {
+  const spec = SIGNS[mood];
+  if (!spec) return null;
+  let texture = signTextures.get(mood);
+  if (!texture) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 128;
+    const g = canvas.getContext('2d')!;
+    g.font = 'bold 104px Georgia, serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.lineWidth = 12;
+    g.strokeStyle = '#1b1420';
+    g.strokeText(spec.text, 64, mood === 'searching' ? 40 : 70);
+    g.fillStyle = spec.color;
+    g.fillText(spec.text, 64, mood === 'searching' ? 40 : 70);
+    texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    signTextures.set(mood, texture);
+  }
+  return texture;
 }
 
 function assetFor(actor: ActorView): AssetId {
@@ -34,6 +72,8 @@ export class ActorLayer {
   private readonly buffer: TimedSnapshot[] = [];
   private readonly selection: THREE.Mesh;
   private readonly orderMarker: THREE.Mesh;
+  private readonly monsterMarker: THREE.Mesh;
+  private readonly ownedRing: THREE.Mesh;
 
   constructor(private readonly assets: AssetLibrary) {
     this.group.name = 'actors';
@@ -45,7 +85,15 @@ export class ActorLayer {
     marker.rotateX(-Math.PI / 2);
     this.orderMarker = new THREE.Mesh(marker, new THREE.MeshBasicMaterial({ color: 0xfff27a, transparent: true, opacity: 0.9, depthWrite: false }));
     this.orderMarker.visible = false;
-    this.group.add(this.selection, this.orderMarker);
+    const post = new THREE.RingGeometry(0.5, 0.72, 4);
+    post.rotateX(-Math.PI / 2);
+    this.monsterMarker = new THREE.Mesh(post, new THREE.MeshBasicMaterial({ color: 0xd66bff, transparent: true, opacity: 0.9, depthWrite: false }));
+    this.monsterMarker.visible = false;
+    const owned = new THREE.RingGeometry(1.0, 1.14, 28);
+    owned.rotateX(-Math.PI / 2);
+    this.ownedRing = new THREE.Mesh(owned, new THREE.MeshBasicMaterial({ color: 0xd66bff, transparent: true, opacity: 0.8, depthWrite: false }));
+    this.ownedRing.visible = false;
+    this.group.add(this.selection, this.orderMarker, this.monsterMarker, this.ownedRing);
   }
 
   push(snapshot: Snapshot, now: number): void {
@@ -99,18 +147,35 @@ export class ActorLayer {
       visual.root.rotation.y = visual.yaw;
 
       // Cosmetic walk cycle, driven by the simulated `moving` flag.
-      if (actor.moving) visual.walkPhase += dt * (actor.kind === 'monster' ? 9 : 12);
+      const alarmed = actor.mood === 'alarmed';
+      if (actor.moving) visual.walkPhase += dt * (actor.kind === 'monster' ? (alarmed ? 15 : 9) : actor.sneaking ? 6 : 12);
       else visual.walkPhase = 0;
       const stride = Math.sin(visual.walkPhase);
-      visual.model.position.y = actor.moving ? Math.abs(stride) * 0.14 : 0;
+      visual.model.position.y = actor.moving ? Math.abs(stride) * (actor.sneaking ? 0.04 : 0.14) : 0;
       visual.model.rotation.z = actor.moving ? stride * 0.07 : 0;
-      visual.model.rotation.x = actor.moving ? 0.08 : 0;
+      // Posture: sneaking heroes crouch; a suspicious monster rears its head up,
+      // an alarmed one drops low and forward.
+      const lean = actor.sneaking ? 0.32 : actor.mood === 'suspicious' ? -0.16 : alarmed ? 0.2 : actor.moving ? 0.08 : 0;
+      visual.model.rotation.x += (lean - visual.model.rotation.x) * Math.min(1, dt * 10);
+      const base = actor.monster === 'brute' ? 1.45 : 1;
+      const squash = actor.sneaking ? 0.8 : 1;
+      visual.appear = Math.min(1, visual.appear + dt * 5);
+      visual.model.scale.set(base, base * squash * (0.6 + 0.4 * visual.appear), base);
+      this.updateSign(visual, actor, dt);
     }
     for (const [id, visual] of this.visuals) {
       if (alive.has(id)) continue;
       this.group.remove(visual.root);
       this.visuals.delete(id);
     }
+
+    // A monster this player owns shows where it has been sent.
+    const owned = latest.snapshot.actors.find((a) => a.kind === 'monster' && a.mode !== undefined);
+    this.monsterMarker.visible = Boolean(owned?.order);
+    if (owned?.order) this.monsterMarker.position.set(owned.order.x, 0.07, owned.order.z);
+    const ownedVisual = owned ? this.visuals.get(owned.id) : undefined;
+    this.ownedRing.visible = Boolean(ownedVisual);
+    if (ownedVisual) this.ownedRing.position.set(ownedVisual.root.position.x, 0.05, ownedVisual.root.position.z);
 
     // Selection ring and order marker for the local player's own hero only.
     const you = latest.snapshot.you;
@@ -123,6 +188,35 @@ export class ActorLayer {
       this.orderMarker.position.set(order.x, 0.07, order.z);
       this.orderMarker.scale.setScalar(1 + Math.sin(now / 120) * 0.15);
     }
+  }
+
+  private updateSign(visual: ActorVisual, actor: ActorView, dt: number): void {
+    if (actor.kind !== 'monster') return;
+    const mood = actor.mood ?? 'calm';
+    if (mood !== visual.mood) {
+      visual.mood = mood;
+      visual.signAge = 0;
+      const texture = signTexture(mood);
+      if (!texture) {
+        if (visual.sign) visual.sign.visible = false;
+      } else {
+        if (!visual.sign) {
+          visual.sign = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true }));
+          visual.sign.renderOrder = 20;
+          visual.root.add(visual.sign);
+        }
+        visual.sign.material.map = texture;
+        visual.sign.material.needsUpdate = true;
+        visual.sign.visible = true;
+      }
+    }
+    if (!visual.sign?.visible) return;
+    visual.signAge += dt;
+    // Pop in large, settle, then bob gently.
+    const pop = 1 + Math.max(0, 0.9 - visual.signAge * 3);
+    const size = (actor.monster === 'brute' ? 2.2 : 1.7) * pop;
+    visual.sign.scale.set(size, size, 1);
+    visual.sign.position.y = (actor.monster === 'brute' ? 4.6 : 3.3) + Math.sin(visual.signAge * 4) * 0.08;
   }
 
   private createVisual(actor: ActorView): ActorVisual {
@@ -149,7 +243,7 @@ export class ActorLayer {
         model.add(eye);
       }
     }
-    const visual: ActorVisual = { root, model, yaw: Math.atan2(actor.dirX, actor.dirZ), walkPhase: 0 };
+    const visual: ActorVisual = { root, model, yaw: Math.atan2(actor.dirX, actor.dirZ), walkPhase: 0, signAge: 0, appear: 0 };
     this.visuals.set(actor.id, visual);
     this.group.add(root);
     return visual;

@@ -17,9 +17,13 @@ const clientDir = [resolve(here, '../../client'), resolve(here, '../../dist/clie
 // (including hidden hero positions) to every client: never use it for real play.
 const debug = process.env.GRIMM_DEBUG === '1';
 const mapId = process.env.GRIMM_MAP || undefined;
+// Reproducible sessions for testing: GRIMM_SEED=123, GRIMM_BOTS=none or e.g. GRIMM_BOTS=1,5
+const seed = process.env.GRIMM_SEED ? Number(process.env.GRIMM_SEED) : undefined;
+const bots = process.env.GRIMM_BOTS;
+const botSlots = bots === undefined ? undefined : bots === 'none' ? [] : bots.split(',').map(Number).filter(Number.isInteger);
 
 const server = defineServer({
-  rooms: { [ROOM_NAME]: defineRoom(MatchRoom, { config: new MatchConfig({ debug, mapId }) }) },
+  rooms: { [ROOM_NAME]: defineRoom(MatchRoom, { config: new MatchConfig({ debug, mapId, seed: Number.isFinite(seed) ? seed : undefined, botSlots }) }) },
   greet: false,
   express: async (app) => {
     if (!clientDir) return;

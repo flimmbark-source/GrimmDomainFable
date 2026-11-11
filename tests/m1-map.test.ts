@@ -9,7 +9,8 @@ import { findPath, pathLength } from '../src/shared/sim/nav.ts';
 import { HERO_RADIUS, MONSTER_RADIUS } from '../src/shared/sim/simulation.ts';
 import { TUNING } from '../src/shared/sim/tuning.ts';
 
-const [west, east] = MAP.sites as [Point, Point];
+const west: Point = MAP.sites[0]!;
+const east: Point = MAP.sites[1]!;
 const range = TUNING.monsters.scout.viewRange;
 
 /** Points every half metre along the Scout's patrol loop. */
