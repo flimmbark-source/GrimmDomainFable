@@ -1,7 +1,7 @@
 # Light Hero death, ghost travel and revival
 
-**Status:** Core player fantasy and limited spirit interactions CONFIRMED (D-032 through D-036). Exact gameplay and numbers UNRESOLVED.
-**Design authority:** [Decision register](../decisions.md), particularly D-018, D-022 to D-031, D-032 through D-036.
+**Status:** Core player fantasy and limited spirit interactions CONFIRMED (D-032 through D-037). Exact gameplay and numbers UNRESOLVED.
+**Design authority:** [Decision register](../decisions.md), particularly D-018, D-022 to D-031, D-032 through D-037.
 **Implementation scope:** Future two-sided gameplay milestone after M1 perception work is reviewed. This document does not authorize unapproved ghost abilities or modify current M1 engineering requirements.
 
 ## Confirmed player experience
@@ -13,6 +13,7 @@
 - **Ghost play (D-033):** while dead, the player can navigate as a ghost, perceive **spiritual landmarks**, and undertake **limited meaningful supernatural interactions**. The ghost is not automatically an unrestricted scout or combatant; it cannot freely expose unseen enemy positions. The exact abilities, rules and sensory presentation have not been selected.
 - **Spirit obstacles (D-035):** while traveling to an uncorrupted sanctuary, ghosts encounter supernatural barriers, corrupted regions and environmental puzzles. These add navigation and spiritual problem-solving without permanently eliminating the ghost. Their exact placement, rules and failure consequences are not yet defined. Do not turn this into an always-on second survival or combat encounter.
 - **Spirit perspective (D-036):** ghosts remain in the **same world geography** as the living, with a **visually and perceptually transformed layer** revealing spirits, supernatural markings and ethereal pathways not visible to living Heroes. This is not a separate overworld. Which paths can be traversed, what ghost actions interact with them and what information the view reveals remain unapproved.
+- **Hybrid ghost pathway traversal (D-037):** some ghost-only paths are directly available to traverse. Others are revealed or unlocked by limited supernatural interactions or short environmental puzzles. The path network should support discovery and varied travel without requiring a complex puzzle at every junction. Specific interaction verbs, path network topology, puzzle rewards, and persistence of unlocked routes remain unresolved.
 
 ## Why the two routes matter (design intent, not further approved rules)
 The body route encourages teammates to rescue someone in danger, creating a chance for recoverable mistakes and local conflict. The ghost journey lets a defeated player stay active without requiring a teammate to abandon everything. These must create distinct choices rather than a universally superior, risk-free respawn.
@@ -36,7 +37,7 @@ Living Light Hero
 Body and ghost coexist while dead. Whether the body disappears on sanctuary revival, persists as an interactable object, or has consequences is not yet decided.
 
 ## Next design gate
-**How should the ghost-only paths and spirit markings function?** Choose the primary ghost navigation/interactivity rule before specifying individual puzzles. Preserve an independent, viable ghost route in solo play with no permanent elimination. Then define the revival resource cost, body rescue interruptions and specific ghost abilities.
+**What happens when a ghost reaches an eligible uncorrupted sanctuary?** Decide whether revival is immediate, requires a short ritual, or depends on a small resource payment. Preserve the independent route in solo play with no permanent elimination. Then define body rescue interruptions and specific spiritual abilities.
 
 ## Future acceptance examples (not immediate implementation ticket)
 - A death creates one body and one ghost under server authority and does not accidentally duplicate playable heroes.
