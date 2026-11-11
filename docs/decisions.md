@@ -25,6 +25,7 @@
 | D-016 | Awakening outcome | **Awakening begins a dangerous final confrontation, not automatic Dark victory.** The awakened Dark Lord fights alongside the four Dark Heroes against surviving Light Heroes. Exact boss combat mechanics and terminal victory conditions are unresolved |
 | D-017 | Dark Energy awakening race | The Dark Lord has a **Dark Energy meter** that progresses over time. Evil deeds performed by Dark Heroes **and their minions** accumulate Dark Energy, **accelerating the rate of awakening**. The system is tiered, but thresholds, deed values, caps, and rate formula remain unresolved |
 | D-018 | Light Heroes' early-win route | Light Heroes may **breach the Dark Lord's sanctum and slay him before awakening**, ending the conflict in Light victory. If he awakens first, the Light Heroes instead face the awakened Dark Lord **and** the Dark Heroes in a dangerous final battle. Exact vulnerability/defenses of dormant Dark Lord are unresolved |
+| D-019 | Light-side awakening sabotage | **Light Heroes can sabotage Dark operations** (such as purifying corruption, disrupting rituals or destroying infrastructure) to **slow the rate of Dark Lord awakening**. Sabotage does **not directly subtract accumulated Dark Energy**. Exact targets, reversibility of rate bonuses and restoration rules are not yet confirmed |
 
 ## Provisional engineering direction (requires Fable technical validation)
 - Browser-based Three.js + TypeScript renderer/client and Vite toolchain.
@@ -36,7 +37,7 @@
 - A narrow initial playable test may use a subset of the eight slots, but the full product remains 4v4.
 
 ## Unresolved rules (do NOT silently decide these as canon)
-1. **Core rule decided by D-015 to D-018:** Dark Lord starts dormant; Light can breach sanctum and kill him before awakening; Dark Energy accrues over time and accelerates through evil deeds of Dark Heroes and minions; awakening triggers Dark Lord + Dark Heroes vs Light Heroes final battle. **Unresolved:** meter formula/tiers, eligible deeds, boss abilities, pre-awakening sanctum vulnerability, post-awakening terminal rules, and whether sleeping influence exists.
+1. **Core rule decided by D-015 to D-018:** Dark Lord starts dormant; Light can breach sanctum and kill him before awakening; Dark Energy accrues over time and accelerates through evil deeds of Dark Heroes and minions; awakening triggers Dark Lord + Dark Heroes vs Light Heroes final battle. **D-019 confirms** Light Heroes can slow awakening by sabotaging Dark operations, without directly reversing accumulated Dark Energy. **Unresolved:** meter formula/tiers, eligible deeds and sabotage targets, whether earned rate bonuses are permanent or depend on maintained operations, boss abilities, pre-awakening sanctum vulnerability, post-awakening terminal rules, and whether sleeping influence exists.
 2. What camera(s) and controls does each Light Hero have? What triggers switching? How is aiming balanced against high-level RTS control?
 3. How does the Dark Hero switch between physical action and macro-command? Does game time continue while commanding?
 4. What constitutes Dark victory if Light Heroes die or the awakened boss wins? Revival/elimination rules, disconnects and timeout behavior. Awakening alone **does not** grant Dark victory.
