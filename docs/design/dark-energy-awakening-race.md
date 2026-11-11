@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-020 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-021 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -19,7 +19,7 @@ This creates a race between **Light growth + access to the sanctum** and **Dark 
 - There is one Dark Lord, initially dormant, situated in the castle's sanctum.
 - His Dark Energy meter fills with a baseline time progression.
 - Individual evil deeds by Dark Heroes or their **minions** grant **small, immediate one-time Dark Energy rewards**. They **do not change passive generation rate**.
-- Corruption sources **increase the passive Dark Energy generation rate**. The means of creating, empowering, maintaining or destroying sources are not yet specified.
+- Corruption sources **increase the passive Dark Energy generation rate**. **Confirmed two types (D-021):** major sources established by corrupting existing map landmarks; smaller sources constructed by Dark Heroes at strategic positions. Exact actions, placement restrictions, stacking, maintenance and destruction rules are not yet specified.
 - There is a **tiered** progress structure; how many tiers and what they do is not yet approved.
 - Light players can end the game by slaying the Dark Lord before he awakens.
 - If he awakens, the awakened Lord and Dark Heroes jointly oppose the Light Heroes in a climactic final confrontation.
@@ -59,6 +59,13 @@ Potential tier effects (ALL speculative): subtle environmental corruption, incre
 ### Biggest systemic risk: compounding snowball
 If Dark Heroes establish many corruption sources, **passive production** can snowball and awaken the Dark Lord before the Light team has time to respond. Small individual deed payouts add additional pressure without themselves compounding the rate. We need pacing tests, source placement/stacking constraints, and meaningful sabotage to keep both strategies viable.
 
+### Confirmed corruption source structure (D-021)
+- **Major world landmarks:** existing sites in the kingdom can be corrupted into major passive Dark Energy sources. Examples (not canon): shrines, villages, graveyards. Their locations create naturally contested objectives.
+- **Smaller constructed sources:** Dark Heroes can place smaller corruption-producing structures in strategically useful positions, subject to placement restrictions to be designed.
+- Both types contribute to passive Dark Energy generation. **Neither changes the rule that individual evil deeds grant only a small one-time energy reward.**
+- Smaller vs major source production rates, costs, placement validity, repair/rebuilding, visibility, number limits, source destruction and Light sabotage interactions remain unapproved.
+- A Light sabotage of a corruption source reduces its active contribution to **future energy gain** and must not erase energy already earned.
+
 ### A meaningful Light-side response (CONFIRMED PRINCIPLE: D-019)
 Light Heroes **can sabotage corruption sources/Dark operations to reduce passive Dark Energy production**. Possible activities include purifying corrupted locations, interrupting rituals, or destroying rate-producing infrastructure. **Do not subtract already accumulated Dark Energy** when sabotage succeeds. Exact targets, costs, source restoration, and whether sabotage prevents future deeds are **not confirmed**.
 
@@ -93,7 +100,7 @@ No numeric values, tier count, specific dark deed triggers or formulas are yet a
 ## Remaining design questions
 1. **Resolved in principle (D-019):** Light Heroes can **slow the awakening rate through sabotage**, but cannot directly reverse accumulated energy. **Open:** which activities qualify, their risk and counterplay.
 2. Which activities count as **one-time evil deeds**, how small their immediate energy drops are, and whether deed rewards have cooldowns or anti-farming limits?
-3. Which activities establish or empower **corruption sources**? How do multiple sources combine, how are they defended, and what ends their contribution?
+3. **D-021 confirms hybrid sources:** major pre-existing landmarks and smaller constructible sources. **Open:** which landmarks qualify, how and where structures can be placed, how contributions combine, how sources are defended/maintained and what ends their contribution?
 4. What does *tiered* mean mechanically: distinct stages, unlockable effects or visual escalation? What happens at each threshold?
 5. How is the dormant Lord defended or exposed during a sanctum raid?
 6. What exactly counts as a win after awakening, and how is the battle prevented from lasting forever?
