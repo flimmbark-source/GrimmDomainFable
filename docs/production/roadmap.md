@@ -1,12 +1,12 @@
 # Production roadmap and milestone gates
 
-**Last updated:** 2026-11-11. **Status:** Pre-implementation. M0 assigned, no code verified.
+**Last updated:** 2026-11-11. **Status:** M0 implemented and machine-verified; awaiting creator review and a run on real hardware.
 
 The target is a full 4v4 asymmetric action/strategy game. Milestones are cumulative production code, not independent demos. Time-limited Fable usage ends around November 16; that is **not** the full-game deadline.
 
 | Milestone | Deliverable | Dependency / completion gate | Status |
 | --- | --- | --- | --- |
-| **M0** | Running 3D browser scene, actor/camera proof, seeded simulation, typed protocol, minimal server, art import path, 4v4 slots | Verified local build + deterministic tests + browser proof | **READY** |
+| **M0** | Running 3D browser scene, actor/camera proof, seeded simulation, typed protocol, minimal server, art import path, 4v4 slots | Verified local build + deterministic tests + browser proof | **IMPLEMENTED, IN REVIEW** |
 | **M1** | One meaningful hunt-and-escape encounter: patrol, sight, hearing, alert, last-known position, search, concealment | M0 game loop + perception tests + visible debug layers | PLANNED |
 | **M2** | Two-sided match loop: commander spawns/orders monsters; light hero gains resources/upgrades; castle victory and defeat conditions for short test | M1, explicit design approval for core scoring/revival | PLANNED |
 | **M3** | Character identity: Goblin, Alchemist, Knight, Witch power economies; Dark Hero classes; combat/abilities | M2, individual mechanic specifications | PLANNED |
@@ -34,8 +34,8 @@ These are dependency stages, not strict mutually exclusive calendar phases. Star
 Move dates rather than pretend a broken foundation is finished.
 
 ## Progress evidence ledger
-No runtime build, screenshots, or tests have yet been executed in this GitHub project. Update with actual command outputs and commit hashes, not optimistic statuses.
+Actual command results and commit hashes only. Details per milestone are in [implementation-status.md](../implementation-status.md).
 
 | Milestone | Running build | Tests passing | User playtested | Evidence |
 | --- | --- | --- | --- | --- |
-| M0 | No | No | No | Awaiting Fable work |
+| M0 | Yes: `npm run dev`, and `npm run build` + `npm start`, both from a clean copy | Yes: typecheck clean, 35/35 unit and integration tests, 16/16 headless-browser checks (2026-11-11) | **No** | Code commit `__SHA__`; screenshots in `docs/evidence/`. Only software-rendered headless Chromium was available, so real-GPU frame rate is unmeasured |

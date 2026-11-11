@@ -1,6 +1,6 @@
 # Grimm Dominion
 
-**Status:** kickoff decisions confirmed, first engineering milestone defined; no running game code committed yet. This repository is the canonical workspace for developing Grimm Dominion as a complete, original game, using Fable/Claude Code for implementation and ChatGPT plus the creator for gameplay direction, review, and production specifications.
+**Status:** M0 implemented on branch `claude/grimmdomain-milestone-m0-4y6lxu`: a running 3D browser client on an authoritative server, verified by automated tests and a headless-browser check. Not yet played by a human or run on a real GPU; see [implementation status](docs/implementation-status.md). This repository is the canonical workspace for developing Grimm Dominion as a complete, original game, using Fable/Claude Code for implementation and ChatGPT plus the creator for gameplay direction, review, and production specifications.
 
 ## Vision currently established
 - Asymmetric dark-fairytale strategy/action game built around hunting, hiding, growing stronger, and a castle assault.
@@ -37,4 +37,15 @@ The original document contains conflicting and exploratory choices. It is a sour
 3. Implement [M0: browser 3D + authoritative simulation feasibility spike](docs/production/M0-architecture-spike.md) via [GitHub issue #2](https://github.com/flimmbark-source/GrimmDomainFable/issues/2).
 4. Separately, creator + ChatGPT develop the [M1 hunting/detection specification](https://github.com/flimmbark-source/GrimmDomainFable/issues/3).
 
-**Do not claim a running prototype yet.** The first execution and verification belong to M0.
+## Run the current build
+Node.js 22+ and a WebGL2 desktop browser.
+
+```bash
+npm ci
+```
+
+```bash
+npm run dev
+```
+
+Open http://localhost:5173. Controls, checks, evidence and known defects are in [docs/implementation-status.md](docs/implementation-status.md); structure and technology choices are in [docs/architecture.md](docs/architecture.md).

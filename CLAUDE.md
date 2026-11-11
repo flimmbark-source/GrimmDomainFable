@@ -12,6 +12,8 @@ Read `README.md`, `docs/decisions.md`, and `docs/production/roadmap.md` before w
 - Godot, 2D-first prototyping, and mobile-first launches were rejected.
 
 ## Current assignment
+**Status 2026-11-11:** M0 is implemented on branch `claude/grimmdomain-milestone-m0-4y6lxu` and awaits creator review. Read `docs/architecture.md` and `docs/implementation-status.md` before changing code. The M0 brief below is kept for reference.
+
 **Start work on [M0](docs/production/M0-architecture-spike.md)**, tracked by [issue #2](https://github.com/flimmbark-source/GrimmDomainFable/issues/2). This is a narrow running production increment, not the full game and not a disposable artifact.
 
 1. Validate a real local browser 3D build with the currently supported rendering/toolchain APIs.

@@ -19,14 +19,15 @@
 | D-010 | Core gameplay identity | Autonomous dark-side monster armies, incomplete-information hunting/stealth, differentiated Light Hero progression, castle assault |
 | D-011 | Engine constraint | **Do not use Godot** for the principal implementation |
 
-## Provisional engineering direction (requires Fable technical validation)
-- Browser-based Three.js + TypeScript renderer/client and Vite toolchain.
-- An authoritative Node/TypeScript simulation and multiplayer server, potentially Colyseus (check current 0.18+ docs and actual installed version).
-- Client-only React for out-of-game menus/HUD *if justified*; do not introduce it before proving a need.
-- GLB/glTF 3D asset pipeline; original or licensed meshes and textures.
-- Fixed-timestep simulation, validated commands, and strict per-team information projection.
-- Bots and humans submit compatible commands. Bot difficulty and takeover semantics are not yet decided.
-- A narrow initial playable test may use a subset of the eight slots, but the full product remains 4v4.
+## Engineering direction (validated by M0, 2026-11-11)
+Implemented and tested; details and exact versions in [architecture.md](architecture.md). These are engineering choices, changeable without a gameplay decision.
+- Three.js 0.187 + TypeScript 7 browser client on WebGL2, built with Vite 8. **Validated.**
+- Authoritative Node/TypeScript server on Colyseus 0.18 for rooms, sessions and the fixed timestep. **Validated.** Colyseus schema state sync is deliberately not used; each client receives its own projected snapshot.
+- Fixed 30 Hz deterministic simulation, validated commands, per-viewer information projection. **Validated** (public transforms only; real visibility is M1).
+- Bots and humans submit the same command type through the same queue. **Validated** with a trivial wandering bot. Bot difficulty and takeover semantics are not decided.
+- GLB/glTF asset pipeline with procedural placeholders behind one asset-id interface. **Validated** with one imported GLB. All art original.
+- No UI framework yet; the HUD is plain DOM. React remains an option if menus justify it.
+- Still provisional: delta compression or `StateView` for snapshots (measure at M4), pathfinding approach (M1), hosting and deployment.
 
 ## Unresolved rules (do NOT silently decide these as canon)
 1. What exactly is the Dark Lord in the final castle: a vulnerable NPC/objective, a temporarily playable entity, or another game-controlled actor, given four Dark Hero players?
@@ -36,7 +37,7 @@
 5. Target completed match duration, spawn rules, team coordination mechanics, and asymmetric information sharing.
 6. Exact bot replacement policy: immediately upon empty slot, after disconnection delay, or only at match start.
 7. Launch format and deployment hosting details; accounts, identity, payments, and moderation later.
-8. Which character and encounter are chosen for the first vertical increment. Goblin + one Dark Commander are a **proposal**, not confirmed.
+8. Which character and encounter are chosen for the first vertical increment. Goblin + one Dark Commander are a **proposal**, not confirmed. (M0 draws generic Light/Dark hero placeholders and one patrol beast; this implies no choice.)
 
 ## Rejected or superseded
 - Godot as the main game platform.
