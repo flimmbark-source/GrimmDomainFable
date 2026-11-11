@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-021 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-022 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -66,6 +66,12 @@ If Dark Heroes establish many corruption sources, **passive production** can sno
 - Smaller vs major source production rates, costs, placement validity, repair/rebuilding, visibility, number limits, source destruction and Light sabotage interactions remain unapproved.
 - A Light sabotage of a corruption source reduces its active contribution to **future energy gain** and must not erase energy already earned.
 
+### Purification becomes territorial control (CONFIRMED: D-022)
+- **Purifying a corrupted major landmark converts it into a Light-controlled sanctuary**, rather than leaving it neutral.
+- Sanctuaries turn landmark warfare into a reversible territorial contest between both teams. The Dark source no longer contributes its corruption-based passive Dark Energy while purified, consistent with D-019.
+- **Not yet approved:** what a sanctuary provides (healing, safe refuge, light-side progression, vision, or other benefits), how the Dark team retakes it, and whether recapture is instant, channeled, or multi-step.
+- Minor constructed corruption sources have their own unapproved destruction/purification rules. Do not assume they transform into sanctuaries.
+
 ### A meaningful Light-side response (CONFIRMED PRINCIPLE: D-019)
 Light Heroes **can sabotage corruption sources/Dark operations to reduce passive Dark Energy production**. Possible activities include purifying corrupted locations, interrupting rituals, or destroying rate-producing infrastructure. **Do not subtract already accumulated Dark Energy** when sabotage succeeds. Exact targets, costs, source restoration, and whether sabotage prevents future deeds are **not confirmed**.
 
@@ -100,7 +106,7 @@ No numeric values, tier count, specific dark deed triggers or formulas are yet a
 ## Remaining design questions
 1. **Resolved in principle (D-019):** Light Heroes can **slow the awakening rate through sabotage**, but cannot directly reverse accumulated energy. **Open:** which activities qualify, their risk and counterplay.
 2. Which activities count as **one-time evil deeds**, how small their immediate energy drops are, and whether deed rewards have cooldowns or anti-farming limits?
-3. **D-021 confirms hybrid sources:** major pre-existing landmarks and smaller constructible sources. **Open:** which landmarks qualify, how and where structures can be placed, how contributions combine, how sources are defended/maintained and what ends their contribution?
+3. **D-021/D-022 confirm** major landmarks and smaller constructible sources, and purified major landmarks becoming Light-controlled sanctuaries. **Open:** which landmarks qualify, how and where structures can be placed, what sanctuaries provide, how landmarks are retaken, how contributions combine, and what ends them?
 4. What does *tiered* mean mechanically: distinct stages, unlockable effects or visual escalation? What happens at each threshold?
 5. How is the dormant Lord defended or exposed during a sanctum raid?
 6. What exactly counts as a win after awakening, and how is the battle prevented from lasting forever?
