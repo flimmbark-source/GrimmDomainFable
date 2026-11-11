@@ -19,6 +19,7 @@
 | D-010 | Core gameplay identity | Autonomous dark-side monster armies, incomplete-information hunting/stealth, differentiated Light Hero progression, castle assault |
 | D-011 | Engine constraint | **Do not use Godot** for the principal implementation |
 | D-012 | Dark-team scouting information | **Shared confirmed alerts, private live vision:** when one Dark Hero's Scout confirms a Light Hero sighting, all four Dark Heroes receive the sighting alert. Only the Scout's owner receives its live vision. An alert is a time-stamped observation, not continuous tracking or team-wide shared vision |
+| D-013 | Light Hero stealth foundation | **Universal sight, cover and detection rules for all Light Heroes**, with character-specific modifiers and abilities. Exact per-character differences and tuning values are not yet approved |
 
 ## Provisional engineering direction (requires Fable technical validation)
 - Browser-based Three.js + TypeScript renderer/client and Vite toolchain.
