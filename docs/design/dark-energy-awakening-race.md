@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-027 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-028 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -81,6 +81,9 @@ If Dark Heroes establish many corruption sources, **passive production** can sno
 - **Open:** ward integrity model, siege progress UI, stage transition criteria, ritual participants, contested/interrupted progress, whether wards regenerate, how a Light counterattack reverses momentum, and what happens on attacker retreat. None of those details is automatically approved.
 - **Confirmed (D-027): Hybrid siege recovery.** The sanctuaries' **ward integrity remains damaged** after a siege until the Light side repairs it. **Corruption ritual progress decays gradually** once the Dark side loses control of the site. Repeated raids can soften wards, but an abandoned ritual cannot be stored at near-completion forever.
 - Ward integrity and ritual progress must be distinct authoritative state variables. **Unresolved:** control/contest criteria, repair activities and costs, ability to repair during attacks, decay speed and whether ritual progress pauses while contested.
+- **Confirmed (D-028): Resource-backed hybrid ward restoration.** Light Heroes must invest resources in sanctuary ward repair. A **restoration ritual**, once established, continues restoring wards while the Heroes are away. A Light Hero can personally participate to restore wards faster. Their presence is **not mandatory** for an already-established ritual to keep working.
+- **Not yet confirmed:** what resources are used or how they are earned, whether the resource payment starts or sustains the ritual, how the ritual is established, the repair rate and cap, whether an actively besieged sanctuary can repair, whether Dark minions can interrupt the ritual, and what happens to invested resources on disruption.
+- Keep **ward integrity**, **Dark corruption progress** and **Light restoration process** separate in the authoritative simulation. Don't interpret a restoration ritual as undoing Dark Energy already accumulated by the Dark Lord.
 - Minor constructed corruption sources have their own unapproved destruction/purification rules. Do not assume they transform into sanctuaries.
 
 ### A meaningful Light-side response (CONFIRMED PRINCIPLE: D-019)
@@ -117,7 +120,7 @@ No numeric values, tier count, specific dark deed triggers or formulas are yet a
 ## Remaining design questions
 1. **Resolved in principle (D-019):** Light Heroes can **slow the awakening rate through sabotage**, but cannot directly reverse accumulated energy. **Open:** which activities qualify, their risk and counterplay.
 2. Which activities count as **one-time evil deeds**, how small their immediate energy drops are, and whether deed rewards have cooldowns or anti-farming limits?
-3. **D-021/D-022 confirm** major landmarks and smaller constructible sources, and purified major landmarks becoming Light-controlled sanctuaries. **Open:** which landmarks qualify, how and where structures can be placed, what exact recovery/progression services and upgrade/ward mechanics sanctuaries provide, two-stage siege timing, interruptions, ward repair and Dark Hero ritual advantage, how contributions combine, and what ends them?
+3. **D-021/D-022 confirm** major landmarks and smaller constructible sources, and purified major landmarks becoming Light-controlled sanctuaries. **Open:** which landmarks qualify, how and where structures can be placed, what exact recovery/progression services and upgrade/ward mechanics sanctuaries provide, two-stage siege timing, Light restoration ritual initiation/interruption and costs, Dark control/decay conditions, and Dark Hero ritual advantage, how contributions combine, and what ends them?
 4. What does *tiered* mean mechanically: distinct stages, unlockable effects or visual escalation? What happens at each threshold?
 5. How is the dormant Lord defended or exposed during a sanctum raid?
 6. What exactly counts as a win after awakening, and how is the battle prevented from lasting forever?
