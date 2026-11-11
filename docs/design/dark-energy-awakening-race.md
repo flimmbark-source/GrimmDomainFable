@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-026 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-027 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -79,6 +79,8 @@ If Dark Heroes establish many corruption sources, **passive production** can sno
 - **Confirmed (D-026): two-stage siege.** First the Dark army must **weaken or breach the sanctuary's wards**. Only after that can the Dark side **perform the corruption ritual** to convert the site. Light Heroes may hold the wards, interrupt the ritual, or counterattack to retake the site.
 - Stage one must be visibly distinct from stage two so players can recognize whether they should protect the ward defenses or stop an active ritual. A Dark Hero's physical presence can improve the ritual as established by D-024, but a hero is not required.
 - **Open:** ward integrity model, siege progress UI, stage transition criteria, ritual participants, contested/interrupted progress, whether wards regenerate, how a Light counterattack reverses momentum, and what happens on attacker retreat. None of those details is automatically approved.
+- **Confirmed (D-027): Hybrid siege recovery.** The sanctuaries' **ward integrity remains damaged** after a siege until the Light side repairs it. **Corruption ritual progress decays gradually** once the Dark side loses control of the site. Repeated raids can soften wards, but an abandoned ritual cannot be stored at near-completion forever.
+- Ward integrity and ritual progress must be distinct authoritative state variables. **Unresolved:** control/contest criteria, repair activities and costs, ability to repair during attacks, decay speed and whether ritual progress pauses while contested.
 - Minor constructed corruption sources have their own unapproved destruction/purification rules. Do not assume they transform into sanctuaries.
 
 ### A meaningful Light-side response (CONFIRMED PRINCIPLE: D-019)
