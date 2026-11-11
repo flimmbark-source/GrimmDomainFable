@@ -38,4 +38,4 @@ Actual command results and commit hashes only. Details per milestone are in [imp
 
 | Milestone | Running build | Tests passing | User playtested | Evidence |
 | --- | --- | --- | --- | --- |
-| M0 | Yes: `npm run dev`, and `npm run build` + `npm start`, both from a clean copy | Yes: typecheck clean, 35/35 unit and integration tests, 16/16 headless-browser checks (2026-11-11) | **No** | Code commit `__SHA__`; screenshots in `docs/evidence/`. Only software-rendered headless Chromium was available, so real-GPU frame rate is unmeasured |
+| M0 | Yes: `npm run dev`, and `npm run build` + `npm start`, both from a clean copy | Yes: typecheck clean, 35/35 unit and integration tests, 16/16 headless-browser checks (2026-11-11) | **No** | Code commit `0c15215`; screenshots in `docs/evidence/`. Only software-rendered headless Chromium was available, so real-GPU frame rate is unmeasured |
