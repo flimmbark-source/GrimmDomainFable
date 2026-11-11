@@ -1,6 +1,6 @@
 # M1 — Hunt/escape playtest specification
 
-**Status:** Design proposal, with confirmed decisions D-012 (shared alerts, private vision) and D-013 (universal Light Hero stealth foundation with character modifiers). Other perception rules remain proposed. **Created:** 2026-11-11.
+**Status:** Design proposal with three confirmed foundations: D-012 (shared alerts, private vision), D-013 (universal Light Hero stealth with class modifiers) and D-014 (world/audio cues plus subtle local attention indicator). Exact feedback presentation and tuning remain proposed. **Created:** 2026-11-11.
 **Predecessor:** [Hunting and perception v0](hunting-perception-v0.md).
 **Engineering dependency:** M0's fixed-step simulation, world collision, server-authoritative commands, and 3D camera/render path.
 
@@ -55,6 +55,13 @@ No evidence is allowed to expose the current hidden coordinates of a hero. Last-
 - Proposed illustrative differences: Goblin is harder to notice, Knight creates more sound, Alchemist actions generate audible disturbances, and Witch abilities may influence evidence. These examples are not yet approved balance rules.
 - Detection speed, sound strength, reveal conditions, and special counterplay remain tunable and subject to playtesting.
 - **Acceptance test:** identical base sight/cover logic applies to two different Light Hero types; modifiers change parameterized results without bypassing obstruction or server-side information restrictions.
+
+### Confirmed detection feedback (D-014)
+- A noticing monster communicates suspicion through **in-world behavior and sound** (e.g., turning, pausing, alert posture, vocalization). These signals remain important even if UI is disabled.
+- A **subtle local attention indicator** helps the Light Hero understand that they are being noticed and roughly how close they are to a confirmed detection state.
+- Do not use the indicator to expose exact coordinates, hidden monsters, or targeting information the player could not legitimately know.
+- The indicator's shape, placement, animation, thresholds, and timing are UX proposals to test. A meter per observer is **not** automatically approved.
+- **Acceptance test:** partial exposure produces readable world/audio cues and a local attention indicator; breaking line of sight causes feedback to relax in accordance with detection decay; confirmed detection gives distinguishable feedback; authorized client data remains privacy-safe.
 
 ### Scout behavior states
 **PATROL** -> **SUSPICIOUS/INVESTIGATE** -> **CONFIRMED/CHASE** -> **LOST/SEARCH** -> **RETURN TO ORDER**.
@@ -112,9 +119,9 @@ Record observed behavior, misunderstandings, and exploit strategies. Do not mark
 ## Decision gates for creator
 1. **Sighting-sharing policy: CONFIRMED (D-012).** All Dark Heroes receive confirmed sighting alerts; only the Scout owner receives its live vision. Alert latency, report format, and other unconfirmed evidence sharing remain tunable/open.
 2. **Light stealth foundation: CONFIRMED (D-013).** All Light Heroes share the same sight/cover/detection foundation, with character-specific modifiers and abilities. Exact values are not approved.
-3. **Detection cues:** World/audio cues plus a restrained local attention meter, or exclusively world cues? Recommended **both**, with the meter only showing attention generated toward the player by threats it could plausibly perceive.
+3. **Detection cues: CONFIRMED (D-014).** World/audio cues **plus a subtle local attention indicator**. Its exact UX, state transitions, visibility constraints, and tuning require gameplay validation.
 
-These are **recommendations**, not approvals. Build configurable interfaces while pending, and do not turn these defaults into undocumented canon.
+All three foundation choices above are **confirmed**. Specific timings, tuning, visual placement, alert delivery, and advanced character interactions are **not approved** and remain subject to playtesting. Do not present them as canon.
 
 ## Follow-on system dependencies
 - Goblin cloak or decoys alter sensory evidence, not the underlying trust/authority model.
