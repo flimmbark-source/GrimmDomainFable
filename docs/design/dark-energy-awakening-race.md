@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-031, D-039 through D-041, and D-050 through D-052 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-031, D-039 through D-041, and D-050 through D-053 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -69,6 +69,7 @@ If Dark Heroes establish many corruption sources, **passive production** can sno
 ### Purification becomes territorial control (CONFIRMED: D-022)
 - **Purifying a corrupted major landmark converts it into a Light-controlled sanctuary**, rather than leaving it neutral.
 - **Confirmed (D-050/D-052):** all Light Heroes (including the Witch) can purify corrupted major landmarks. **Purification must occur before** the Witch performs her **separate one-time ley-line ritual** at an eligible shrine. The Witch's progression ritual **cannot itself purify a corrupted location**. That ritual grants **Arcane Power plus a choice of shrine-themed magical abilities** (D-051). Recapture/re-corruption does not reset an already claimed one-time reward. Full corruption makes the shrine ineligible until purification, but in-progress ritual details and shrine list are not yet approved.
+- **Confirmed (D-053):** the Witch senses magical disturbances and follows increasingly precise supernatural and environmental cues toward shrines. She does **not** start with exact shrine map coordinates, and shrine sense does not disclose hidden enemies. Exact sensing and UI mechanics remain open.
 - Sanctuaries turn landmark warfare into a reversible territorial contest between both teams. The Dark source no longer contributes its corruption-based passive Dark Energy while purified, consistent with D-019.
 - **Confirmed (D-023):** sanctuaries provide both **recovery/regrouping** and **Light Hero progression opportunities**. They are **contestable**, not completely safe, and the Dark side can threaten and recapture them.
 - **Not yet approved:** exactly what healing or progression services are provided, which classes benefit, detailed defensive bonuses, ritual timing, or the conditions for reversing a siege. The **two-stage** structure is confirmed in D-026.
