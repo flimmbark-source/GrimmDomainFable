@@ -1,6 +1,6 @@
 # M1 — Hunt/escape playtest specification
 
-**Status:** Design proposal, with confirmed sighting-sharing decision D-012. Other perception rules remain proposed. **Created:** 2026-11-11.
+**Status:** Design proposal, with confirmed decisions D-012 (shared alerts, private vision) and D-013 (universal Light Hero stealth foundation with character modifiers). Other perception rules remain proposed. **Created:** 2026-11-11.
 **Predecessor:** [Hunting and perception v0](hunting-perception-v0.md).
 **Engineering dependency:** M0's fixed-step simulation, world collision, server-authoritative commands, and 3D camera/render path.
 
@@ -48,6 +48,13 @@ Treat sensory outputs as events with:
 - **unit loss:** destroyed scout generates loss-of-contact evidence, not automatic knowledge of who killed it.
 
 No evidence is allowed to expose the current hidden coordinates of a hero. Last-known positions are frozen at the last legal observation. An interface may display confidence decay or positional uncertainty after the fact, but that is presentation of known evidence, not secret truth.
+
+### Confirmed common Light Hero stealth framework (D-013)
+- All Light Heroes use the **same underlying sight, cover, obstruction, sound, and detection rules**, so players can learn how the world works once.
+- Character identity comes from **modifiers and explicit abilities**, not separate, incompatible stealth engines.
+- Proposed illustrative differences: Goblin is harder to notice, Knight creates more sound, Alchemist actions generate audible disturbances, and Witch abilities may influence evidence. These examples are not yet approved balance rules.
+- Detection speed, sound strength, reveal conditions, and special counterplay remain tunable and subject to playtesting.
+- **Acceptance test:** identical base sight/cover logic applies to two different Light Hero types; modifiers change parameterized results without bypassing obstruction or server-side information restrictions.
 
 ### Scout behavior states
 **PATROL** -> **SUSPICIOUS/INVESTIGATE** -> **CONFIRMED/CHASE** -> **LOST/SEARCH** -> **RETURN TO ORDER**.
@@ -104,7 +111,7 @@ Record observed behavior, misunderstandings, and exploit strategies. Do not mark
 
 ## Decision gates for creator
 1. **Sighting-sharing policy: CONFIRMED (D-012).** All Dark Heroes receive confirmed sighting alerts; only the Scout owner receives its live vision. Alert latency, report format, and other unconfirmed evidence sharing remain tunable/open.
-2. **Light stealth foundation:** Do all Light Heroes share the sight/cover system with character-specific stealth modifiers? Recommended **yes**, so players learn one consistent world rule before class-specific counters.
+2. **Light stealth foundation: CONFIRMED (D-013).** All Light Heroes share the same sight/cover/detection foundation, with character-specific modifiers and abilities. Exact values are not approved.
 3. **Detection cues:** World/audio cues plus a restrained local attention meter, or exclusively world cues? Recommended **both**, with the meter only showing attention generated toward the player by threats it could plausibly perceive.
 
 These are **recommendations**, not approvals. Build configurable interfaces while pending, and do not turn these defaults into undocumented canon.
