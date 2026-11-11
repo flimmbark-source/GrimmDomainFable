@@ -18,6 +18,7 @@
 | D-009 | Product ambition | Develop the **full game cumulatively**, using narrow verified playable milestones rather than disposable prototypes |
 | D-010 | Core gameplay identity | Autonomous dark-side monster armies, incomplete-information hunting/stealth, differentiated Light Hero progression, castle assault |
 | D-011 | Engine constraint | **Do not use Godot** for the principal implementation |
+| D-012 | Dark-team scouting information | **Shared confirmed alerts, private live vision:** when one Dark Hero's Scout confirms a Light Hero sighting, all four Dark Heroes receive the sighting alert. Only the Scout's owner receives its live vision. An alert is a time-stamped observation, not continuous tracking or team-wide shared vision |
 
 ## Provisional engineering direction (requires Fable technical validation)
 - Browser-based Three.js + TypeScript renderer/client and Vite toolchain.
@@ -33,7 +34,7 @@
 2. What camera(s) and controls does each Light Hero have? What triggers switching? How is aiming balanced against high-level RTS control?
 3. How does the Dark Hero switch between physical action and macro-command? Does game time continue while commanding?
 4. What constitutes Dark victory if Light Heroes die? Revival/elimination rules, disconnects, and timeout/corruption behavior.
-5. Target completed match duration, spawn rules, team coordination mechanics, and asymmetric information sharing.
+5. Target completed match duration, spawn rules, and other team coordination mechanics. **Confirmed sightings** are shared as alerts; **live Scout vision** remains owner-private per D-012. Other communication and evidence-sharing rules are still open.
 6. Exact bot replacement policy: immediately upon empty slot, after disconnection delay, or only at match start.
 7. Launch format and deployment hosting details; accounts, identity, payments, and moderation later.
 8. Which character and encounter are chosen for the first vertical increment. Goblin + one Dark Commander are a **proposal**, not confirmed.
