@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-031 and D-039/D-040 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-031 and D-039 through D-041 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -88,6 +88,7 @@ If Dark Heroes establish many corruption sources, **passive production** can sno
 - **Fog-of-war boundary:** the distant alert communicates an owned sanctuary's danger and condition, **not who is attacking, how many enemies are present, or their exact world positions**. Do not attach previously unseen enemy entities or hidden path information to the alert. Local detail must be grounded in valid proximity/perception.
 - **Confirmed (D-031): alert escalation.** A sanctuary **first coming under attack** generates a subtle warning shared with all Light Heroes. A **ward breach or active Dark corruption ritual** escalates it to a prominent urgent warning. These are distinct information/urgency levels, not separate grants of enemy visibility.
 - **Confirmed (D-039/D-040):** attacked Light sanctuaries remain usable for ghost resurrection while not yet fully corrupted. Ghosts know when a destination becomes ineligible, without receiving information about hidden attackers. Resurrection at sanctuaries requires a ritual, **longer for recently dead heroes and shorter for those dead longer**. Ritual interruption, exact timing, and minimum duration are unapproved.
+- **Confirmed (D-041):** regular fighting around a sanctuary does **not by itself** interrupt a ghost's active resurrection ritual. Dark-side **deliberate spiritual interference** can disrupt it, and successful full sanctuary corruption still makes resurrection unavailable. Which actor can interfere and what the disruption does to ritual progress remain unresolved.
 - **Open:** precisely what qualifies as an attack, how to suppress repeated minor-warning spam, severity display, alert decay and acknowledgment, and nearby criteria. This is future sanctuary work, **not an instruction to change Fable's current M1 gameplay**.
 - **Not yet confirmed:** what resources are used or how they are earned, whether payment starts or sustains the ritual, establishment and repair rate, or whether destroyed rituals can be restored during active sieges.
 - Keep **ward integrity**, **Dark corruption progress** and **Light restoration process** separate in the authoritative simulation. Don't interpret a restoration ritual as undoing Dark Energy already accumulated by the Dark Lord.
