@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015, D-016, D-017, D-018 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-019 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -40,8 +40,12 @@ Potential tier effects (ALL speculative): subtle environmental corruption, incre
 ### Biggest systemic risk: compounding snowball
 If dark expansion allows more minions to commit more evil deeds, and each deed further accelerates awakening, the Dark side's advantage can grow sharply. That may be desirable pressure, but it can make a struggling Light team helpless. The game needs pacing tests, diminishing returns or limited objectives, and meaningful ways to disrupt the Dark team's evil economy.
 
-### A meaningful Light-side response (OPEN)
-Can Light Heroes disrupt the energy acceleration by purifying sites, destroying corrupt infrastructure, intercepting raids, or stealing energy, or can they only race the clock by leveling and assaulting? This decision changes the entire match's interaction model. Do not implement invented reversal rules.
+### A meaningful Light-side response (CONFIRMED PRINCIPLE: D-019)
+Light Heroes **can sabotage Dark operations to slow the Dark Lord's awakening rate**. Possible activities discussed include purifying corrupted locations, interrupting rituals or destroying Dark operations. **Do not subtract already accumulated Dark Energy** when sabotage succeeds. The specific activities, whether they cancel persistent boosts or interrupt future deeds, and their costs/counterplay are **not confirmed**.
+
+The strategic purpose is to give Light Heroes a choice between gathering personal power, slowing Dark growth and making an early castle assault. This should bring the two teams into contested areas without turning the match into endlessly reversing the meter.
+
+**Important design distinction:** a deed that creates a permanent rate bonus cannot be undone by merely disabling the same site unless that rule is explicitly chosen. The rate model must explain what sabotage affects before engineering hardcodes it.
 
 ## Technical structure suggested for Fable (proposal)
 - Authoritative state: `darkEnergy`, `awakeningRate`, `awakeningTier`, `darkLordState = dormant | awake | defeated`, `matchPhase` and a ledger of recognized deed events.
@@ -64,9 +68,11 @@ No numeric values, tier count, specific dark deed triggers or formulas are yet a
 7. The awakened battle includes the Dark Lord alongside four Dark Hero *player roles*, without making him a fifth Dark player slot.
 8. The same simulated timeline and deeds produce identical energy and phase changes.
 9. The UI makes the mounting danger legible, but does not leak hidden movements or who performed unseen deeds unless that reveal is explicitly allowed.
+10. An approved Light sabotage event reduces an applicable current/future rate contribution, **without lowering accumulated Dark Energy**. The exact impact and duration await design approval.
+11. Attempting the same completed sabotage repeatedly does not repeatedly decrease the awakening rate without new valid game events.
 
 ## Remaining design questions
-1. Do Light Heroes have ways to **slow or reverse** awakening, and if so through which activities?
+1. **Resolved in principle (D-019):** Light Heroes can **slow the awakening rate through sabotage**, but cannot directly reverse accumulated energy. **Open:** which activities qualify, their risk and counterplay.
 2. Which evil deeds award acceleration, and is that benefit permanent, temporary or tied to holding corrupted locations?
 3. Does the energy meter fill by baseline rate plus acceleration only, or do evil deeds also increase current progress instantly?
 4. What does *tiered* mean mechanically: distinct stages, unlockable effects or visual escalation? What happens at each threshold?
@@ -74,4 +80,4 @@ No numeric values, tier count, specific dark deed triggers or formulas are yet a
 6. What exactly counts as a win after awakening, and how is the battle prevented from lasting forever?
 
 ## Review instructions
-Preserve the creator's established rule: time + Dark deeds accelerate awakening; early Light sanctuary breach can kill dormant Lord; awakening forces a final battle with the awakened Lord and Dark Heroes. Never reinterpret this as either a fixed countdown only or an automatic Dark win.
+Preserve the creator's established rule: time + Dark deeds accelerate awakening; Light sabotage slows the rate but does not subtract accumulated energy; early Light sanctum breach can kill the dormant Lord; awakening forces a final battle with the awakened Lord and Dark Heroes. Never reinterpret this as either a fixed countdown only or an automatic Dark win.
