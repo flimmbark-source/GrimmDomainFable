@@ -20,6 +20,7 @@
 | D-011 | Engine constraint | **Do not use Godot** for the principal implementation |
 | D-012 | Dark-team scouting information | **Shared confirmed alerts, private live vision:** when one Dark Hero's Scout confirms a Light Hero sighting, all four Dark Heroes receive the sighting alert. Only the Scout's owner receives its live vision. An alert is a time-stamped observation, not continuous tracking or team-wide shared vision |
 | D-013 | Light Hero stealth foundation | **Universal sight, cover and detection rules for all Light Heroes**, with character-specific modifiers and abilities. Exact per-character differences and tuning values are not yet approved |
+| D-014 | Detection feedback | **Environmental and audio cues plus a subtle local attention indicator** for the Light Hero when a monster is noticing them. Exact presentation, timing and tuning remain to be playtested. Do not use this UI to reveal unseen enemy positions |
 
 ## Provisional engineering direction (requires Fable technical validation)
 - Browser-based Three.js + TypeScript renderer/client and Vite toolchain.
