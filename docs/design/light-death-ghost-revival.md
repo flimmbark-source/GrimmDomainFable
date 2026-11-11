@@ -1,7 +1,7 @@
 # Light Hero death, ghost travel and revival
 
-**Status:** Core player fantasy and limited spirit interactions CONFIRMED (D-032 through D-035). Exact gameplay and numbers UNRESOLVED.
-**Design authority:** [Decision register](../decisions.md), particularly D-018, D-022 to D-031, D-032 through D-035.
+**Status:** Core player fantasy and limited spirit interactions CONFIRMED (D-032 through D-036). Exact gameplay and numbers UNRESOLVED.
+**Design authority:** [Decision register](../decisions.md), particularly D-018, D-022 to D-031, D-032 through D-036.
 **Implementation scope:** Future two-sided gameplay milestone after M1 perception work is reviewed. This document does not authorize unapproved ghost abilities or modify current M1 engineering requirements.
 
 ## Confirmed player experience
@@ -12,6 +12,7 @@
 - Player had selected **C: rescue and limited revival** before proposing the body/ghost system. Preserve meaningful death consequences, team cooperation and possible defeat without assuming specific revival caps or currencies.
 - **Ghost play (D-033):** while dead, the player can navigate as a ghost, perceive **spiritual landmarks**, and undertake **limited meaningful supernatural interactions**. The ghost is not automatically an unrestricted scout or combatant; it cannot freely expose unseen enemy positions. The exact abilities, rules and sensory presentation have not been selected.
 - **Spirit obstacles (D-035):** while traveling to an uncorrupted sanctuary, ghosts encounter supernatural barriers, corrupted regions and environmental puzzles. These add navigation and spiritual problem-solving without permanently eliminating the ghost. Their exact placement, rules and failure consequences are not yet defined. Do not turn this into an always-on second survival or combat encounter.
+- **Spirit perspective (D-036):** ghosts remain in the **same world geography** as the living, with a **visually and perceptually transformed layer** revealing spirits, supernatural markings and ethereal pathways not visible to living Heroes. This is not a separate overworld. Which paths can be traversed, what ghost actions interact with them and what information the view reveals remain unapproved.
 
 ## Why the two routes matter (design intent, not further approved rules)
 The body route encourages teammates to rescue someone in danger, creating a chance for recoverable mistakes and local conflict. The ghost journey lets a defeated player stay active without requiring a teammate to abandon everything. These must create distinct choices rather than a universally superior, risk-free respawn.
@@ -19,7 +20,7 @@ The body route encourages teammates to rescue someone in danger, creating a chan
 ## Design and security risks to resolve before coding
 1. **Ghost perception and scouting:** D-033 confirms spiritual landmark perception and limited spiritual interactions, **not unrestricted enemy scouting**. A free-moving invulnerable ghost that can observe enemy positions could bypass all established stealth and fog-of-war rules (D-012/D-013). Do not implement unrestricted world vision or broadcast enemy coordinates from a ghost. The specific spirit senses and interactions still require explicit design approval.
 2. **Body revival interaction:** D-034 requires another **living Light Hero** to reach the body and revive the fallen player; ghost self-revival there is not allowed. Resolve whether allies must guard/channel at the body, whether enemies can occupy/move/corrupt the body, what interrupt conditions apply, whether a death site remains accessible, and how bot allies handle rescue.
-3. **Ghost travel and sanctuary eligibility:** D-035 confirms supernatural barriers, corrupted regions and environmental puzzles without permanent ghost elimination. Decide what kinds of navigation or short interactions address obstacles, whether physical terrain affects ghosts, what counts as 'uncorrupted', whether the destination needs Light ownership, and how a newly corrupted sanctuary affects a ghost in transit.
+3. **Ghost travel and sanctuary eligibility:** D-035 and D-036 confirm supernatural barriers, corrupted regions, environmental puzzles and a transformed view of the same physical kingdom, without permanent ghost elimination. Decide what kinds of navigation or short interactions address obstacles, whether physical terrain affects ghosts, what counts as 'uncorrupted', whether the destination needs Light ownership, and how a newly corrupted sanctuary affects a ghost in transit.
 4. **Revival stakes and match end:** Decide time, resources, disadvantages, limited uses or rising costs, and the exact condition for total Light defeat. The game cannot assume permanent elimination or infinite free revival.
 5. **Simulation model:** Keep life/body/ghost/revival state authoritative in the server and deterministic. Clients should not fabricate revival outcomes; tests must ensure hidden enemy locations do not leak through ghost perspective or a shared team feed.
 6. **Pacing:** Compare the travel distance to nearby sanctuary against ally rescue risk. Repeated death should remain meaningful but should not turn into a prolonged inactivity loop.
@@ -35,7 +36,7 @@ Living Light Hero
 Body and ghost coexist while dead. Whether the body disappears on sanctuary revival, persists as an interactable object, or has consequences is not yet decided.
 
 ## Next design gate
-**How should ghosts overcome spiritual obstacles?** Choose the central traversal/interactivity model before picking particular puzzle mechanics. Preserve an independent, viable ghost route in solo play with no permanent elimination. Then define the revival resource cost, body rescue interruptions and specific ghost abilities.
+**How should the ghost-only paths and spirit markings function?** Choose the primary ghost navigation/interactivity rule before specifying individual puzzles. Preserve an independent, viable ghost route in solo play with no permanent elimination. Then define the revival resource cost, body rescue interruptions and specific ghost abilities.
 
 ## Future acceptance examples (not immediate implementation ticket)
 - A death creates one body and one ghost under server authority and does not accidentally duplicate playable heroes.
