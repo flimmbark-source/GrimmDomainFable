@@ -46,6 +46,7 @@ Treat sensory outputs as events with:
 - **glimpse:** unconfirmed visual trace that raises suspicion but does not reveal hero identity;
 - **confirmed sighting:** identifies/locates a hero for as long as valid vision persists, followed by a last-known position when lost;
 - **unit loss:** destroyed scout generates loss-of-contact evidence, not automatic knowledge of who killed it.
+- **future Witch-specific magic report (D-055/D-056, not an M1 implementation requirement):** detecting a focused shrine-sensing disturbance produces **an approximate, time-stamped magical-activity clue delivered only to the detecting Scout's owning Dark Hero**. It does not identify the Witch, locate her current hidden coordinates, grant live vision or count as a shared confirmed-sighting alert. Approximate evidence is derived from the actual observed disturbance, not omniscient hero state.
 
 No evidence is allowed to expose the current hidden coordinates of a hero. Last-known positions are frozen at the last legal observation. An interface may display confidence decay or positional uncertainty after the fact, but that is presentation of known evidence, not secret truth.
 
@@ -124,6 +125,7 @@ Record observed behavior, misunderstandings, and exploit strategies. Do not mark
 All three foundation choices above are **confirmed**. Specific timings, tuning, visual placement, alert delivery, and advanced character interactions are **not approved** and remain subject to playtesting. Do not present them as canon.
 
 ## Follow-on system dependencies
+- **D-056 scope guardrail:** eventual Witch magical sensing should use the existing Scout evidence and recipient-projection boundaries. A private suspicious activity report remains private to the Scout owner; D-012's **team-wide** confirmed sighting notifications only apply after actual confirmation. Do not expand the M1 acceptance scope to implement the Witch ability prematurely.
 - Goblin cloak or decoys alter sensory evidence, not the underlying trust/authority model.
 - Alchemist noise/explosions create evidence; Knight's armor/fights may attract investigation; Witch illusions can create false evidence.
 - Commander spells/priests may change sensing rules, but must state explicit counterplay and duration.
