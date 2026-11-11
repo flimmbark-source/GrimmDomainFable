@@ -1,12 +1,12 @@
 # The Dark Lord — Dormancy, Presence and Awakening
 
-**Status:** exploratory design proposal. **Creator-confirmed:** D-015, Dark Lord is the **dormant ruler and final castle objective/boss**. The active Dark Lord idea is intriguing to the creator but **NOT approved**.
+**Status:** exploratory design proposal. **Creator-confirmed:** D-015, the Dark Lord is the **dormant ruler and final castle objective/boss**; D-016, **awakening begins the final confrontation rather than granting instant Dark victory**. The active strategic AI influence idea remains **NOT approved**.
 **Date:** 2026-11-11.
 
 ## Core dramatic promise
 The four playable Dark Heroes defend their sleeping master and struggle to protect the castle while four Light Heroes grow powerful enough to kill him. Even asleep, the Dark Lord's existence should give the kingdom a sense of escalating danger. The final castle assault should feel like the culmination of all eight players' decisions.
 
-This document does not establish a time-to-wake rule, full boss phase, or autonomously roaming Dark Lord.
+This document does not establish what causes awakening, exact boss combat behavior, or an autonomously roaming Dark Lord. **Confirmed:** awakening begins a dangerous final confrontation that Light Heroes still have a chance to win (D-016).
 
 ## Three levels of ambient presence worth considering
 
@@ -27,7 +27,7 @@ An active strategic AI makes its own decisions behind the scenes, potentially di
 
 ## Questions the eventual system must answer
 1. What causes awakening: a fixed clock, Dark Hero actions, hero proximity, kingdom corruption, or a hybrid?
-2. Is awakening a Dark victory threshold, or the start of a final boss confrontation? Both at once could contradict the heroes' victory condition.
+2. **Resolved (D-016):** awakening starts the final boss confrontation, **not automatic Dark victory**. Unresolved: what actually ends the encounter, whether timeout changes its outcome, and whether Dark Heroes defend or empower the boss.
 3. Does the boss actively fight during the final assault? What phases, telegraphs, and player counterplay?
 4. Can Light Heroes sabotage awakening or temporarily weaken it through map objectives?
 5. Do Dark Heroes cooperate or compete over actions that strengthen the master? How do their individual identities matter?
@@ -48,4 +48,4 @@ Keep **Tier 1** available as cheap visual/narrative scaffolding while evaluating
 **No tier is approved** by the creator yet. D-015 only confirms the dormant final-boss foundation.
 
 ## Next decision
-Decide the **relationship between awakening and match victory** before designing the final battle. Otherwise the timer, hero pressure, and Dark Heroes' defensive strategy will conflict.
+Next, decide **what causes awakening** (clock, sanctum breach, Dark Hero actions, or combination), then specify how the four Dark Heroes remain influential during the final confrontation. Neither is confirmed yet.
