@@ -1,13 +1,13 @@
 # Light Hero death, ghost travel and revival
 
-**Status:** Core player fantasy and limited spirit interactions CONFIRMED (D-032 through D-037). Exact gameplay and numbers UNRESOLVED.
-**Design authority:** [Decision register](../decisions.md), particularly D-018, D-022 to D-031, D-032 through D-037.
+**Status:** Core player fantasy and limited spirit interactions CONFIRMED (D-032 through D-038). Exact gameplay and numbers UNRESOLVED.
+**Design authority:** [Decision register](../decisions.md), particularly D-018, D-022 to D-031, D-032 through D-038.
 **Implementation scope:** Future two-sided gameplay milestone after M1 perception work is reviewed. This document does not authorize unapproved ghost abilities or modify current M1 engineering requirements.
 
 ## Confirmed player experience
 - When a Light Hero dies, they leave a **physical body at the place of death** and control a **ghost**. Death does **not** automatically force them to stop playing or wait on an indefinite respawn timer.
 - **Body route (D-034):** **another living Light Hero** must travel to the fallen body and revive its owner there. The ghost **cannot independently self-revive at its own body**. Exact channel, cost, equipment requirement, interruption and bot rescue behavior remain unresolved.
-- **Spirit journey route:** the player can **move their ghost to an uncorrupted sanctuary** and revive there. Whether revival happens immediately on arrival or requires a ritual/cost remains open.
+- **Spirit journey route (D-038):** the ghost travels to an eligible **uncorrupted sanctuary** and performs a **short spiritual resurrection ritual** there before returning to life. Arrival is not automatic revival. The ritual's duration, controls, disruption behavior and any additional cost remain unresolved; **no resource sacrifice or post-revival penalty is approved**.
 - **Candidate extension, not canon:** an uncorrupted church in a village might also serve as a ghost revival destination. Church presence, availability, faction control and behaviors are not approved.
 - Player had selected **C: rescue and limited revival** before proposing the body/ghost system. Preserve meaningful death consequences, team cooperation and possible defeat without assuming specific revival caps or currencies.
 - **Ghost play (D-033):** while dead, the player can navigate as a ghost, perceive **spiritual landmarks**, and undertake **limited meaningful supernatural interactions**. The ghost is not automatically an unrestricted scout or combatant; it cannot freely expose unseen enemy positions. The exact abilities, rules and sensory presentation have not been selected.
@@ -37,7 +37,7 @@ Living Light Hero
 Body and ghost coexist while dead. Whether the body disappears on sanctuary revival, persists as an interactable object, or has consequences is not yet decided.
 
 ## Next design gate
-**What happens when a ghost reaches an eligible uncorrupted sanctuary?** Decide whether revival is immediate, requires a short ritual, or depends on a small resource payment. Preserve the independent route in solo play with no permanent elimination. Then define body rescue interruptions and specific spiritual abilities.
+**What happens if a destination sanctuary becomes corrupted while the ghost is traveling or performing its resurrection ritual?** Preserve an attainable revival path and meaningful territorial consequences. Then resolve ritual interruption, duration, body rescue, and the potential role of village churches.
 
 ## Future acceptance examples (not immediate implementation ticket)
 - A death creates one body and one ghost under server authority and does not accidentally duplicate playable heroes.
