@@ -1,6 +1,6 @@
 # Light Hero progression: shared foundation and character identity
 
-**Status:** Hybrid Light progression confirmed (D-042 through D-049), Forest Witch pilgrimage and ritual decisions (D-050 through D-062), and Goblin personal-gold/shared-objective split (D-063). Exact costs, item pools and unapproved mechanics remain open.
+**Status:** Hybrid Light progression confirmed (D-042 through D-049), Forest Witch pilgrimage and ritual decisions (D-050 through D-062), and Goblin economy plus occupiable/reclaimable hidden tavern (D-063/D-064). Exact costs, item pools and unapproved mechanics remain open.
 **Authority:** [Decision register](../decisions.md), particularly D-005, D-010, D-013, D-023, D-042, D-043, D-044, D-045, D-046, D-047, D-048 and D-049.
 **Timing:** M2 should introduce a small credible shared progression loop; M3 can develop differentiated character identity. Do not interrupt current gameplay engineering to implement unapproved mechanics.
 
@@ -38,7 +38,9 @@ The four character identities and core loops are **already documented**. Do not 
 - **Personal progression:** Gold stolen or otherwise earned through the Goblin's personal activities belongs to the Goblin, preserving the GDD's thief/economy playstyle and its hidden tavern as an upgrade destination. Do not treat this gold as an automatic team-wide currency.
 - **Team contribution:** Major Light-team world objectives still contribute **common resources to the shared team pool** (D-044/D-046), including when the Goblin participates. This is not an exemption from the team's progression and pledge-funded spending rules (D-047/D-049).
 - **Accounting boundary:** Personal gold and shared-pool resources are distinct authoritative holdings. A single reward cannot be issued twice under two ledgers without a separately approved split. Exact loot classification, monster gold drops, reward-splitting, resource conversion, trading, cost and inventory caps remain open.
-- **Existing GDD tavern:** preserve the randomized **Secret Tavern** as the Goblin's established progression concept, not as a newly approved rule for destructibility, replacement, enemy discovery or item catalogs. How Dark Forces can disrupt access is a separate design question.
+- **Existing GDD tavern:** preserve the randomized **Secret Tavern** as the Goblin's established progression concept. **D-064 confirms Dark occupation temporarily disables its services but can be reversed**. Permanent destruction and automatic relocation were not selected. Exact upgrade catalog and tavern access remain open.
+- **Goblin-led tavern recapture (D-064):** the Goblin can **infiltrate an occupied tavern, turn on brutal built-in defenses, and lead an attack with the tavern's hiding denizens** to expel occupying Dark forces. This is an intended gameplay possibility, **not an automatic victory**. Light allies can participate in reclamation, but the Goblin has the signature covert-defense-and-denizen approach. Details of infiltration, hidden defense controls, denizen rallying and AI, combat balance, denial rules and recapture state are not yet specified.
+- **State boundary:** keep **available / occupied / reclaimed** as distinct conceptual states; while occupied, normal shop/upgrade services are unavailable. Do not silently delete the tavern, teleport it elsewhere, make every denizen invulnerable, or let occupation permanently remove the Goblin's progression.
 
 ### Forest Witch pilgrimage contract (CONFIRMED: D-050)
 - **Team objective:** Every Light Hero can purify corrupted major landmarks. Team purification/conversion into sanctuary is governed by D-019 and D-022 and **is not Witch-exclusive**.
@@ -60,7 +62,7 @@ The four character identities and core loops are **already documented**. Do not 
 
 ## Open choices
 1. **Pledge accounting and anti-abuse before coding:** decide withdrawal, reservation, purchase thresholds, expiry and handling competing major proposals. Voluntary pledges authorize major spending (D-049), with no separate vote. Exact contribution weights and allowance caps remain open.
-2. **Character progression reconciliation:** preserve the original Goblin Outlaw, Alchemist, Exiled Knight and Forest Witch. The Witch's shrine progression is confirmed through D-062, and **the Goblin's personal-gold/shared-objective economy is confirmed in D-063**. Resolve the hidden tavern's risk model and the remaining Alchemist recipes/Knight Valor interactions against the current shared economy and stealth rules without replacing their GDD concepts.
+2. **Character progression reconciliation:** preserve the original Goblin Outlaw, Alchemist, Exiled Knight and Forest Witch. The Witch's shrine progression is confirmed through D-062, and **the Goblin's personal-gold economy and reversible Dark tavern occupation with denizen-assisted counterattack are confirmed in D-063/D-064**. Resolve exact tavern defense activation/recapture, and the remaining Alchemist recipes/Knight Valor interactions against the current shared economy and stealth rules without replacing their GDD concepts.
 3. **Reward structure:** power ceiling, ability progression, unlock pacing, upgrade choices, and whether upgrades can be lost on death.
 4. **Sanctuary role:** purchases, rituals, ability training, or character-specific interactions with purified landmarks?
 5. **Match pacing:** ensure one Hero cannot dominate by repeated farming while others are occupied. Progress must remain practical in a multiplayer 4v4 match.
