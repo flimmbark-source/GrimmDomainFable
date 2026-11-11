@@ -1,12 +1,12 @@
 # The Dark Lord — Dormancy, Presence and Awakening
 
-**Status:** exploratory design proposal. **Creator-confirmed:** D-015, the Dark Lord is the **dormant ruler and final castle objective/boss**; D-016, **awakening begins the final confrontation rather than granting instant Dark victory**. The active strategic AI influence idea remains **NOT approved**.
+**Status:** Superseded for core match/awakening rules by [Dark Energy and Awakening Race](dark-energy-awakening-race.md). This document retains **unapproved ambient-influence ideas only**. Creator-confirmed decisions D-015 through D-018 govern the core Dark Lord role, energy acceleration, pre-awakening sanctuary raid and awakened final battle. Autonomous ruler intelligence remains **NOT approved**.
 **Date:** 2026-11-11.
 
 ## Core dramatic promise
 The four playable Dark Heroes defend their sleeping master and struggle to protect the castle while four Light Heroes grow powerful enough to kill him. Even asleep, the Dark Lord's existence should give the kingdom a sense of escalating danger. The final castle assault should feel like the culmination of all eight players' decisions.
 
-This document does not establish what causes awakening, exact boss combat behavior, or an autonomously roaming Dark Lord. **Confirmed:** awakening begins a dangerous final confrontation that Light Heroes still have a chance to win (D-016).
+**Confirmed since this exploration was drafted:** the Lord's Dark Energy meter fills over time, and evil deeds performed by Dark Heroes and their minions accelerate it. Light Heroes can breach the sanctum and slay him before awakening. If he awakens first, he joins the Dark Heroes in a dangerous final battle. Refer to [D-017/D-018](../decisions.md) for authority. This document does not establish the precise rates, tier effects or autonomous influence.
 
 ## Three levels of ambient presence worth considering
 
@@ -26,7 +26,7 @@ An active strategic AI makes its own decisions behind the scenes, potentially di
 **Value:** unsettling sense of an intelligent sleeping power. **Risk:** a fifth quasi-player on Dark side, balance unpredictability, confusing attribution of actions, and additional network/AI scope.
 
 ## Questions the eventual system must answer
-1. What causes awakening: a fixed clock, Dark Hero actions, hero proximity, kingdom corruption, or a hybrid?
+1. **Resolved (D-017):** baseline accumulation over time, accelerated by evil deeds from Dark Heroes and minions. Unresolved: exact deed definitions, rate effects, numeric thresholds.
 2. **Resolved (D-016):** awakening starts the final boss confrontation, **not automatic Dark victory**. Unresolved: what actually ends the encounter, whether timeout changes its outcome, and whether Dark Heroes defend or empower the boss.
 3. Does the boss actively fight during the final assault? What phases, telegraphs, and player counterplay?
 4. Can Light Heroes sabotage awakening or temporarily weaken it through map objectives?
@@ -48,4 +48,4 @@ Keep **Tier 1** available as cheap visual/narrative scaffolding while evaluating
 **No tier is approved** by the creator yet. D-015 only confirms the dormant final-boss foundation.
 
 ## Next decision
-Next, decide **what causes awakening** (clock, sanctum breach, Dark Hero actions, or combination), then specify how the four Dark Heroes remain influential during the final confrontation. Neither is confirmed yet.
+Core awakening rules are now confirmed in [Dark Energy and Awakening Race](dark-energy-awakening-race.md). Next, determine whether Light Heroes can **disrupt awakening progress**, what qualifies as an evil deed, and how the four Dark Heroes participate in the awakened final confrontation.
