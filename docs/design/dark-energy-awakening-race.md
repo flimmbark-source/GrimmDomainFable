@@ -2,11 +2,11 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-019 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-020 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
-The Dark Lord sleeps inside the central castle. Four Dark Heroes and their autonomous minions spread evil across the kingdom. **A Dark Energy meter advances naturally over time.** Their evil deeds **accumulate Dark Energy and increase the speed at which he awakens**. Four Light Heroes pursue their independent paths to power, then attempt to breach the sanctum and slay him.
+The Dark Lord sleeps inside the central castle. Four Dark Heroes and their autonomous minions spread evil across the kingdom. **A Dark Energy meter advances naturally over time.** Their individual evil deeds each grant a **small one-time addition of Dark Energy**. Separately, **corruption sources increase the passive rate** at which the Dark Energy meter fills. Four Light Heroes pursue their independent paths to power, then attempt to breach the sanctum and slay him.
 
 ### Two climaxes, depending on player actions (confirmed)
 **Early Light raid:** If the Light Heroes reach the sanctum before awakening, they can kill the sleeping Dark Lord and win. The castle must have meaningful defenses, but the detailed vulnerability/encounter is not yet specified.
@@ -18,18 +18,37 @@ This creates a race between **Light growth + access to the sanctum** and **Dark 
 ## Confirmed mechanics
 - There is one Dark Lord, initially dormant, situated in the castle's sanctum.
 - His Dark Energy meter fills with a baseline time progression.
-- Evil deeds by Dark Heroes or their **minions** generate accumulating Dark Energy that accelerates awakening.
+- Individual evil deeds by Dark Heroes or their **minions** grant **small, immediate one-time Dark Energy rewards**. They **do not change passive generation rate**.
+- Corruption sources **increase the passive Dark Energy generation rate**. The means of creating, empowering, maintaining or destroying sources are not yet specified.
 - There is a **tiered** progress structure; how many tiers and what they do is not yet approved.
 - Light players can end the game by slaying the Dark Lord before he awakens.
 - If he awakens, the awakened Lord and Dark Heroes jointly oppose the Light Heroes in a climactic final confrontation.
 
 ## Proposed gameplay model for review (NOT CANON)
-Use an observable global awakening meter, plus a gameplay layer of deeds that improve the Dark side's **awakening rate**. The Dark team must decide between allocating units to accelerate awakening by doing harm and holding resources back to prevent an early castle raid.
+### Separated energy channels (confirmed concept; formula illustration only)
+- **Baseline:** energy accumulates naturally over time, whether or not the Dark side acts.
+- **Evil deed:** when a valid deed is completed by a Dark Hero or one of their minions, the meter gets a **small, immediate energy drop**. A deed **never directly increases the passive rate**.
+- **Corruption source:** when a qualifying source is established or maintained, it **raises the rate** of natural energy accumulation. Sources are the main strategic targets for Light-side sabotage.
+- **Sabotage:** reducing/disabling a source **slows future accumulation**. The meter does **not** run backward.
 
-Dark deed categories to consider:
+An illustrative accounting relationship, **not an approved production formula**, is:
+
+```text
+future energy = current energy
+              + passive energy gained during elapsed time
+              + sum(one-time evil deed rewards)
+
+passive generation = base generation + active corruption-source contribution
+```
+
+The exact combination rule, thresholds, timing, caps, duplication limits, and source lifecycle need balancing and approval. No fixed numeric model is authorized yet.
+
+Use an observable global awakening meter with **two distinct contributions**: one-time Dark Energy rewards for evil deeds, and continuous generation from the baseline plus corruption sources. The Dark team must decide between short-term actions that award small energy drops, establishing or protecting rate-producing corruption, and defending against an early castle raid.
+
+Possible **one-time evil deed** categories to consider (none approved individually):
 - Desecrating shrines and corrupting villages
 - Raiding/harassing settlements
-- Claiming or defending corrupted territory
+- Completing acts of desecration at a corrupted location
 - Killing or imprisoning innocents or opposing Light Heroes (tone and portrayal TBD)
 - Rituals performed by Dark Heroes
 
@@ -38,19 +57,19 @@ These are illustrative. No deeds are accepted into the design until approved.
 Potential tier effects (ALL speculative): subtle environmental corruption, increasing monster threat, periodic omens, castle transformations, final awakening. Avoid granting pure automatic combat superiority at each tier, which could create an unstoppable feedback loop.
 
 ### Biggest systemic risk: compounding snowball
-If dark expansion allows more minions to commit more evil deeds, and each deed further accelerates awakening, the Dark side's advantage can grow sharply. That may be desirable pressure, but it can make a struggling Light team helpless. The game needs pacing tests, diminishing returns or limited objectives, and meaningful ways to disrupt the Dark team's evil economy.
+If Dark Heroes establish many corruption sources, **passive production** can snowball and awaken the Dark Lord before the Light team has time to respond. Small individual deed payouts add additional pressure without themselves compounding the rate. We need pacing tests, source placement/stacking constraints, and meaningful sabotage to keep both strategies viable.
 
 ### A meaningful Light-side response (CONFIRMED PRINCIPLE: D-019)
-Light Heroes **can sabotage Dark operations to slow the Dark Lord's awakening rate**. Possible activities discussed include purifying corrupted locations, interrupting rituals or destroying Dark operations. **Do not subtract already accumulated Dark Energy** when sabotage succeeds. The specific activities, whether they cancel persistent boosts or interrupt future deeds, and their costs/counterplay are **not confirmed**.
+Light Heroes **can sabotage corruption sources/Dark operations to reduce passive Dark Energy production**. Possible activities include purifying corrupted locations, interrupting rituals, or destroying rate-producing infrastructure. **Do not subtract already accumulated Dark Energy** when sabotage succeeds. Exact targets, costs, source restoration, and whether sabotage prevents future deeds are **not confirmed**.
 
 The strategic purpose is to give Light Heroes a choice between gathering personal power, slowing Dark growth and making an early castle assault. This should bring the two teams into contested areas without turning the match into endlessly reversing the meter.
 
-**Important design distinction:** a deed that creates a permanent rate bonus cannot be undone by merely disabling the same site unless that rule is explicitly chosen. The rate model must explain what sabotage affects before engineering hardcodes it.
+**Important design distinction:** an evil deed's one-time energy drop remains in the meter after sabotage. A corruption source increases passive generation while it contributes, so disrupting a source affects **future gain**, not existing energy. Rules for whether rate contributions last only while active, are rebuildable, or can be fortified must be approved before hardcoding.
 
 ## Technical structure suggested for Fable (proposal)
-- Authoritative state: `darkEnergy`, `awakeningRate`, `awakeningTier`, `darkLordState = dormant | awake | defeated`, `matchPhase` and a ledger of recognized deed events.
-- Fixed-timestep update for baseline progress and accumulated rate modifiers, once an approved formula exists.
-- Validated `EvilDeedResolved` events originating from actual gameplay consequences, not arbitrary client claims.
+- Authoritative state: `darkEnergy`, `baselineEnergyRate`, `effectiveEnergyRate`, `corruptionSources` (with active/rate-contribution data), `awakeningTier`, `darkLordState = dormant | awake | defeated`, `matchPhase`, and a ledger of recognized deed events.
+- Fixed-timestep update combining baseline natural accumulation, contributions from corruption sources, and discrete one-off deed rewards. Exact additive/multiplicative rules and numeric tuning remain unapproved.
+- Validated `EvilDeedResolved` events add a small one-off amount **without changing the passive rate**; corruption-source activation/deactivation changes the **passive rate**, all server-authoritative rather than client claims.
 - Replayable seeded event sequences for balancing/simulation tests.
 - Explicit transition into the awakened encounter; do not infer Dark victory on transition.
 - Server-owned match win resolution, with correct handling of a pre-awakening Dark Lord death.
@@ -60,24 +79,24 @@ No numeric values, tier count, specific dark deed triggers or formulas are yet a
 
 ## Acceptance test stories (proposed, subject to detail design)
 1. A match with no evil deeds progresses toward awakening at its baseline rate.
-2. A confirmed evil deed generated by a Dark Hero increases the subsequent awakening rate.
-3. A confirmed evil deed generated by an autonomous minion can likewise accelerate awakening.
+2. A confirmed evil deed generated by a Dark Hero **immediately adds a small energy amount**, and the **passive rate remains unchanged**.
+3. A confirmed evil deed generated by an autonomous minion likewise provides a **one-time energy reward**, without changing the passive rate.
 4. An invalid/repeated deed event does not mint arbitrary additional energy.
 5. Light Heroes kill the dormant Dark Lord before the threshold: Light victory; awakened battle never starts.
 6. Reaching the awakening threshold with the Dark Lord alive triggers the awakened final encounter, **not** Dark victory.
 7. The awakened battle includes the Dark Lord alongside four Dark Hero *player roles*, without making him a fifth Dark player slot.
 8. The same simulated timeline and deeds produce identical energy and phase changes.
 9. The UI makes the mounting danger legible, but does not leak hidden movements or who performed unseen deeds unless that reveal is explicitly allowed.
-10. An approved Light sabotage event reduces an applicable current/future rate contribution, **without lowering accumulated Dark Energy**. The exact impact and duration await design approval.
+10. An approved Light sabotage event disables/reduces a corruption source's applicable **passive rate contribution**, **without lowering accumulated Dark Energy**. The exact impact and duration await design approval.
 11. Attempting the same completed sabotage repeatedly does not repeatedly decrease the awakening rate without new valid game events.
 
 ## Remaining design questions
 1. **Resolved in principle (D-019):** Light Heroes can **slow the awakening rate through sabotage**, but cannot directly reverse accumulated energy. **Open:** which activities qualify, their risk and counterplay.
-2. Which evil deeds award acceleration, and is that benefit permanent, temporary or tied to holding corrupted locations?
-3. Does the energy meter fill by baseline rate plus acceleration only, or do evil deeds also increase current progress instantly?
+2. Which activities count as **one-time evil deeds**, how small their immediate energy drops are, and whether deed rewards have cooldowns or anti-farming limits?
+3. Which activities establish or empower **corruption sources**? How do multiple sources combine, how are they defended, and what ends their contribution?
 4. What does *tiered* mean mechanically: distinct stages, unlockable effects or visual escalation? What happens at each threshold?
 5. How is the dormant Lord defended or exposed during a sanctum raid?
 6. What exactly counts as a win after awakening, and how is the battle prevented from lasting forever?
 
 ## Review instructions
-Preserve the creator's established rule: time + Dark deeds accelerate awakening; Light sabotage slows the rate but does not subtract accumulated energy; early Light sanctum breach can kill the dormant Lord; awakening forces a final battle with the awakened Lord and Dark Heroes. Never reinterpret this as either a fixed countdown only or an automatic Dark win.
+Preserve the creator's established rule: natural time fills Dark Energy; individual evil deeds grant small **instant** energy drops without affecting passive rate; corruption sources increase passive generation; Light sabotage slows passive generation but does not subtract accumulated energy; early Light sanctum breach can kill the dormant Lord; awakening forces a final battle with the awakened Lord and Dark Heroes. Never reinterpret this as either a fixed countdown only or an automatic Dark win.
