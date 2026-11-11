@@ -1,39 +1,53 @@
-# Decision register
+# Grimm Dominion: Decision register
 
 **Last reviewed:** 2026-11-11
-**Status:** Initial extraction. The creator has not yet answered the production kickoff questions.
+**Authority:** latest explicit creator decisions > approved production specifications > existing implementation > exploratory GDD.
 
-## Confirmed from conversation
-1. This is the **full Grimm Dominion game project**, developed cumulatively rather than a series of throwaway demos.
-2. The desired visual reference is **classic Warcraft III-style 3D**: exaggerated readable silhouettes, painterly stylization, gothic fairytale world. Do not use Blizzard-owned assets or copy character designs.
-3. Dark-side play revolves around directing **autonomous monsters** through high-level decisions, while light-side characters pursue distinct resource and power loops.
-4. Development will use Fable for difficult coding and engineering. The creator and ChatGPT develop/review design and acceptance criteria.
-5. A Godot-based workflow was rejected. A browser-first Three.js/TypeScript project was **proposed**, not formally confirmed.
-6. Near-term engineering work should preserve long-term maintainability and produce demonstrably running increments.
+## Confirmed decisions (creator approval, 2026-11-11)
 
-## Open, architecture-affecting decisions
-| ID | Decision | Existing GDD conflict | Status |
-| --- | --- | --- | --- |
-| D-001 | Final human team composition | 4 dark vs 4 light in some sections; one Dark Lord vs four heroes elsewhere | OPEN |
-| D-002 | Camera and player controls for both sides | RTS commander overhead vs third-person light hero, plus mixed PC/mobile controls | OPEN |
-| D-003 | First release platform | PC in overview, mobile-first in technical sections, browser proposed later | OPEN |
-| D-004 | Multiplayer architecture and playable offline/bot mode | Competitive online focus, AI mode only tentatively mentioned | OPEN |
-| D-005 | Match outcome and intended length | Eliminate heroes, kill central Dark Lord, 40-minute corruption timer | OPEN |
-| D-006 | Concrete first playable character/perspective | Goblin-first and single commander suggested, not approved | OPEN |
-| D-007 | Delivery workflow | Claude Code in repository vs Claude Artifacts preview | OPEN |
+| ID | Decision | Confirmed outcome |
+| --- | --- | --- |
+| D-001 | Human team composition | **4 Dark Heroes vs. 4 Light Heroes** (eight player slots) |
+| D-002 | Dark Hero experience | **Hybrid:** each is a physical playable character **and** commands autonomous monsters from an RTS-level perspective |
+| D-003 | Light Hero experience | **Switchable or hybrid perspective/control.** Exact camera modes, transition behavior, and controls are not yet specified |
+| D-004 | First delivery platform | **PC browser first.** Other platforms remain future possibilities, not requirements for the first build |
+| D-005 | Core match objective | Light Heroes gather power and assault the central castle to kill the Dark Lord. Dark Heroes hunt/stop them before they succeed. Exact elimination and timer rules are unresolved |
+| D-006 | Bots | **Permanent solo/co-op support**, plus filling vacant player slots; bots are part of the product, not development-only |
+| D-007 | Development workflow | **Claude Code with direct GitHub repository access.** The repository is the single source of truth |
+| D-008 | Visual identity | **Classic Warcraft III-inspired original 3D**, exaggerated silhouettes, clear camera readability, painterly gothic fairytale environments. Do not copy protected assets |
+| D-009 | Product ambition | Develop the **full game cumulatively**, using narrow verified playable milestones rather than disposable prototypes |
+| D-010 | Core gameplay identity | Autonomous dark-side monster armies, incomplete-information hunting/stealth, differentiated Light Hero progression, castle assault |
+| D-011 | Engine constraint | **Do not use Godot** for the principal implementation |
 
-## Proposed only, not approved
-- A reusable authoritative TypeScript simulation with 3D rendering client, bot-command symmetry, and server-controlled hidden information.
-- Three.js + TypeScript client, React HUD, Colyseus rooms, GLB asset pipeline.
-- First playable increment: one Goblin versus one commander, scouting/detection, looting, and a castle objective.
-- PC browser-first iteration and a shorter test match rather than committing immediately to a 40-minute target.
+## Provisional engineering direction (requires Fable technical validation)
+- Browser-based Three.js + TypeScript renderer/client and Vite toolchain.
+- An authoritative Node/TypeScript simulation and multiplayer server, potentially Colyseus (check current 0.18+ docs and actual installed version).
+- Client-only React for out-of-game menus/HUD *if justified*; do not introduce it before proving a need.
+- GLB/glTF 3D asset pipeline; original or licensed meshes and textures.
+- Fixed-timestep simulation, validated commands, and strict per-team information projection.
+- Bots and humans submit compatible commands. Bot difficulty and takeover semantics are not yet decided.
+- A narrow initial playable test may use a subset of the eight slots, but the full product remains 4v4.
+
+## Unresolved rules (do NOT silently decide these as canon)
+1. What exactly is the Dark Lord in the final castle: a vulnerable NPC/objective, a temporarily playable entity, or another game-controlled actor, given four Dark Hero players?
+2. What camera(s) and controls does each Light Hero have? What triggers switching? How is aiming balanced against high-level RTS control?
+3. How does the Dark Hero switch between physical action and macro-command? Does game time continue while commanding?
+4. What constitutes Dark victory if Light Heroes die? Revival/elimination rules, disconnects, and timeout/corruption behavior.
+5. Target completed match duration, spawn rules, team coordination mechanics, and asymmetric information sharing.
+6. Exact bot replacement policy: immediately upon empty slot, after disconnection delay, or only at match start.
+7. Launch format and deployment hosting details; accounts, identity, payments, and moderation later.
+8. Which character and encounter are chosen for the first vertical increment. Goblin + one Dark Commander are a **proposal**, not confirmed.
 
 ## Rejected or superseded
-- Building the main game in Godot.
-- Treating the game as a 2D prototype and postponing the Warcraft-style 3D look until after mechanics.
-- Treating a mock screen or untested code as a completed milestone.
+- Godot as the main game platform.
+- A 2D-first prototype that postpones the Warcraft-inspired 3D foundation.
+- A one-versus-four final game structure, superseded by explicit 4v4.
+- Treating mobile as the immediate first platform, superseded by PC browser first.
+- Bots as development-only tools, superseded by permanent bot support.
+- Mock scenes, screenshots, or untested code reported as a playable milestone.
 
-## How to use this document
-- Ask the creator about open architecture-affecting decisions before locking them in.
-- When a choice is resolved, record the exact approved outcome and date. Preserve rejected choices.
-- The original GDD is historical source material, not authority over later explicit decisions.
+## Change control
+- Record creator-approved rules with their exact language and the date.
+- An engineer may choose low-impact implementation details, but gameplay or platform changes that contradict this register require creator approval.
+- The original [GDD](https://docs.google.com/document/d/1Z7alNg7ctLDKWcgnc99XwshO_XdkkZ8l/edit) is a historical concept source, not the final authority on conflicts.
+- Fable must update technical status separately from design decisions; code behavior does not prove design intent.
