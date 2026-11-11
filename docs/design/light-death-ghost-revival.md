@@ -1,7 +1,7 @@
 # Light Hero death, ghost travel and revival
 
-**Status:** Core player fantasy and limited spirit interactions CONFIRMED (D-032 through D-040). Exact gameplay and numbers UNRESOLVED.
-**Design authority:** [Decision register](../decisions.md), particularly D-018, D-022 to D-031, D-032 through D-040.
+**Status:** Core player fantasy and limited spirit interactions CONFIRMED (D-032 through D-041). Exact gameplay and numbers UNRESOLVED.
+**Design authority:** [Decision register](../decisions.md), particularly D-018, D-022 to D-031, D-032 through D-041.
 **Implementation scope:** Future two-sided gameplay milestone after M1 perception work is reviewed. This document does not authorize unapproved ghost abilities or modify current M1 engineering requirements.
 
 ## Confirmed player experience
@@ -20,7 +20,8 @@
 - A sanctuary's **under-attack / ward-breached / ritual-underway** state alone does not disable ghost resurrection. **Full corruption** does.
 - Ghosts must have some spiritually legible means to learn an intended destination has become ineligible before arrival. This is sanctuary-state information, not live enemy positions.
 - **Death-age-dependent channel:** recently dead = longer ritual, long dead = shorter ritual. Do not turn this into a short fixed respawn timer or an automatic zero-time ritual. A nonzero minimum is an **advisor proposal for balancing**, not a confirmed numeric rule.
-- **Open:** what happens if takeover completes midway through an existing resurrection, whether ordinary attacks can interrupt or only full corruption can, how much progress an interruption loses, duration caps and exact timing function.
+- **Confirmed (D-041):** nearby ordinary fighting **does not automatically interrupt** a ghost resurrection. Dark forces can **intentionally disrupt** the spiritual ritual using a dedicated interference action, while completed sanctuary corruption makes resurrection unavailable. Do not implicitly allow standard melee damage to target ghosts.
+- **Open:** eligible Dark units or Heroes and what they must detect, whether interference pauses/sets back/cancels progress, channel/target requirements, full-corruption mid-ritual handling, minimum/maximum duration and death-age timing function.
 
 ## Why the two routes matter (design intent, not further approved rules)
 The body route encourages teammates to rescue someone in danger, creating a chance for recoverable mistakes and local conflict. The ghost journey lets a defeated player stay active without requiring a teammate to abandon everything. These must create distinct choices rather than a universally superior, risk-free respawn.
@@ -44,7 +45,7 @@ Living Light Hero
 Body and ghost coexist while dead. Whether the body disappears on sanctuary revival, persists as an interactable object, or has consequences is not yet decided.
 
 ## Next design gate
-**What can interrupt an in-progress ghost resurrection ritual during a siege?** Approve the relationship between combat pressure, the ritual's completion and actual sanctuary takeover. Death-age scaling is confirmed but its curve and minimum duration are not. Then resolve body rescue, available sanctuary fallbacks and potential village churches.
+**Which Dark-side actors can deliberately perform spiritual interference?** Distinguish Dark Heroes, specialized minions and their roles without granting every unit unrestricted ghost detection. Then define the interference effect, costs, counterplay and resurrection timing.
 
 ## Future acceptance examples (not immediate implementation ticket)
 - A death creates one body and one ghost under server authority and does not accidentally duplicate playable heroes.
