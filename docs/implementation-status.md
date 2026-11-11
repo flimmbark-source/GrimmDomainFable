@@ -1,9 +1,8 @@
 # Implementation status
 
-**Last updated:** 2026-11-11, end of M0 implementation.
-**Branch:** `claude/grimmdomain-milestone-m0-4y6lxu`. Commit SHAs are in the evidence ledger in [production/roadmap.md](production/roadmap.md).
+**Last updated:** 2026-11-11, M1 implementation on `integration/m0-preserve-design-20261111`.
 
-This file reports what the code does and what was actually run. Behaviour described here is **implemented behaviour, not approved design**. Nothing below settles an unresolved rule in [decisions.md](decisions.md).
+This file reports what the code does and what was actually run. Behaviour described here is **implemented behaviour, not approved design**. Choices engineering had to make are listed as P-1 to P-12 in [decisions.md](decisions.md) for creator review. **M1 is not complete until the creator and ChatGPT have played it** ([playtest checklist](playtests/m1-playtest-checklist.md)).
 
 ## Run it
 
@@ -12,130 +11,113 @@ Requires Node.js 22 or newer and a desktop browser with WebGL2.
 ```bash
 npm ci
 ```
-
 ```bash
 npm run dev
 ```
 
-Open http://localhost:5173. The game server runs on port 2567 and the Vite dev server on 5173. A second tab joins the same match; add `?team=dark` to take a Dark slot, `?cam=hero` to start in the hero view, `?debug=1` to start with colliders shown.
+Open http://localhost:5173 (Light hero). `?team=dark` takes a Dark seat: the first Dark seat owns the Scout. `?spectate=1` watches with the public view. `?cam=hero` starts in the hero camera.
 
-Production-style run (one process serves the built client and the game):
-
+Production-style run (one process, http://localhost:2567):
 ```bash
 npm run build
 ```
-
 ```bash
 npm start
 ```
 
-Then open http://localhost:2567.
-
 | Command | What it does |
 | --- | --- |
 | `npm run typecheck` | `tsc --noEmit` over client, server, shared, tests |
-| `npm test` | Vitest: simulation, slots, projection, validation, match host, real-network integration |
-| `npm run build` | Vite client build to `dist/client`, `tsc` server build to `dist/server` |
-| `npm run verify:browser [url]` | Drives a real Chromium against a running game and rewrites `docs/evidence/*.png`. Needs a `playwright` package installed locally or globally. |
-| `npm run assets:placeholder` | Regenerates `public/models/standing_stone.glb` |
+| `npm test` | Vitest: 86 tests in 7 files |
+| `npm run build` | client to `dist/client`, server to `dist/server` |
+| `npm run verify:browser [url]` | M0 regression in real Chromium (16 checks) |
+| `npm run verify:m1 [url]` | M1 hunt scenario in three real Chromium tabs (36 checks). Start the server with `GRIMM_BOTS=none GRIMM_SEED=7` |
 
-### Controls (experimental, not final UX)
-- **Strategy view:** click the ground to order your hero there. WASD or arrows pan, wheel zooms, Space centres on the hero, X stops.
-- **Hero view:** WASD or arrows move relative to the camera. Q/E or mouse drag turn the camera, wheel zooms.
-- **Tab** or the top-right button switches view. **G** shows the simulation's colliders and the patrol route.
+Server switches (environment variables, never client options): `GRIMM_BOTS=none` or `1,5`; `GRIMM_SEED=7`; `GRIMM_MAP=forest_crossing_v1_brute` (adds a Brute); `GRIMM_DEBUG=1` streams every monster's senses to all clients for the `G` overlay and **switches information hiding off**.
 
-## What exists
-- Authoritative 30 Hz simulation: heroes, static collision (circles and axis-aligned boxes), map bounds, one monster patrolling six waypoints with seeded pauses.
-- Eight slots (4 Dark, 4 Light), each empty, human or bot. The dev room starts with one wandering bot per team (slots 1 and 5).
-- Typed, validated commands: `moveDir`, `moveTo`, `stop`.
-- Colyseus 0.18 room: seats a connection in a slot (preferred team if free), sends that connection its own projected snapshot every tick, frees the slot on leave. Connections beyond eight heroes join as spectators with the public view.
-- Three.js client: forest clearing with paths, three tree species (pine, oak, dead), rocks, standing stones (imported GLB), a crooked house, and a distant castle with a road leading to it; light and dark hero placeholders and a patrol beast.
-- Strategy camera and hero camera over the same scene, with a blended switch.
-- HUD: connection state, the eight slots, controls, tick/fps/position readout.
+### Controls (experimental)
+- Strategy view: click to move, WASD pan, wheel zoom, Space centre, X stop. Hero view: WASD move, Q/E or drag turn. Tab switches.
+- **Shift** sneak (slow, silent). **F** whistle. Stand still on a cache for 3 s to open it.
+- Dark owner: **right-click** posts the Scout at that spot, **P** sends it back to its patrol.
+- **G** colliders: magenta blocks sight, grey does not.
+
+## What M1 added
+1. **Navigation.** Grid A* over the map colliders with path straightening, for `moveTo`, bots and monsters.
+2. **Occlusion.** Sight needs range, view arc (monsters) and a clear line against sight-blocking colliders. Half-hidden targets count as partly exposed.
+3. **Perception and evidence.** Attention builds while seen and decays when not. Running, whistling and opening a cache make noise. Evidence records are time-stamped and frozen.
+4. **Scout AI.** Patrol, investigate, chase, search, return. It acts only on what it has perceived.
+5. **Team information (D-012).** Confirmed sightings go to all Dark seats as an alert. The Scout's live vision, destination and state go to its owner only. Hidden actors are not sent at all.
+6. **Feedback (D-014).** Monster "?", "!", "…" signs and posture; growl and howl; a small eye indicator and heartbeat for the hero's own exposure; Dark report panel and ground markers.
+7. **Scene.** Forest crossing: two caches, an exposed direct route, a covered south route with one gap, a north route past the Dark spawn.
+8. Also fixed: a client could choose the room's seed through join options (M0 weakness); the M0 patrol never actually paused at waypoints.
 
 ## Executed checks (2026-11-11, Linux container, Node 22.23.4)
 
-All four were run on a clean copy of the tracked files after `npm ci`.
-
 | Check | Result |
 | --- | --- |
-| `npm ci` | succeeded |
+| M0 baseline before any change: typecheck, 35 tests, build, `verify:browser` | all passed, 16 of 16 |
 | `npm run typecheck` | 0 errors |
-| `npm test` | **35 passed, 0 failed** (3 files, 2.8 s) |
-| `npm run build` | succeeded; client bundle 830 kB (222 kB gzip), server emitted to `dist/server` |
-| `npm start` + `npm run verify:browser http://localhost:2567` | **16 of 16 passed** |
-| `npm run dev` + `npm run verify:browser` | **16 of 16 passed** |
+| `npm test` | **86 passed, 0 failed** |
+| `npm run build` | succeeded |
+| `npm run verify:browser` (M0 regression, new build) | **16 of 16** |
+| `npm run verify:m1` | **34 of 36** on the last full run; see below |
 
-Browser used: Playwright's headless Chromium, WebGL 2.0 through SwiftShader (software rendering, no GPU), 1280x720.
+Browser: headless Chromium, software WebGL (SwiftShader), 2 to 4 fps.
 
-### Acceptance criteria
+**The two `verify:m1` failures, and what was done about them:**
+- "teammate tab never received the hero during the chase": the teammate's own hero was parked about 20 m (its view radius) from the escape route, so it most likely saw the hero with its own eyes. Not proven. The script now parks it farther away. **Not rerun.**
+- "the hidden hero heard the growl": the test's in-page recorder samples snapshots and sounds last one tick. The check now reads the audio counter instead. **Not rerun.**
 
-| M0 criterion | Status | Evidence |
+The claim behind the first one (a teammate never gets the hero through someone else's Scout) is covered independently by `tests/m1-privacy.test.ts` and by the raw-frame test in `tests/server.integration.test.ts`. One small change was made after the last browser run (one last-seen marker per monster instead of several); unit tests were rerun, the browser checks were not.
+
+### Issue #6 acceptance criteria
+
+| Criterion | Status | Evidence |
 | --- | --- | --- |
-| install, dev, build, typecheck, test from clean checkout | met | table above |
-| A desktop browser opens the running 3D client and it is interactive | met in headless Chromium only | browser check: WebGL2 context, 52 draw calls, real mouse and key events change state |
-| Moving the actor changes simulation state and is rendered | met | click moved the hero from (-3.00, 24.00) to (-3.00, 11.61); rendered position matched within 0.05; hero drawn 13 px from the clicked pixel |
-| Actor cannot walk through a visible major obstacle | met | W held 4.2 s into the crooked house: hero stopped at z = -1.900, exactly wall plus hero radius. Unit test sweeps every prop from 16 directions |
-| Monster movement runs on the simulation tick | met | unit test: monster visits waypoints 1,2,3,4,5,0,1 with only `step()` called and no players; frozen when `step()` is not called. Browser: monster moved from (7.80, 1.41) to (7.85, 8.21) |
-| Determinism: same seed + commands = same state; different commands differ | met | `tests/simulation.test.ts`, 600-tick runs compared by hash and deep equality; also different seed differs, and a mid-run copy continues identically |
-| Exactly four Dark and four Light slots, AI-capable | met | `tests/slots-and-projection.test.ts`; bots drive heroes through the command queue |
-| Privacy stub: public projection emits nothing private | met | allow-list key scan over four viewers; seed, PRNG state, patrol brain and other players' orders absent; checked again on the wire in the integration test |
-| Strategy and hero camera both demonstrable | met | browser check: strategy camera y = 41.5, fov 36; hero camera y = 3.5, fov 58; screenshots below |
-| Screenshots and reproducible manual test | met | `docs/evidence/`, steps below |
-| architecture.md and implementation-status.md | met | this file and [architecture.md](architecture.md) |
-| Code committed | met | see ledger |
+| Light Hero can avoid a Scout using cover | met | M1-01 tests; browser: 14 s behind the thicket, attention 0 |
+| Brief sighting raises attention, relaxes in cover | met | M1-02 tests |
+| Sustained visibility: confirmed sighting and team alert, no non-owner live vision | met | M1-03, privacy tests, wire test, browser (owner sent hero, teammate not) |
+| After breaking sight, Scout searches last-seen, never hidden truth | met | M1-04: identical Scout behaviour for three different hidden hero paths |
+| Noise triggers investigation without identifying the emitter | met | M1-05; browser whistle step |
+| Dark commander can redirect a Scout to a resource | met | M1-06; browser right-click step |
+| Payloads and spectator view do not leak hidden positions | met | per-viewer tests, eight-bot property test, raw WebSocket frames of four real clients |
+| Understandable detection feedback without wallhacks | **built, not judged** | browser checks show it appears; whether it reads well needs a human |
+| Determinism, build, typecheck, existing tests, browser checks | met, with the two caveats above | table above |
+| Playtest list, screenshots, known defects committed | met | [checklist](playtests/m1-playtest-checklist.md), `docs/evidence/m1-*.png`, below |
 
-### Screenshots
-Written by `npm run verify:browser`:
-- `docs/evidence/m0-strategy-view.png`
-- `docs/evidence/m0-hero-view.png`
-- `docs/evidence/m0-hero-view-blocked-by-house.png`
-- `docs/evidence/m0-strategy-view-collision-debug.png`
+Spec stories M1-01 to M1-10 are in `tests/m1-stories.test.ts`; M1-09 (two or more real clients) is in `tests/server.integration.test.ts`.
 
-### Manual test (about two minutes)
-1. `npm run dev`, open http://localhost:5173. The top-left panel should say "Connected · you control slot 4" and show YOU in the Light row.
-2. Click the ground north of your hero. A yellow ring marks the order and the hero walks to it.
-3. Watch the dark beast: it walks a loop around the clearing, pausing at each corner.
-4. Press Tab. The camera drops behind the hero and the castle is visible up the road. Hold W to walk.
-5. Walk into the house, a tree and the map edge. The hero slides along them and never passes through.
-6. Press Tab, then G. Magenta outlines are the simulation's real colliders; the yellow loop is the patrol route.
-7. Open a second tab with `?team=dark`. Each tab shows the other's hero moving, and the slot panel shows two humans.
+### Screenshots (written by `verify:m1`)
+`m1-light-hiding-behind-thicket`, `m1-light-being-noticed`, `m1-light-spotted`, `m1-dark-owner-live-vision`, `m1-dark-teammate-alert-only`, `m1-dark-owner-scout-searching`, `m1-dark-owner-noise-report`, `m1-dark-owner-scout-guarding-cache`, `m1-hero-view-being-noticed` (all `.png` in `docs/evidence/`). Only the searching screenshot was looked at by the engineer.
 
 ## Known defects and limitations
 
-**Not verified**
-- **Frame rate on real hardware is unknown.** The only browser available was software-rendered and ran at 3 to 8 fps with about 148,000 triangles and 50 to 80 draw calls. That number says nothing reliable about a desktop GPU. It needs one run on the creator's machine.
-- No human has played this build. Only headless Chromium was used; Firefox, Safari and Edge are untested.
-- Cross-engine determinism is designed for but was only executed on V8.
-- Eight simultaneous clients were not load-tested (out of M0 scope). Two were.
+**Gameplay, most important first**
+- **Escape is fragile.** Scout chase speed is 4.6 against the hero's 6.0. Fleeing at once along a covered route loses it in about 10 s; open ground takes about 13 s, so cover helps only a little. If the hero hesitates a few seconds and the Scout closes to point-blank, the same route did not shake it in two browser runs.
+- **Being caught does nothing.** The Scout stops beside the hero. No combat or capture exists.
+- **A single tree is fiddly cover.** The occluder is the trunk; a hero must be almost exactly behind it.
+- A guard order has no facing: the Scout faces the way it arrived and sweeps about 60 degrees either side.
+- A Dark teammate can infer a hero's rough position by watching an allied Scout run (P-1).
+- Light heroes have no hearing: Dark footsteps are silent to them.
+- Sneak, whistle and caches are engineering proposals (P-7, P-9).
+- Actors still do not collide with each other. No client-side prediction. The hero camera does not avoid obstacles.
 
-**Gameplay-visible**
-- No pathfinding. `moveTo` walks a straight line, slides along obstacles and gives up after 20 ticks without progress. Bots use `moveTo`, so they sometimes stall against a tree until their next decision.
-- Actors do not collide with each other; heroes and the monster pass through one another.
-- No client-side prediction. Your own hero responds after network latency plus the 100 ms interpolation delay. Unnoticeable on localhost, will be felt over the internet.
-- The hero camera does not avoid obstacles. Trees and the house can block the view or clip into it.
-- No fog of war: every actor's position is sent to everyone. This is the M1 hook, not an oversight.
-- In strategy view the hero is not followed automatically; press Space to recentre.
+**Not verified**
+- **No human has played M1.** Whether the cues are readable and the encounter is fun is unknown.
+- **Audio has never been heard.** The checks count cues triggered; headless Chromium plays nothing audible.
+- Frame rate on a real GPU is unknown (software rendering only).
+- The Brute (M1-07) is tested in simulation only; it was never run in a browser.
+- The debug overlay (`GRIMM_DEBUG=1`) was not exercised in a browser.
+- Eight simultaneous real clients were not load-tested. Four were.
+- Cross-engine determinism is designed for but only executed on V8.
 
 **Engineering**
-- Leaving frees the slot at once and removes the hero. No reconnect grace period and no bot takeover (unresolved rule 6).
-- One room type, joined with `joinOrCreate`; a ninth to twelfth connection spectates, a thirteenth is refused by the room cap. No lobby or team picker UI.
-- Full snapshot per client per tick, no delta compression (see architecture.md).
-- Colliders are circles and axis-aligned boxes. The crooked house's leaning upper storey overhangs its box slightly.
-- Only one model is a real imported GLB; everything else is a procedural placeholder. No skeletal animation, textures or audio.
-- The client bundle is a single 830 kB chunk (mostly Three.js).
-- `npm audit` reports 16 low/moderate advisories, all in transitive dependencies of the `colyseus` meta-package (for example `uuid` via `@colyseus/auth`). The offered fix downgrades Colyseus to 0.15, so they are left as is. The meta-package also installs Redis, auth and monitor modules the game does not use; switching to `@colyseus/core` plus `@colyseus/ws-transport` would shrink that surface.
-- The server seed is the wall clock unless a seed option is passed; matches are not yet recorded for replay.
+- Full snapshot per client per tick, no delta compression; projection cost not measured at eight clients.
+- Leaving frees the slot at once; no reconnect or bot takeover (unresolved rule 6).
+- Placeholder art throughout; one imported GLB. Audio is synthesised tones.
+- `npm audit` advisories in transitive Colyseus dependencies, unchanged from M0.
 
-## Proposed M1 sequence
-Engineering order only. Every rule and number comes from the hunting spec ([design/hunting-perception-v0.md](design/hunting-perception-v0.md)) once the creator approves it; none is decided here.
-
-1. **Navigation.** Grid or navmesh pathfinding over the existing colliders, used by `moveTo`, bots and monsters. Pursuit and search cannot work on straight lines.
-2. **Line of sight.** Deterministic segment-versus-collider occlusion in the simulation, with a debug overlay (extends the `G` view). Covers story ST-01.
-3. **Monster state machine.** Patrol, investigate, alert, pursue, search as explicit simulation states with last-known position and timestamps (ST-02 to ST-04, ST-07).
-4. **Noise events** as simulation events with position and loudness (ST-05).
-5. **Real projection.** `canSee` driven by step 2, per-team reports for the Dark side, and wire-level tests that hidden positions never reach the wrong client (ST-06).
-6. **Feedback.** Detection build-up and alert indicators in both camera views.
-7. Each story becomes a scripted, seeded simulation test before its visuals are built.
-
-Design input needed before or during M1: which hero is the first hunted character (the client currently draws a generic Light placeholder), and what a Dark player is told when a monster detects something.
+## Suggested next steps
+1. Creator and ChatGPT run the three scenarios in the playtest checklist and rule on P-1 to P-12, P-8 (chase speed) first.
+2. Rerun `npm run verify:m1` once after the two script fixes.
+3. Decide what being caught means before M2; the hunt has no stakes without it.

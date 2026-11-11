@@ -233,6 +233,9 @@ export function thinkMonster(state: SimState, actor: ActorState, map: MapDef): v
       const seen = brain.lastSeen;
       if (brain.lostTicks === 0 && seen) {
         if (brain.chaseId !== null) {
+          // One last-seen point per monster: sight flickering round a corner
+          // must not leave the owner a trail of breadcrumbs.
+          state.evidence = state.evidence.filter((e) => !(e.kind === 'lastSeen' && e.source === actor.id));
           addEvidence(state, { kind: 'lastSeen', x: seen.x, z: seen.z, source: actor.id, ownerSlot: brain.ownerSlot, shared: false, subject: brain.chaseId });
         }
         orderGoto(actor, map, seen.x, seen.z);

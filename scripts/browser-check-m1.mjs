@@ -120,8 +120,8 @@ try {
 
   // Park both Dark heroes in the far north-east corner, so that everything the
   // Dark tabs learn below comes from the Scout and not from a hero's own eyes.
-  await send(owner, { type: 'moveTo', x: 27, z: -27 });
-  await send(mate, { type: 'moveTo', x: 25, z: -28 });
+  await send(owner, { type: 'moveTo', x: 28.5, z: -26.5 });
+  await send(mate, { type: 'moveTo', x: 28.5, z: -28.5 });
 
   // ---- 2. Cover: wait behind the thicket while the Scout patrols the road --
   await walkTo(light, -6, 15.6);
@@ -225,6 +225,7 @@ try {
   }, 90000);
   await resetRec(owner);
   await resetRec(light);
+  const growlsBefore = await light.evaluate(() => window.__grimm.audio().played.growl ?? 0);
   await light.keyboard.press('KeyF'); // real key press: whistle
   const heard = await until(owner, () => window.__grimm.snapshot().evidence.some((e) => e.kind === 'noise'), 8000);
   await light.keyboard.down('ShiftLeft'); // real key: sneak
@@ -241,7 +242,7 @@ try {
   check('the noise did not reveal the hero to the owner', !oNoise.actors.some((a) => a.team === 'light'));
   check('the Scout turns to investigate', (await until(owner, () => window.__grimm.snapshot().actors.some((a) => a.mode === 'investigate'), 5000)));
   check('holding Shift makes the hero sneak', sneaking);
-  check('the hidden hero heard the Scout react (a growl, with no position)', (await rec(light)).sounds.includes('growl'));
+  check('the hidden hero heard the Scout react (a growl, with no position)', (await light.evaluate(() => window.__grimm.audio().played.growl ?? 0)) > growlsBefore);
   await light.waitForTimeout(6000);
   await light.keyboard.up('ShiftLeft');
 
