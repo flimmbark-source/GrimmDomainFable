@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-028 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-029 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -82,7 +82,9 @@ If Dark Heroes establish many corruption sources, **passive production** can sno
 - **Confirmed (D-027): Hybrid siege recovery.** The sanctuaries' **ward integrity remains damaged** after a siege until the Light side repairs it. **Corruption ritual progress decays gradually** once the Dark side loses control of the site. Repeated raids can soften wards, but an abandoned ritual cannot be stored at near-completion forever.
 - Ward integrity and ritual progress must be distinct authoritative state variables. **Unresolved:** control/contest criteria, repair activities and costs, ability to repair during attacks, decay speed and whether ritual progress pauses while contested.
 - **Confirmed (D-028): Resource-backed hybrid ward restoration.** Light Heroes must invest resources in sanctuary ward repair. A **restoration ritual**, once established, continues restoring wards while the Heroes are away. A Light Hero can personally participate to restore wards faster. Their presence is **not mandatory** for an already-established ritual to keep working.
-- **Not yet confirmed:** what resources are used or how they are earned, whether the resource payment starts or sustains the ritual, how the ritual is established, the repair rate and cap, whether an actively besieged sanctuary can repair, whether Dark minions can interrupt the ritual, and what happens to invested resources on disruption.
+- **Confirmed (D-029): Hybrid disruption.** Dark military pressure at a sanctuary **slows** an active restoration ritual. A **physical ritual anchor** exists, and its **destruction stops restoration entirely**. Light Heroes can respond by defending the anchor or removing the Dark pressure.
+- **Unresolved:** what counts as enough Dark pressure, precise slowdown, anchor durability and detection/visibility rules, whether destroying the anchor also affects already restored wards (do not assume it does), rebuilding/restarting procedure, and fate of invested resources.
+- **Not yet confirmed:** what resources are used or how they are earned, whether payment starts or sustains the ritual, establishment and repair rate, or whether destroyed rituals can be restored during active sieges.
 - Keep **ward integrity**, **Dark corruption progress** and **Light restoration process** separate in the authoritative simulation. Don't interpret a restoration ritual as undoing Dark Energy already accumulated by the Dark Lord.
 - Minor constructed corruption sources have their own unapproved destruction/purification rules. Do not assume they transform into sanctuaries.
 
