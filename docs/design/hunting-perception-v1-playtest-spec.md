@@ -1,6 +1,6 @@
 # M1 — Hunt/escape playtest specification
 
-**Status:** Design proposal (not creator-approved). **Created:** 2026-11-11.
+**Status:** Design proposal, with confirmed sighting-sharing decision D-012. Other perception rules remain proposed. **Created:** 2026-11-11.
 **Predecessor:** [Hunting and perception v0](hunting-perception-v0.md).
 **Engineering dependency:** M0's fixed-step simulation, world collision, server-authoritative commands, and 3D camera/render path.
 
@@ -32,6 +32,12 @@ This is the core tension. A technically correct chase routine that simply beelin
 **Design failure:** The commander sees all heroes continuously, or the game issues so many exact pings that strategic inference becomes unnecessary.
 
 ## Proposed mechanics, not locked tuning
+
+### Confirmed Dark-team information rule (D-012)
+- When a Scout **confirms** a Light Hero sighting, all four Dark Heroes receive a shared sighting **alert**.
+- The Scout's **live vision stays private to its owner**. Receiving the alert does not grant ongoing vision, current target coordinates after sight is broken, or control of that Scout.
+- A shared sighting report contains only information legitimately observed when the alert occurred. A timestamp/location marker can become stale. Exact expiry and reporting cadence are tuning decisions.
+- Server-side recipient projections must enforce this. **Test:** a non-owner Dark client receives the alert but cannot read the owning Scout's full live vision stream.
 
 ### Perception as evidence
 Treat sensory outputs as events with:
@@ -97,7 +103,7 @@ Run three short scenarios:
 Record observed behavior, misunderstandings, and exploit strategies. Do not mark M1 "fun" on the basis of code tests alone.
 
 ## Decision gates for creator
-1. **Sighting-sharing policy:** Are confirmed sightings visible to all Dark Heroes immediately, only to the owner of the spotting Scout, or relayable through a tactical communication mechanism? Recommended **for initial tests:** shared *confirmed alerts*, with player-specific unit vision and ownership. Sharing all vision permanently would erase team coordination choices.
+1. **Sighting-sharing policy: CONFIRMED (D-012).** All Dark Heroes receive confirmed sighting alerts; only the Scout owner receives its live vision. Alert latency, report format, and other unconfirmed evidence sharing remain tunable/open.
 2. **Light stealth foundation:** Do all Light Heroes share the sight/cover system with character-specific stealth modifiers? Recommended **yes**, so players learn one consistent world rule before class-specific counters.
 3. **Detection cues:** World/audio cues plus a restrained local attention meter, or exclusively world cues? Recommended **both**, with the meter only showing attention generated toward the player by threats it could plausibly perceive.
 
