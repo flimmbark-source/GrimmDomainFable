@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-031, D-039 through D-041, and D-050 through D-062 and D-071 through D-073 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-031, D-039 through D-041, and D-050 through D-062 and D-071 through D-074 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -106,6 +106,7 @@ Light Heroes **can sabotage corruption sources/Dark operations to reduce passive
 
 - **Confirmed (D-071):** the Goblin can choose **strategic major heists targeting Dark operations**, as an alternative to treasure heists for personal loot. Strategic heists offer a meaningful Light-team benefit by disrupting enemy activity. Which operations can be raided and what effects follow are **not yet approved**. If a heist interferes with a passive Dark Energy source, it must affect **future production only**, never subtract accumulated Dark Energy (D-019). Do not presume each Dark-operation raid affects the awakening rate, grants additional personal gold or automatically yields shared resources; keep D-063's distinct ledgers.
 - **Confirmed (D-072/D-073):** the Goblin's **primary strategic-heist target is Dark logistics**, including major supply stores, shipments and operational equipment. **Hybrid supply infrastructure is confirmed:** major caches and shipments have strategic consequences, but **individual minions require no constant supply-inventory upkeep**. Raids can disrupt specific Dark army capabilities or reinforcement sources. The precise capability dependencies, raid impacts and duration are **open**; do not invent automatic army debuffs, supply meters, resource transfers or awakening-rate changes. Intelligence theft and corruption sabotage are not his primary focus but are not categorically forbidden.
+- **Confirmed (D-074): target-linked raid consequences.** **Supply depots** affect supported reinforcement sources, **equipment stores** affect supported specialized capabilities/equipment, and **shipments** affect the supported destination/operation. These are distinct operational dependencies, not interchangeable global debuffs. Exact mechanical effects and recovery remain unapproved. Dark commanders should have meaningful choices about which assets to defend, but no per-minion inventory or supply tax is introduced.
 
 The strategic purpose is to give Light Heroes a choice between gathering personal power, slowing Dark growth and making an early castle assault. This should bring the two teams into contested areas without turning the match into endlessly reversing the meter.
 
