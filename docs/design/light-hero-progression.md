@@ -1,7 +1,7 @@
 # Light Hero progression: shared foundation and character identity
 
-**Status:** Hybrid structure and shared equipment/resource foundation confirmed (D-042 through D-045); specific economy and individual mechanics are **not yet approved**.
-**Authority:** [Decision register](../decisions.md), particularly D-005, D-010, D-013, D-023, D-042, D-043, D-044 and D-045.
+**Status:** Hybrid structure and shared equipment/resource foundation confirmed (D-042 through D-046); specific economy and individual mechanics are **not yet approved**.
+**Authority:** [Decision register](../decisions.md), particularly D-005, D-010, D-013, D-023, D-042, D-043, D-044, D-045 and D-046.
 **Timing:** M2 should introduce a small credible shared progression loop; M3 can develop differentiated character identity. Do not interrupt current gameplay engineering to implement unapproved mechanics.
 
 ## Confirmed
@@ -11,10 +11,11 @@
 - Light-controlled sanctuaries provide recovery **and character progression opportunities** (D-023); exactly how they contribute is open.
 - **Hybrid resource acquisition (D-044):** Light Heroes find useful equipment and resources while exploring the kingdom, and earn larger rewards for completing meaningful world objectives. Individual characters may seek different activities and locations. Actual loot tables, missions, resource quantities and resource respawn policy are unapproved.
 - **Hybrid upgrading (D-045):** Light Heroes can change gear, craft simple items, and perform minor improvements in the field. Significant upgrades require an appropriate sanctuary, workshop, or other specialized site. What counts as major/minor, exact facilities and resource costs remain open. Do not automatically require a return trip for routine preparation.
+- **Hybrid resource ownership (D-046):** personal equipment, special ingredients and character-specific materials belong to the collecting Light Hero. Common resources earned through major objectives contribute to a **shared team pool**. Trade permissions, which rewards are classified as common, and protections against one player draining the pool are not yet approved.
 - Character differences must preserve shared stealth, cover and detection foundations (D-013).
 
 ## Open choices
-1. **Resource ownership and sharing:** personal inventories, communal team resources, or a hybrid? Exploration and objectives both reward Light Heroes, and field/minor versus facility/major upgrading is confirmed. Who owns or may transfer a resource is still open.
+1. **Shared resource spending rules:** can any Light Hero spend from the common pool, do major purchases require team approval, or is the pool split into autonomous and team-authorized budgets? Personal versus shared ownership is already confirmed. Exact trading rights and limits are open.
 2. **Character identity:** progression actions/resources for each playable Hero. The existing roadmap lists Goblin, Alchemist, Knight and Witch as illustrative candidates, **not by itself final canon**.
 3. **Reward structure:** power ceiling, ability progression, unlock pacing, upgrade choices, and whether upgrades can be lost on death.
 4. **Sanctuary role:** purchases, rituals, ability training, or character-specific interactions with purified landmarks?
@@ -30,4 +31,4 @@
 - **Do not treat example class systems, materials, currency numbers, or XP curves as approved.**
 
 ## Next design gate
-Choose **resource ownership and sharing** (personal, communal, or hybrid) before defining inventory limits, crafting recipes, facility upgrades, and class economies.
+Choose **how the shared team resource pool can be spent** before defining inventory limits, trading permissions, crafting recipes, facility upgrades and class economies.
