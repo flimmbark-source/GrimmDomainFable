@@ -2,7 +2,7 @@
 
 **Status:** Foundation confirmed by creator, calculations and gameplay details still PROPOSED.
 **Last updated:** 2026-11-11
-**Related decisions:** D-015 through D-031, D-039 through D-041, and D-050 through D-061 in [decisions.md](../decisions.md)
+**Related decisions:** D-015 through D-031, D-039 through D-041, and D-050 through D-062 in [decisions.md](../decisions.md)
 **Implementation timing:** After M0/M1 foundations; do not interrupt Fable's current engineering work.
 
 ## Player-facing promise (confirmed)
@@ -74,6 +74,7 @@ If Dark Heroes establish many corruption sources, **passive production** can sno
 - **Confirmed (D-059):** the Witch must **actively perform ritual interactions** at an eligible purified shrine, rather than simply stand still or walk within a circle until a timer ends. The attempt **fully resets if damaged/disrupted** (D-057). Physical interaction layout, movement limits and combat allowance have **not** been chosen. This Witch-specific rite does not change general landmark purification, ghost resurrection or ward restoration.
 - **Confirmed (D-060):** the Witch's shrine rites reuse a **common interactive ritual foundation** but present **shrine-specific thematic challenges** rather than identical sequences or unrelated one-off minigames. The ritual variation reinforces the particular shrine's identity and ability rewards. Exact interactions and variants are open, and nothing changes the shared landmark purification rules.
 - **Confirmed (D-061):** this shared ritual foundation is **redirecting magical currents along connections between ritual points**, shaping the shrine's energy configuration through player interaction. Exact targeting method, flow timing, node mechanics and presentation remain open. This active energy-flow task is separate from the team's basic purification action.
+- **Confirmed (D-062):** the Witch combines **physical manipulation of ritual objects that affect the energy paths** with **directly guiding/connecting magical currents**. These are coordinated actions in one shrine rite. Exact objects, sequencing, and whether flow is manipulated continuously remain unapproved. No change to general purification or Dark shrine-control mechanics.
 - Sanctuaries turn landmark warfare into a reversible territorial contest between both teams. The Dark source no longer contributes its corruption-based passive Dark Energy while purified, consistent with D-019.
 - **Confirmed (D-023):** sanctuaries provide both **recovery/regrouping** and **Light Hero progression opportunities**. They are **contestable**, not completely safe, and the Dark side can threaten and recapture them.
 - **Not yet approved:** exactly what healing or progression services are provided, which classes benefit, detailed defensive bonuses, ritual timing, or the conditions for reversing a siege. The **two-stage** structure is confirmed in D-026.
