@@ -1,12 +1,12 @@
 # Production roadmap and milestone gates
 
-**Last updated:** 2026-11-11. **Status:** Pre-implementation. M0 assigned, no code verified.
+**Last updated:** 2026-11-11. **Status:** M0 code imported from Fable's implementation for independent review in draft PR #5. Its reported tests are not yet independently confirmed here.
 
 The target is a full 4v4 asymmetric action/strategy game. Milestones are cumulative production code, not independent demos. Time-limited Fable usage ends around November 16; that is **not** the full-game deadline.
 
 | Milestone | Deliverable | Dependency / completion gate | Status |
 | --- | --- | --- | --- |
-| **M0** | Running 3D browser scene, actor/camera proof, seeded simulation, typed protocol, minimal server, art import path, 4v4 slots | Verified local build + deterministic tests + browser proof | **READY** |
+| **M0** | Running 3D browser scene, actor/camera proof, seeded simulation, typed protocol, minimal server, art import path, 4v4 slots | Fable reported local tests and browser checks; independent CI and human GPU playtest remain | **IN REVIEW (PR #5)** |
 | **M1** | One meaningful hunt-and-escape encounter: patrol, sight, hearing, alert, last-known position, search, concealment | M0 game loop + perception tests + visible debug layers | PLANNED |
 | **M2** | Two-sided match loop: commander spawns/orders monsters; light hero gains resources/upgrades; castle victory and defeat conditions for short test | M1, explicit design approval for core scoring/revival | PLANNED |
 | **M3** | Character identity: Goblin, Alchemist, Knight, Witch power economies; Dark Hero classes; combat/abilities | M2, individual mechanic specifications | PLANNED |
@@ -34,8 +34,8 @@ These are dependency stages, not strict mutually exclusive calendar phases. Star
 Move dates rather than pretend a broken foundation is finished.
 
 ## Progress evidence ledger
-No runtime build, screenshots, or tests have yet been executed in this GitHub project. Update with actual command outputs and commit hashes, not optimistic statuses.
+Fable reported executing the M0 build and tests on its implementation branch (source commit `606b9e4`). The current integration branch imports its files and is under review. CI status and creator playtest must be recorded separately. Do not claim M0 production-ready on the basis of automated screenshots.
 
 | Milestone | Running build | Tests passing | User playtested | Evidence |
 | --- | --- | --- | --- | --- |
-| M0 | No | No | No | Awaiting Fable work |
+| M0 | **Fable reported yes** | **Fable reports 35 unit/integration and 16 browser checks passed** | **No** | [Implementation report](../implementation-status.md), [PR #5](https://github.com/flimmbark-source/GrimmDomainFable/pull/5), GitHub Actions on PR |

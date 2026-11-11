@@ -1,0 +1,39 @@
+{
+  "name": "grimm-dominion",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Grimm Dominion - 4v4 asymmetric dark-fairytale action/strategy game (browser 3D client + authoritative server)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c magenta,cyan \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "tsx watch src/server/index.ts",
+    "dev:client": "vite",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "start": "node dist/server/server/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "assets:placeholder": "node scripts/make-placeholder-glb.mjs",
+    "verify:browser": "node scripts/browser-check.mjs"
+  },
+  "dependencies": {
+    "@colyseus/sdk": "0.18.10",
+    "colyseus": "0.18.12",
+    "express": "5.3.0",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6",
+    "@types/node": "26.6.6",
+    "@types/three": "0.187.0",
+    "concurrently": "10.0.7",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "vitest": "5.1.0"
+  }
+}
