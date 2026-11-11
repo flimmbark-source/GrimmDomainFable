@@ -23,9 +23,10 @@
 | D-014 | Detection feedback | **Environmental and audio cues plus a subtle local attention indicator** for the Light Hero when a monster is noticing them. Exact presentation, timing and tuning remain to be playtested. Do not use this UI to reveal unseen enemy positions |
 | D-015 | Dark Lord's core role | **Dormant ruler and ultimate castle objective/final boss.** The four playable Dark Heroes defend him and the castle. The creator finds an active AI-controlled Dark Lord concept appealing, but **has not approved it as a mechanic** |
 | D-016 | Awakening outcome | **Awakening begins a dangerous final confrontation, not automatic Dark victory.** The awakened Dark Lord fights alongside the four Dark Heroes against surviving Light Heroes. Exact boss combat mechanics and terminal victory conditions are unresolved |
-| D-017 | Dark Energy awakening race | The Dark Lord has a **Dark Energy meter** that progresses over time. Evil deeds performed by Dark Heroes **and their minions** accumulate Dark Energy, **accelerating the rate of awakening**. The system is tiered, but thresholds, deed values, caps, and rate formula remain unresolved |
+| D-017 | Dark Energy awakening race | The Dark Lord has a **tiered Dark Energy meter** that fills naturally over time. Individual evil deeds by Dark Heroes **or their minions** each grant a **small, immediate, one-time addition of Dark Energy**. **Evil deeds do not increase the natural accumulation rate.** Exact thresholds, rewards and tuning remain open |
 | D-018 | Light Heroes' early-win route | Light Heroes may **breach the Dark Lord's sanctum and slay him before awakening**, ending the conflict in Light victory. If he awakens first, the Light Heroes instead face the awakened Dark Lord **and** the Dark Heroes in a dangerous final battle. Exact vulnerability/defenses of dormant Dark Lord are unresolved |
-| D-019 | Light-side awakening sabotage | **Light Heroes can sabotage Dark operations** (such as purifying corruption, disrupting rituals or destroying infrastructure) to **slow the rate of Dark Lord awakening**. Sabotage does **not directly subtract accumulated Dark Energy**. Exact targets, reversibility of rate bonuses and restoration rules are not yet confirmed |
+| D-019 | Light-side awakening sabotage | **Light Heroes can sabotage corruption sources/Dark operations** to slow the **passive Dark Energy generation rate**, without directly subtracting already accumulated energy. Details of eligible targets, restoration and costs remain open |
+| D-020 | Corruption source acceleration and correction | **Corruption sources, not individual evil deeds, increase the natural accumulation rate of Dark Energy.** Their active contribution is the strategic target for Light sabotage. This explicitly supersedes the earlier reading of D-017 that every deed permanently increased energy-per-time; source creation, stacking, maintenance, and exact rates remain unapproved |
 
 ## Provisional engineering direction (requires Fable technical validation)
 - Browser-based Three.js + TypeScript renderer/client and Vite toolchain.
@@ -37,7 +38,7 @@
 - A narrow initial playable test may use a subset of the eight slots, but the full product remains 4v4.
 
 ## Unresolved rules (do NOT silently decide these as canon)
-1. **Core rule decided by D-015 to D-018:** Dark Lord starts dormant; Light can breach sanctum and kill him before awakening; Dark Energy accrues over time and accelerates through evil deeds of Dark Heroes and minions; awakening triggers Dark Lord + Dark Heroes vs Light Heroes final battle. **D-019 confirms** Light Heroes can slow awakening by sabotaging Dark operations, without directly reversing accumulated Dark Energy. **Unresolved:** meter formula/tiers, eligible deeds and sabotage targets, whether earned rate bonuses are permanent or depend on maintained operations, boss abilities, pre-awakening sanctum vulnerability, post-awakening terminal rules, and whether sleeping influence exists.
+1. **Core rule decided by D-015 to D-018:** Dark Lord starts dormant; Light can breach sanctum and kill him before awakening; Dark Energy accrues naturally over time, receives small one-time gains from evil deeds by Dark Heroes and minions, and accrues faster through corruption sources; awakening triggers Dark Lord + Dark Heroes vs Light Heroes final battle. **D-019/D-020 confirm** Light Heroes can slow awakening by sabotaging corruption sources, without directly reversing accumulated Dark Energy. **Unresolved:** meter formula/tiers, qualifying deeds and corruption sources, source stacking and maintenance, boss abilities, pre-awakening sanctum vulnerability, post-awakening terminal rules, and whether sleeping influence exists.
 2. What camera(s) and controls does each Light Hero have? What triggers switching? How is aiming balanced against high-level RTS control?
 3. How does the Dark Hero switch between physical action and macro-command? Does game time continue while commanding?
 4. What constitutes Dark victory if Light Heroes die or the awakened boss wins? Revival/elimination rules, disconnects and timeout behavior. Awakening alone **does not** grant Dark victory.
@@ -47,6 +48,7 @@
 8. Which character and encounter are chosen for the first vertical increment. Goblin + one Dark Commander are a **proposal**, not confirmed.
 
 ## Rejected or superseded
+- Earlier D-017 wording that **every evil deed increases the passive awakening rate** is expressly replaced by D-017 (instant small reward) and D-020 (rate increase from corruption sources). Do not recreate that obsolete mechanic.
 - Godot as the main game platform.
 - A 2D-first prototype that postpones the Warcraft-inspired 3D foundation.
 - A one-versus-four final game structure, superseded by explicit 4v4.
