@@ -1,6 +1,6 @@
 # Kingdom geography and large-world architecture
 
-**Status:** D-084 confirms a huge, seamless, interconnected kingdom as the end-state target. D-085 confirms guided procedural geography. **D-086 confirms hybrid strategic topology: castle approaches plus independent regional connections and loops. D-087 confirms deliberate, eventful journeys between major regions. D-088 confirms partially known starting geography with exploration-based discovery of secondary routes and secrets. D-089 confirms common baseline geographic knowledge with character-specific starting hints. D-090 confirms layered team sharing of discoveries.** This brief separates confirmed relationships from proposals. No specific geographic layout, map size, road count or generation algorithm is approved.
+**Status:** D-084 confirms a huge, seamless, interconnected kingdom as the end-state target. D-085 confirms guided procedural geography. **D-086 confirms hybrid strategic topology: castle approaches plus independent regional connections and loops. D-087 confirms deliberate, eventful journeys between major regions. D-088 confirms partially known starting geography with exploration-based discovery of secondary routes and secrets. D-089 confirms common baseline geographic knowledge with character-specific starting hints. D-090 confirms layered team sharing of discoveries. D-091 confirms coherent biomes with smaller unusual geographic pockets.** This brief separates confirmed relationships from proposals. No specific geographic layout, map size, road count or generation algorithm is approved.
 
 ## Confirmed design boundaries
 
@@ -85,14 +85,19 @@ The world generator should validate that major paths have meaningful activity op
 
 **Implementation still open:** exact geography/sensitive-info classification, choice of sharing gestures, inaccuracies and staleness, cooperation UX, reveal radius/detail, and persistence/reconnection.
 
-## Next design choice: how should biomes fit the kingdom? (UNRESOLVED)
+## Confirmed biome structure (D-091)
 
-**A. Broad biome bands:** large predictable climatic zones with relatively clear transitions and resource geography. Easy to learn but can make seed variation and route choices repetitive.
+**Selected C: coherent geographical regions with smaller unusual pockets and transition zones.** Biomes should make sense as broad landscapes shaped by terrain, water, climate and human activity. A match may contain a woodland mass with streams and outlying marshland, a settled valley bounded by higher ground, or smaller atypical environments nested within a larger region. These are **examples**, not a fixed biome roster or mandated geography.
 
-**B. Highly mixed biomes:** numerous distinct nearby environments with abrupt changes. Dense variety, but risks incoherent geography and removes the feeling of traveling to remote specialized places.
+Keep regional geography compatible with D-087 meaningful journeys and D-081 ingredient discovery: starting areas must permit useful Alchemist experimentation; advanced opportunities may require reaching unusual/distant/dangerous environments. Important Light routes, shrine opportunities, Dark logistics and castle approaches must remain traversable and strategically consequential.
 
-**C. Geographic regions with local exceptions:** large coherent forests, uplands, marshes and settled valleys tied to rivers, elevation, climate and routes, with some smaller unusual pockets and transition zones. Seeded topology and generator constraints keep relevant character opportunities reachable.
+A coherent biome is **not** a single homogeneous scenery texture. Its boundary may include gradual ecological transitions, natural obstacles and small exceptions. Pockets are optional surprises, not guaranteed fixed ingredient troves, automatic quest markers or a predetermined rarity tier.
 
-**Recommendation, not approved: C.** Cohesive broad regions make expeditions legible and valuable, while unusual pockets support surprising discoveries. This is geography design only, not approval of any fixed biome lineup, rarity table or ingredient recipe.
+**Unknowns:** biome list/placement quantities, climate and hydrology algorithms, height integration, pocket spawn probabilities, terrain traversal effects, and exactly which resource/character mechanics occur in which environments.
+
+## Next deliverable: generator architecture and proof (SPECIFICATION, NOT IMPLEMENTATION)
+
+See [kingdom generator v0 technical brief](kingdom-generator-v0.md). The first task is a deterministic generator for a continuous, traversable topology with region and biome metadata plus structural validity tests. It must not be sold as a finished world, bypass M1 tests, or quietly replace the current playable arena.
+
 
 Unresolved: exact world size/travel time and potential transportation, starting map detail, hint accuracy/content and sharing UI, road hierarchy and route-count guarantees, terrain elevations, settlement density, landmark and secret site placement, caves/interiors, supply routes, visibility/discovery, and long-distance activity.
