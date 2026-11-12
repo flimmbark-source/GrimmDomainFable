@@ -73,7 +73,15 @@ Open **http://localhost:2567/?region=orchard_vale**. With `npm run dev` instead,
 
 `verify:orchard` covers, with real mouse and keyboard input against the real server: default map unchanged; region chosen by server room; eight slots; hero drawn on shared ground height; mouse click on sloping terrain; strategy follow, pan and Space recentre; crossing the ford; walking the bridge crown; holding W in hero view until the river bank stops the hero short of the water; the hero camera pulling in against a cottage wall; climbing the terrace ramp; a Scout sighting reaching both Dark seats while live vision stays with the owner; the Light client receiving no Dark evidence or monster state; escaping over the ford until the Scout searches; no console errors.
 
-**M1 browser check flakiness.** Run as CI runs it (M0 then M1 on one server), M1 once failed 4 to 5 steps that wait 4 to 5 seconds of wall-clock time for the Scout to react, in a browser drawing about one frame per second; the next identical sequence passed 36/36. The forest-crossing simulation is unchanged (it takes the old code paths; all M1 determinism and story tests pass). A side-by-side series against untouched `main` was run to separate environment timing from regression; its result is recorded in implementation-status.md.
+**M1 browser check flakiness.** Run as CI runs it (M0 then M1 on one server), M1 once failed 4 to 5 steps that wait 4 to 5 seconds of wall-clock time for the Scout to react, in a browser drawing about one frame per second; the next identical sequence passed 36/36. The forest-crossing simulation is unchanged (it takes the old code paths; all M1 determinism and story tests pass). To separate environment timing from regression, the same sequence was run three times on each build, alternating, each on a fresh server:
+
+| Round | This branch: M0 / M1 | Untouched `main` (ed9ff43): M0 / M1 |
+| --- | --- | --- |
+| 1 | 17/17 / **36/36** | 17/17 / 32/36 |
+| 2 | 17/17 / **36/36** | 17/17 / 36/36 |
+| 3 | 17/17 / **36/36** | 17/17 / 33/36 |
+
+`main`'s failures were the Dark **teammate** tab never receiving the sighting alert, and once the Scout's 5-second investigate window. That is consistent with the old server heartbeat (two missed 3-second pings) dropping a tab stalled by software rendering; P-19 lengthens that grace. So the flakiness predates this work. **This branch is not proven free of it:** in earlier ad-hoc runs (before the table above) two M1 runs on this branch failed, 32/36 (server reused after the Orchard Vale check and M0) and 31/36 (fresh server, after M0), on the Scout-timing steps (investigate within 5 s, then the commander order steps because the Scout was still chasing); the next identical sequence passed. Counting every M1 run after M0 on one server: this branch 4 of 6 passed, `main` 3 of 5 (including two earlier passes). The fix for the timing-dependent checks themselves (waiting on simulation ticks rather than wall-clock seconds) is left as a follow-up.
 
 ## Performance (measured, not estimated)
 
