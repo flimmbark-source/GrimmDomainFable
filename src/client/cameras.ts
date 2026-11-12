@@ -28,6 +28,8 @@ export class CameraRig {
   /** RTS rig: ground point the camera looks at, and its distance. */
   readonly rtsFocus = new THREE.Vector3(0, 0, 8);
   rtsDistance = 50;
+  /** The strategy camera follows the local hero until the player pans or chooses a manual focus. */
+  private followRtsHero = true;
   /** Hero rig: orbit yaw around the hero (0 = camera south of hero, looking north). */
   heroYaw = 0;
   /** Hero rig: how far the camera looks down, in radians. */
@@ -47,16 +49,26 @@ export class CameraRig {
     this.from.fov = this.current.fov;
     this.blend = 0;
     this.mode = mode;
-    if (mode === 'rts' && heroPosition) this.rtsFocus.set(heroPosition.x, 0, heroPosition.z);
+    if (mode === 'rts' && heroPosition) this.followHero(heroPosition);
   }
 
   panRts(dx: number, dz: number, dt: number): void {
+    if (dx === 0 && dz === 0) return;
+    this.followRtsHero = false;
     const speed = RTS.panSpeed * (this.rtsDistance / 40) * dt;
     this.rtsFocus.x = THREE.MathUtils.clamp(this.rtsFocus.x + dx * speed, -this.panLimit, this.panLimit);
     this.rtsFocus.z = THREE.MathUtils.clamp(this.rtsFocus.z + dz * speed, -this.panLimit, this.panLimit);
   }
 
+  /** Focus a chosen point without snapping back to the moving hero. */
   focusOn(point: THREE.Vector3): void {
+    this.followRtsHero = false;
+    this.rtsFocus.set(point.x, 0, point.z);
+  }
+
+  /** Recenter and resume following, including after the player has panned. */
+  followHero(point: THREE.Vector3): void {
+    this.followRtsHero = true;
     this.rtsFocus.set(point.x, 0, point.z);
   }
 
@@ -83,6 +95,9 @@ export class CameraRig {
   }
 
   update(dt: number, aspect: number, heroPosition: THREE.Vector3 | null): void {
+    if (this.mode === 'rts' && this.followRtsHero && heroPosition) {
+      this.rtsFocus.set(heroPosition.x, 0, heroPosition.z);
+    }
     const target: Pose = { position: new THREE.Vector3(), lookAt: new THREE.Vector3(), fov: RTS.fov };
     if (this.mode === 'hero' && heroPosition) {
       const { forwardX, forwardZ } = this.heroBasis();
