@@ -1,185 +1,171 @@
-# Orchard Vale | Region prototype 01 (revised)
+# Orchard Vale | Region prototype 01, folklore revision 3
 
-**Status:** **Unapproved region test case**, revised 2026-11-12 in response to creator criticism. This is a controlled replacement for the initial "The Last Fruit" draft, **not** a newly confirmed region or permission to add gameplay. The old "last fruit / unseen visitor / nobody agrees why" material is **withdrawn as a proposal** and must not be carried into implementation or later generation.
+**Status:** Unapproved region prototype, revised 2026-11-12 following creator criticism of supernatural details that felt like decorative flourishes. This version **supersedes** the earlier "Last Fruit" and upward-running-water proposals. It is not a new canonical lore or gameplay decision.
 
-**Approved foundation:** a large continuous, guided-procedural kingdom (D-084 to D-091), inhabited fairytale life intertwined with older supernatural forces (D-092), different local cultures relating to those forces in distinct ways (D-093), original painterly/readable 3D fairytale art (D-008), class progression and the Dark scouting/corruption/logistics rules. The specific valley, customs, spring, settlement economy, and layout below are **candidate authoring decisions only**.
+**Authority:** Approved design D-008, D-012 through D-014, D-019 through D-023, D-042 through D-059, D-063 through D-083, D-084 through D-093. The kingdom is a living fairy-tale civilization interwoven with older magic under increasing Dark influence. Communities relate to older magic differently. Geography is seeded and coherent; vision and character systems must retain existing rules.
 
-## Revision 2: causal worldbuilding
+## 1. Region thesis: land held under an older claim
 
-The first draft treated evocative folklore, magical uncertainty and hero destinations as independently chosen decorations. It provided no clear reason for the custom, made the supernatural vague for its own sake, and appeared to put a suitable POI for every class into a contrived three-route arena.
+**Candidate premise:** Families have cultivated orchard terraces in this river valley for generations, but their farmland borders a woodland they regard as belonging to an older power. The oldest village tradition concerns an agreement about **where cultivation may go, which trees must remain, and what it means to keep faith with the land**.
 
-**New principle:** geography supports livelihood; livelihood explains settlement and infrastructure; repeated lived experience produces culture and supernatural practice; current conflict contests infrastructure and landmarks that would matter even without it. Gameplay flows from those relationships.
+This is not a story about villagers who inexplicably leave a fruit for a mysterious visitor, nor a spring where water performs an arbitrary trick. The culture has a history, customs, obligations, stories, material consequences and an older power whose role is more than decoration.
 
-### Core identity
+**Important design status:** The claim and old bargain are invented local folklore, not verified lore for the entire kingdom. It remains unresolved whether the supernatural side is literally a single conscious being, multiple entities, or a place with agency. It also remains unresolved what direct interaction players may have with it. Do not create a territory-control system or a corruption effect from this proposal alone.
 
-**Candidate one-sentence pitch:** A working orchard valley depends on a spring-fed water network maintained collectively by its villages. At the headwater, a visibly impossible feature of the old landscape is part of ordinary local knowledge rather than a deliberately unexplained rumor. Major roads carry produce across a river, making the area important to both trade and Dark military movement.
+**Emotional range:** Productive, sociable and celebratory orchard life alongside a solemn respect for the oldwood. The fairytale character comes from how people organize their lives, not how many glowing objects the level contains.
 
-**Emotional goal:** A place worth preserving, not an obligatory rest stop before the "real" dark-fantasy content. The fairytale quality comes from real local routines, recognizable obligations, and one specific old wonder. Dark presence adds immediate risk without flattening this into a permanently cursed village.
+## 2. Causal geography and livelihood
 
-**What the visitor should infer without reading lore:** These people grow and process fruit, maintain shared water, depend on a few routes for trade, and have adapted over generations to an old supernatural feature near their water source.
+A reliable river and smaller feeder streams make the valley fertile. Shelter and terrain allow productive orchards. Households plant fruit-tree rows, prune branches, tend terraces, process fruit and move produce to outside markets.
 
-## 1. Physical geography, economy, and settlement history
+The region needs enough physical evidence to tell this story: orchard row geometry, paths to storage and presses, pruning and grafting areas, cider sheds, baskets, carts, repaired footbridges, and a mill only where flowing water and road access support one.
 
-### The valley's physical logic
+A main road crosses the river and carries goods to neighboring regions. A smaller network of paths connects fields and working forest coppices. **Some of these routes bend around conspicuously older trees and marker stones** rather than taking the shortest possible line. The bends record a long-standing choice about the boundary of cultivation.
 
-- A reliable upper spring feeds stone-lined irrigation channels and a lower river. The main river is navigational terrain and the water source for a mill/press site, but do not assume the same channel can do every job without an actual elevation/flow layout.
-- The valley's slopes and sheltered floor support orchards. Hillside woodland is left on land less suitable for fruit-growing. Trees form rows, not decorative random clumps, because people planted them to tend and harvest them.
-- Orchard paths lead to shared press buildings, storehouses, nearby homes and market roads. The primary crossing exists where a cart-road can reasonably reach both banks; it supports the trade that made the settlement viable.
-- The oldest headwater grove is upstream, near a source that was there before the villages. An access path must exist because the community maintains the waterworks. It is **not** magically inaccessible just to force a mysterious exploration scene.
-- Trade routes should connect to neighboring regions of the same continuous kingdom. Secondary access may consist of a long hillside detour, smaller bridge or safe ford depending on procedural terrain and real traversability. **No fixed demand for exactly three routes.**
+A separate old road, long abandoned, approaches a partly wooded ruin. It hints that the relationship between cultivated and unclaimed ground has not always been stable. It should be plausible from the geography, not a random collectible site.
 
-### What residents do here
+Orchard Vale still belongs to **one continuous kingdom**, not a three-lane arena or standalone instance.
 
-The valley makes a living from fruit growing, drying and pressing, maintaining water channels and transporting produce to other towns. The work is communal where resources are shared and household-based where individual plots and goods are concerned.
+## 3. The living folklore
 
-**Physical evidence of daily life:** cart ruts at storage doors, stacked baskets at the press, seasonal storage racks, pruned grafts on orchard rows, patched sluice gates, water-level marks on stone, and different sizes of buildings reflecting practical function. These are environmental props/possible ambient activity, **not** approved NPC economy or labor simulations.
+### The founding account
 
-**Why people cooperate:** upstream families cannot take every drop without affecting downstream orchards. Water is allocated and channels are cleared and repaired through established local arrangements. That has immediate practical value even if no magic existed.
+The villages teach that their ancestors were allowed to cultivate the valley **on the condition that certain trees and the older wood beyond them would not be claimed as ordinary property**.
 
-**What preceded the villages:** the spring and headwater grove. The source predates the constructed channels, then the settlement and bridge grew because the land was productive and the crossing connected trade. The people did not build here simply because a shrine or quest objective needed to exist.
+An agreement can be kept even by people who have never met the being or power that first made it. What matters is that the community understands its obligation. The nature of the older power remains a further authoring question, not a reason to make the villagers ignorant.
 
-## 2. Culture and the supernatural
+### Custom I: the boundary walk
 
-### A cultural practice with an intelligible reason
+Once each year, families walk the lines between their orchards and oldwood. They inspect stones, clear paths, name distinctive trees and teach younger people where the limits lie. The walk has a practical role in shared land knowledge and a ceremonial role in renewing the older promise.
 
-**Sample tradition for review:** At the beginning of the growing season, households work together to clear the headwater channel and open the sluices. They first allow water to refill the grove's shallow basin before diverting it into the orchards. The villagers teach that the headwater must be maintained, not consumed without return. The custom is both practical stewardship and respect for the place that makes their livelihood possible.
+This means **folklore changes the terrain**. Marker stones, old trees and maintained paths are located where they are for a reason. A player may be able to trace the remembered boundary by reading the landscape.
 
-**People know why they do it.** They can explain the history and the obligation. It need not be a riddle, and local opinion need not be manufactured into a debate. Individual families may be more practical or more reverent in how they describe the act; neither position is required to deny the visible local phenomenon.
+### Custom II: waking the orchard
 
-This is a **candidate custom**, not established kingdom canon, not a purification ritual, and not a request to implement water allocation, farming timers or offerings.
+At a different point in the agricultural year, orchard keepers gather among cultivated trees to sing, share cider and encourage the next harvest. The celebration reinforces a specific belief: fruit trees are tended partners in the community's livelihood rather than simply objects of extraction.
 
-### One actual supernatural fact, rather than vague "mystery"
+This should eventually have a distinctive invented musical and visual identity. Do not literally transplant a historical English wassail ceremony, or add a new fertility-buff mechanic without approval.
 
-**Conceptual supernatural signature to test:** At the oldest spring tree, a narrow sheet of water travels *up* a root before entering the basin. Villagers have seen it for generations. They tend the headwater because it is their shared source of water and because the site is older and clearly stranger than their irrigation works.
+### Everyday rules and social stakes
 
-The region's culture has adapted to a *real observed marvel*. We need not invent a pantheon or a definitive cosmic explanation to make that true, and residents do not need to pretend they know nothing. If this visual is too subtle at the elevated camera or feels silly, reject/change the manifestation, **not** the principle that the supernatural is concrete and culturally integrated.
+The villagers prune and use wood from designated cultivated trees and coppices but do not fell witness trees. Some paths and roads take inefficient detours because the boundary matters. The oldwood can be respected without daily fear, since the arrangement is part of familiar community life.
 
-The upward-running water is an **art/narrative proposal only**, not a new fluid-physics, navigation, harvest, potion or magic-resource mechanic. It is not automatically tied to Dark Energy, and it doesn't entitle the Witch to sense it from afar.
+There is room for **real tension** without manufactured mystery. A merchant may want a straighter road, while the families responsible for maintaining the boundary resist. They know what they disagree about: whether immediate economic convenience is worth breaking an old obligation.
 
-### Relation to older magic (D-093)
+### One local cautionary tale with a physical referent
 
-This **particular candidate community** is predominantly familiar and pragmatic about the spring's old magic. Neighboring places might treat comparable phenomena as sacred, frightening, irrelevant or forgotten, but there is no obligation to put a skeptic in every village or ensure every family differs. Cultural variation belongs at kingdom scale and should emerge from credible local histories.
+A story tells of a former steward who moved a witness stone to claim an extra orchard plot. The house beside that plot is now a ruin deep within reclaimed trees, although the old cart ruts still point toward it.
 
-**Important distinction:** natural marvel, local reverence and Dark corruption are three independent attributes. A spring can remain magical when the Dark have no presence. A Dark patrol can occupy the bridge without having "corrupted" the grove.
+The story explains why the abandoned place matters to villagers. It gives players a concrete clue that oldwood, territory and human decisions are linked. It does **not** require a one-time magical growth animation, confirmation that roots grew overnight, or a player mission to reverse the event.
 
-### Environmental storytelling check
+**Folklore as a system of meaning:** founding account → customary obligations → seasonal practices → visible boundaries → cautionary histories → present-day pressures. Each element reinforces the others.
 
-A player should see the village irrigation system, follow it upstream and find a much older stonework/basin and tree. The difference in construction age and the direction of the water communicate **history and strangeness**. The player can infer what people protect and why without needing a narrator to announce that "nobody knows what happened here."
+### Relationship to older magic, and what is still missing
 
-## 3. Visual identity viewed from the actual game camera
+In this particular candidate community, older supernatural forces are **known and respected**. Other parts of the kingdom may instead fear or ignore them under D-093.
 
-**Distant silhouette:** orchard rows sweeping around a river bend, two visible clusters of pitched-roof buildings, mill/press roof and wheel by the water, an old grove higher upstream, and a prominent public crossing. The orchard pattern is intentional and legible from the elevated strategy camera.
+**Open supernatural design problem:** what actual agency, response or encounter makes the oldwood's claim felt to a player? A stronger later design could show the woodland *responding to* how its boundaries are treated, rather than producing random light, fog or reversed physics. But we must choose a consequence that aligns with the rules and gameplay, not invent it here.
 
-**Near silhouettes:** tall orchard ladders, broad presses and wagon sheds, low stone sluices, footbridges, clipped hedge boundaries, and one much larger older tree among maintained fruit trees. Distinctive landmarks communicate use, not a stack of gothic symbols.
+The oldwood is not synonymous with the Dark Lord. Its claim precedes the present struggle. Dark occupation and Dark Energy corruption remain separate things governed by approved systems.
 
-**Materials (proposal):** off-white limewash, honey-brown timber, dark wet stone near channels, red-brown tile, green hedges, pale fruit-tree blossom/leaf canopies as season allows. Dark equipment, supply wagons and banners must remain legible against the region without making every building charcoal-colored.
+## 4. Visual and sound identity
 
-**Mood contrast:** ordinary sunlit work versus a quiet, older headwater. Keep the valley inhabited and fairly beautiful before or alongside military danger. Different day/time art passes should preserve navigability and sight readability.
+**Elevated camera silhouette:** ordered orchard rows against untamed woodland; a working river corridor; irregular village rooftops; a bridge and road; a line of distinctive veteran trees that cultivated plots and lanes flow around.
 
-**Sound as history and feedback (proposal):** water moving through channels, press/wheel rhythm, birds, carts and wind through orchard rows. Supernatural signature may have its own local acoustic character; no unapproved noise-based spell or automatic enemy detector is created.
+**Built structures:** broad press sheds, storage lofts, patched cartways, stone channels, orchard ladders, and a mill where water supports it. Architectural details express livelihood, seasons and repair.
 
-**Camera/readability test:** from the standard elevated viewpoint can players recognize the road, bridge, headwater tree and at least one distinct cover corridor? A close-up-only folklore detail cannot carry the region identity.
+**Boundary language:** witness stones and old trees recur at intervals. The maintained walking track remains readable even when it detours unexpectedly. The overgrown old road and ruin show a different period in the same region's history.
 
-## 4. Spatial play that arises from the valley
+**Materials and palette, proposed:** cream limewash, warm timber, stone darkened beside water, red-brown tiles, greens and harvest tones. Maintain contrast and recognizable cover from the actual RTS/hero camera. Dark patrol equipment should visibly contrast without turning the whole region uniformly black.
 
-This is a **networked working district within the continuous kingdom**, not an instanced self-contained three-lane combat arena.
+**Audio, proposed:** waterwheel and cart sounds near work areas, orchard wind and domestic bustle, occasional seasonal singing or percussion as cultural atmosphere. No sound cue is automatically a new stealth or spell mechanic.
 
-### Travel structure
+**Reject**: random glowing glyphs as a substitute for belief, a single "magic tree" that explains all culture, photoreal visual clutter, and any prop whose apparent cover disagrees with authoritative line-of-sight simulation.
 
-- **Main cart-road and bridge:** directly connects two regional roads and supports economic/army logistics. It is easier to navigate and defend, but traffic and exposed ground can make stealth harder.
-- **Maintenance paths and hedgerow breaks:** smaller routes naturally connect farms, channel gates and headwater. Some give cover; others end at real work sites. They should not automatically all bypass the river or form a perfect stealth lane.
-- **Alternate interregional connection:** a ford, distant footbridge or ridge road may allow another cross-valley approach. The wider topology generator must guarantee meaningful interregional route alternatives where intended (D-086), not hard-code a second crossing into every orchard archetype.
+## 5. Terrain and 4v4 gameplay
 
-**Playable geometry:** buildings, thick orchard trunks, dry-stone walls and genuinely dense hedge sections can break line of sight. Thin leaves, decorative fences or visually noisy props must not block gameplay LOS unless the simulation treats them consistently. Real pathfinding must connect around the mill and along legitimate crossings.
+**Main crossing:** built for carts and military movement, so it is useful to defend, patrol and traverse quickly. Its prominence creates exposure and possible interception.
 
-**Nonessential places remain nonessential:** the headwater tree can be a powerful cultural landmark without every seed placing a Witch shrine there. The mill might be civilian only, with Dark logistics operating on a nearby road rather than magically converting it to a depot.
+**Working paths:** hedges, garden walls, tree rows and coppice access tracks create partial alternatives and interesting stealth geometry. They do not automatically connect across the river. A path to a boundary stone may genuinely end there.
 
-### Dark influence: a contingent overlay
+**Wider route alternatives:** depending on generated geography, a ford, distant footbridge or route through another region provides a second approach where required by D-086. Don't force exactly three named lanes or a fixed crossing count into every valley.
 
-**Before occupation:** the bridge supports traffic and the channel network supports orchards. The spring and local practice already exist.
+**Dark pressure:** Dark commanders have reasons to protect strategic roads and supply routes, position Scouts and possibly contest eligible landmarks. A corrupted landmark follows the existing Dark Energy and sanctuary rules. Mere occupation does not magically corrupt every witness tree or make an ancient spirit hostile.
 
-**Under Dark military attention:** a Dark Hero has reason to guard a strategic crossing, route supplies through it, or position an army to observe nearby roads. These military uses are consistent with the existing Dark logistics and patrol model, but their exact route/task assignments are **not yet approved**.
+**Goblin:** opportunistic stealth in orchards and possible strategic raids if an actual Dark supply asset is present. No guaranteed personal-gold farm or mandatory depot at the mill (D-068 to D-075).
 
-**If an eligible major landmark is corrupted:** that site's control and Dark Energy production follow the approved corruption/sanctuary mechanics. Its visuals should express a targeted disruption around that location; **do not assume** the entire orchard becomes dead, all water stops flowing, the villagers are enslaved or the grove is automatically converted. All those would be additional lore/mechanics decisions.
+**Alchemist:** ecologically differentiated plants and observations only when the world generator places valid ingredients and clues. No fixed apple-based recipe or guaranteed potion (D-076 to D-083).
 
-**After Light purification:** an eligible corrupted major site becomes a Light sanctuary under existing rules, with vulnerabilities and siege logic intact. It does not become a generic "nature purified" overlay across unrelated parts of the valley.
+**Witch:** if a qualifying shrine exists, her approved passive/focused sensing can guide her toward it. Boundary trees and revered woods are not automatically shrines. The Witch purifies any eligible corrupted shrine *before* performing her separate personal ritual (D-050 to D-059).
 
-### Honest hero opportunities (avoid "one gift for everyone")
+**Exiled Knight:** can participate in shared progression, defense and major world objectives when appropriate. Do not invent an Orchard Vale-specific Valor mission (D-042 to D-049).
 
-| Role | Reason they may encounter this region | Confirmed basis | Do not invent |
-| --- | --- | --- | --- |
-| Goblin | Concealed farms/market roads can make evasion useful; a Dark shipment or store **if generated** offers a strategic heist | D-068 to D-075 | Guaranteed personal gold from civilians or a depot at the mill |
-| Alchemist | Orchard edges, riparian vegetation and uplands offer distinct habitats and clues **if ingredients are placed** | D-076 to D-083 | A fixed apple potion or mandatory ingredient at this spring |
-| Forest Witch | Only **if a qualifying shrine exists**, her established passive/focused sensing guides her toward it; purification precedes ritual | D-050 to D-059 | Sensing any old magic as a shrine, automatic marker, free progression |
-| Exiled Knight | Main route defense or a contested objective may matter to his team; local open ground and cover affect any fighter | D-042 to D-045 | A new special "defend villagers" or Valor contract |
-| Dark Heroes | Guard road/supply operations, scout flanks, pressure a strategically valid landmark | D-010, D-012, D-019 to D-027, D-073 to D-075 | Omniscient patrols, automatic magical lockdown, globally shared Scout live vision |
+**Dark information:** one Scout owner retains live Scout vision. All Dark Heroes receive the time-stamped *confirmed* Light sightings, never perfect post-sighting tracking (D-012). Old boundary folklore grants no omniscient enemy knowledge.
 
-**Crucial design quality check:** The valley should still be worth traversing when there is no Dark convoy, no eligible Witch shrine, and none of the heroes is promised a unique reward. Otherwise the region is a disguised class-specific amusement park, not a functioning country.
+**Quality rule:** the place must still make sense and offer traversal choices with no shrine, no Dark shipment and no bespoke hero objective in this particular generated seed.
 
-## 5. Player-journey test: strategic decision in a recognizable place
+## 6. Concrete player-journey evaluation
 
-This is a **scenario for evaluation**, not a description of code already implemented.
+**Hypothetical test:** Two Light Heroes cross Orchard Vale while a Dark commander watches a supply route. Their shared chart includes the main road but not local work paths.
 
-**Scenario setup:** Two Light Heroes must pass through the valley to another region. An opposing Dark Hero is protecting a supply route that crosses the main bridge. The players share the known major road on their map; the local channel track is not initially charted. No generic random quest forces them to stop.
+1. From the approach, players identify the productive orchard landscape, village, main crossing and road onward.
+2. A detour reveals the orchard boundary: maintained walk, witness stones, veteran trees and an abandoned road interrupted by older woods. The place has history that can be read without a dialogue popup.
+3. The player discovers ordinary geography, which updates allied maps under D-090. Nothing reveals hidden enemy positions or automatically grants a Witch shrine.
+4. The Dark Scout legitimately notices a Light Hero crossing open ground. Its owner has live vision. Other Dark Heroes have only the confirmed time-stamped sighting.
+5. The Light Hero slips behind wall/tree cover, breaking real line of sight. The Dark commander must decide whether to search near the old boundary or defend the strategic road.
+6. The Light team chooses to pursue an alternative regional route or continue. Investigating the ruined road may tell a story, but does not have to yield treasure or a quest.
+7. Both sides continue functioning across region boundaries without transition seams or map-information leakage.
 
-1. **Orientation:** they identify the orchard rows, wheelhouse, river bend and public bridge. The scene communicates a working valley. They can take the road immediately.
-2. **Discover an actual alternative:** the maintenance channel and paths imply a navigable route upstream. Exploration reveals where it leads, and the discovered *public geography* is shared with allies (D-088/D-090). A channel track alone does not prove there is a river crossing.
-3. **Optional human/older-world contact:** a player comes upon the maintained headwater basin. The upward-running water is visually apparent and separate from Dark corruption. It is not guaranteed to be a quest, shrine or reward.
-4. **Pressure from a known military objective:** a Dark Scout patrol along the road can legitimately confirm a Light Hero sighting. The Scout owner has live vision and all Dark Heroes receive only the time-stamped alert (D-012).
-5. **Breaking pursuit:** the Light Hero disappears behind genuinely opaque orchard wall/tree geometry. The Scout searches according to last-known evidence, rather than tracking a target through unexplored hedges. The Dark Hero must decide whether to extend the pursuit or remain on the supply route.
-6. **Consequential choice:** the Light Heroes can avoid the road if they can establish a legal alternate path, continue to investigate the valley, or abandon the detour. If a Dark strategic supply target is actually present, the Goblin might separately choose to raid it later. Nothing forces a visit to the tree.
-7. **Transition:** the chosen route leaves the valley without loading-screen gameplay discontinuity. The valley's ordinary geography remains on the team map; enemy positions and private clues are not leaked.
+**Successful design result:** the player understands what people do here, why the route bends, how the oldwood matters, and what they risk in taking a different path. The area retains identity when no supernatural event triggers.
 
-**Player outcome to seek:** "I understood where I was, why these roads and buildings existed, what felt older than the villages, and what I risked by changing my route."
+**Failure:** lore only exists in text, every folkloric object is a quest marker, old magic is indistinguishable from corruption, all routes collapse to the same compulsory choke, or cover fails in actual play.
 
-**Rejection criteria:** every activity is a shrine or loot dispenser; culture is conveyed only by a lore paragraph; the bridge is the only possible way to leave; "the old wonder" is only visible in a close-up cinematic; a Scout sees through rendered cover; or Dark domination switches the valley to a generic evil palette.
+## 7. Procedural variation and invariants
 
-## 6. Generator identity and variation
+**Preserve the relational identity if this archetype is approved:**
+- Orchards depend on plausible terrain, water and trade.
+- Villagers have understandable economic lives and intergenerational obligations.
+- Cultivated land borders older woodland with identifiable lines or markers.
+- Customs, stories, paths, architecture and distinctive landmarks express one shared history.
+- Current Dark pressure overlays rather than creates the valley's identity.
+- Routes, LOS and class opportunities follow existing gameplay rules.
 
-**If this archetype is approved, preserve these relational invariants:**
-- Productive orchard settlement supported by suitable terrain/water.
-- Built signs of labor and shared maintenance; roads and storage relate to actual trade routes.
-- A community with **understandable, repeatable reasons** for its customs and relationship with local older magic.
-- An unmistakable older feature that is not by default Dark-created or automatically a shrine.
-- Actual route alternatives at regional or neighboring-region scale and functioning local cover/LOS.
-- Current conflict may occupy/control locations but does not erase the valley's preexisting identity.
+**Vary by seed:**
+- Shape of valley, placement of villages, river, orchards, veteran trees and boundary markers.
+- Which families/community subgroups maintain which portions of the boundary.
+- Which abandoned road, ruin, disputed route or historical trace embodies the cautionary story.
+- Location and type of meaningful alternative approaches, if terrain allows.
+- Whether the region includes a Dark logistics asset, corruptible major landmark, eligible Witch shrine or richer Alchemist habitat, subject to global match constraints.
+- Local expression of the customs within the same cultural premise, without randomizing the whole belief system incoherently.
 
-**Vary by seed and designed palette:**
-- Valley shape and slope, distribution of settlements, crop patterns, watercourse placement and crossings.
-- Where the water source lies, what older wonder marks it (if this exact manifestation is not a locked variant), and what part of the source people protect.
-- How near the major route passes to homes or working fields.
-- Whether corruption, a Dark supply asset or an eligible shrine is present. Do not guarantee these simply to service hero loops.
-- Seasonal visibility/lighting only where rendering and gameplay clarity support them.
-- Which charted and uncharted paths connect outward, while preserving worldwide route validity.
+**Reject generator outputs** that put oldwood markers in arbitrary isolation, require impossible water flow for mills, make long roads detour for no legible reason, put only one legal route in an unintended hard blockade, expose secret places on shared charts or paint everything "evil" when Dark activity appears.
 
-**Never do this:** pick an unrelated folklore snippet from a random list and attach it to the valley; place a source farther *downstream* than its supplied channels; put the old grove in a dry/isolated location with no way locals ever accessed it; place a working mill without usable water/power logic; force all routes into one unavoidable objective choke; reveal hidden sites in the public starting map.
+**Three variation tests:** compact orchard village near a woodland boundary; long valley with hamlets sharing a boundary walk; branching tributary with a former boundary and reclaimed road. All should be clearly related by history and economic logic, not cosmetic prefab reskins.
 
-### Three meaningful seed tests
+## 8. Review gates and non-decisions
 
-- **Compact headwater valley:** source and villages near one another; short main road; western slopes contain most orchard cover.
-- **Long working valley:** two separated hamlets share channels, presenting extended local routes and a distant major crossing.
-- **Branching tributary:** irrigation channels split around a wooded spur and villages sit at different confluences; some detours still must reach a valid regional exit.
+**Gate 1, culture:** Can a reviewer describe the community's livelihoods, founding relationship, inherited practices and remembered warning without a magical riddle? Are social obligations visible in geography?
 
-Each should remain recognizably the **same cultural/economic archetype** while presenting different scouting and travel decisions. Do not compare only palette swaps.
+**Gate 2, image/visual identity:** Create a camera-accurate 3D keyframe showing cultivated rows, village, crossing and old boundary with a legible historical detour. The image must read as a working valley before adding monster props.
 
-## 7. Design and production review gates
+**Gate 3, supernatural agency:** Decide whether the oldwood's claimed agency is literally real, and if so, what specific encounters or consequences convey it to a player. A purely ornamental marvel fails this gate. This is still unresolved.
 
-**Gate A: cultural coherence (design review now).** A reviewer can explain who works here, what is shared/contested, why the roads and channels exist, why the community observes its custom, and which supernatural fact is directly present. Ambiguity about the *ultimate cosmology* is acceptable; ignorance of the custom's purpose is not.
+**Gate 4, playability:** Validate local navigation, alternate interregional travel, line-of-sight cover, persistence and per-player knowledge. Do not overwrite M1's proven forest-crossing encounter until a connected test passes.
 
-**Gate B: actual game-camera keyframe (future asset).** Show valley silhouette with road, village, source/grove, waterworks and economy legible at expected strategy view. Later, a closer inspection image may establish the upward-running root detail. Image generation is not itself gameplay implementation.
+**Gate 5, generative robustness:** Produce three reproducibly different layouts that preserve social and geographical causality and meaningfully change travel decisions.
 
-**Gate C: one honest traversal/LOS test (future engineering).** Test route connectivity, concealed movement, last-known-position search and one cross-region exit. Preserve the working M1 forest crossing and avoid switching default matches to generated world content.
+**Not approved:** a formal spirit pact as an executable magical law, a forest ruler/pantheon, special harvest buffs, dynamic tree attacks, animated road reclamation, NPC social simulations, a hard biome roster, an extra power for any Hero, or new Dark corruption rules.
 
-**Gate D: three variations (future generator).** The same causal regional identity should survive different seeded topologies, while local approach choices and risk differ significantly. Track rejected seeds and their failure reasons.
+## 9. Research sources and provenance
 
-**Gate E: avoid stolen mechanics.** This prototype has not approved new water-use rules, livelihoods simulation, spring effects, player folklore powers, NPC trade, shrine placement, contracts, travel times, Dark supplies on every map or exact region size.
+**Historical inspirations, not automatically Grimm Dominion canon:**
+- English Folk Dance and Song Society, "Wassailing Apple Trees": https://www.folkengland.org/learning/resources/beginners-guides/48-british-folk-customs-from-plough-monday-to-hocktide/3365-wassailing-apple-trees
+- National Trust, "Wassailing: ritual and revelry": https://www.nationaltrust.org.uk/discover/history/art-collections/wassailing-ritual-and-revelry
+- Rode Parish Council, "Beating the Bounds": https://www.rodeparishcouncil.gov.uk/history-of-rode/social-history/civil-administration/
+- Milton Keynes Heritage Association, "Beating the Bounds": https://www.mkheritage.org.uk/beating-the-bounds/
+- Howard Huws, "Welsh rag-wells" (2022): https://www.tandfonline.com/doi/full/10.1080/04308778.2022.2113712
+- Study of Irish pilgrimage routes and offerings: https://www.mdpi.com/2077-1444/13/12/1219
 
-## Deliberately unresolved and next creator review
+**Withdrawn from earlier prototypes:** "The Last Fruit"/unseen visitor, artificial confusion about why villagers practice a custom, upward-running water as a standalone spectacle, a compulsory three-route arena, and obligatory individualized POIs for every Light Hero.
 
-**Most important creative question:** Is the headwater, shared-water culture and the *specific visible ancient wonder* a convincing and distinctive direction, or does it still feel too authored or neatly symbolic?
-
-Before implementation, the creator should judge the valley's actual mood and the truthfulness of its cultural logic. The headwater tradition and upward water are proposals, not confirmation, and **D-093 requires diversity across the kingdom**, not this relationship in every region.
-
-**Changes from previous version:** removed the "last fruit" custom and arbitrary unseen visitor; replaced manufactured disagreement with a comprehensible social practice; made one supernatural visual phenomenon concrete; grounded the layout in water, agriculture and trade; removed guaranteed three-lane geography and obligatory per-class POIs; kept D-012 Scout and shrine/Alchemist rules intact; added actual rejection conditions and cultural coherence tests.
-
-No gameplay code or artwork was changed.
+**Next creator decision:** Is an old claim to the land and boundary traditions the right cultural core, and what if anything is actually supernatural about that claim? No implementation authorized by this speculative prototype.
