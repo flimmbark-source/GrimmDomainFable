@@ -1,8 +1,15 @@
 # Implementation status
 
-**Last updated:** 2026-11-11, M1 implementation on `integration/m0-preserve-design-20261111`.
+**Last updated:** 2026-11-12, M1 camera-follow correction and creator chase feedback on `integration/m0-preserve-design-20261111`.
 
-This file reports what the code does and what was actually run. Behaviour described here is **implemented behaviour, not approved design**. Choices engineering had to make are listed as P-1 to P-12 in [decisions.md](decisions.md) for creator review. **M1 is not complete until the creator and ChatGPT have played it** ([playtest checklist](playtests/m1-playtest-checklist.md)).
+This file reports what the code does and what was actually run. Behaviour described here is **implemented behaviour, not approved design**. Choices engineering had to make are listed as P-1 to P-12 in [decisions.md](decisions.md) for creator review. **M1 still requires full creator acceptance** ([playtest checklist](playtests/m1-playtest-checklist.md)). The creator has tested the chase but not yet approved the complete set of M1 interactions.
+
+## Creator observation and follow-up fixes (2026-11-12)
+
+- **Observed:** the creator reports that the **Scout chase feels great because breaking line of sight enables escape**. This supersedes the earlier engineer's qualitative assessment that pursuit pacing feels too fragile; the measured scripted edge cases remain useful test cases, but are **not an approved design defect** or grounds to change chase speeds.
+- **Camera defect:** in strategy view the camera initially focused near the hero but stayed stationary as the hero moved. The client now **follows the hero by default**, with WASD/arrows for manual pan and **Space to recenter and resume following**. Explicit camera focus (used by automated screenshots) remains independent of follow; switching from hero to strategy view resumes following.
+- **Verification environment:** creator's Codespace reported `MODULE_NOT_FOUND` for Playwright; this was a missing optional local/global browser-test package, **not a failed hunt/escape behavior test**. Browser-check scripts now give actionable installation instructions and the M0 browser test expects camera-follow instead of the old fixed-screen click destination. From repo root run `npm install --no-save playwright` and `npx playwright install chromium` before `npm run verify:m1`.
+- **Pending:** rerun typecheck, build, and both browser suites on the modified integration branch. No new passing test result is claimed by this code review, and the chase observation is not approval of every provisional M1 choice (P-1 through P-12).
 
 ## Run it
 
@@ -93,7 +100,7 @@ Spec stories M1-01 to M1-10 are in `tests/m1-stories.test.ts`; M1-09 (two or mor
 ## Known defects and limitations
 
 **Gameplay, most important first**
-- **Escape is fragile.** Scout chase speed is 4.6 against the hero's 6.0. Fleeing at once along a covered route loses it in about 10 s; open ground takes about 13 s, so cover helps only a little. If the hero hesitates a few seconds and the Scout closes to point-blank, the same route did not shake it in two browser runs.
+- **Earlier scripted escape concern, now superseded by creator gameplay feedback.** Browser-run measurements: with a Scout speed of 4.6 and hero speed of 6.0, an immediate covered escape took about 10 s versus 13 s in open ground, and point-blank pursuit sometimes proved hard to shake. **The creator subsequently reported the chase feels good because line-of-sight escape works.** Do not change speeds on the basis of the earlier concern alone; keep the edge cases for later testing.
 - **Being caught does nothing.** The Scout stops beside the hero. No combat or capture exists.
 - **A single tree is fiddly cover.** The occluder is the trunk; a hero must be almost exactly behind it.
 - A guard order has no facing: the Scout faces the way it arrived and sweeps about 60 degrees either side.
@@ -103,7 +110,7 @@ Spec stories M1-01 to M1-10 are in `tests/m1-stories.test.ts`; M1-09 (two or mor
 - Actors still do not collide with each other. No client-side prediction. The hero camera does not avoid obstacles.
 
 **Not verified**
-- **No human has played M1.** Whether the cues are readable and the encounter is fun is unknown.
+- **Creator has tested the chase and reports positive line-of-sight gameplay.** Full blind-crossing, Dark-commander, feedback/audio and other checklist evaluations are not yet established.
 - **Audio has never been heard.** The checks count cues triggered; headless Chromium plays nothing audible.
 - Frame rate on a real GPU is unknown (software rendering only).
 - The Brute (M1-07) is tested in simulation only; it was never run in a browser.
@@ -118,6 +125,6 @@ Spec stories M1-01 to M1-10 are in `tests/m1-stories.test.ts`; M1-09 (two or mor
 - `npm audit` advisories in transitive Colyseus dependencies, unchanged from M0.
 
 ## Suggested next steps
-1. Creator and ChatGPT run the three scenarios in the playtest checklist and rule on P-1 to P-12, P-8 (chase speed) first.
-2. Rerun `npm run verify:m1` once after the two script fixes.
-3. Decide what being caught means before M2; the hunt has no stakes without it.
+1. On the integration branch, pull the camera and browser-check fixes, install Playwright for Codespace checks and rerun typecheck/build/M0/M1 browser suites.
+2. Confirm the new strategy-camera follow in real play, including manual pan and Space recenter. Complete the blind-crossing and Dark-commander checklist; preserve the creator's positive chase verdict unless new observations justify changing it.
+3. Review remaining provisional decisions P-1 through P-12 and determine the consequence of a genuinely caught hero before M2; currently capture/combat is absent.
