@@ -1,6 +1,6 @@
 # Kingdom geography and large-world architecture
 
-**Status:** D-084 confirms a huge, seamless, interconnected kingdom as the end-state target. D-085 confirms guided procedural geography. **D-086 confirms hybrid strategic topology: castle approaches plus independent regional connections and loops. D-087 confirms deliberate, eventful journeys between major regions. D-088 confirms partially known starting geography with exploration-based discovery of secondary routes and secrets. D-089 confirms common baseline geographic knowledge with character-specific starting hints.** This brief separates confirmed relationships from proposals. No specific geographic layout, map size, road count or generation algorithm is approved.
+**Status:** D-084 confirms a huge, seamless, interconnected kingdom as the end-state target. D-085 confirms guided procedural geography. **D-086 confirms hybrid strategic topology: castle approaches plus independent regional connections and loops. D-087 confirms deliberate, eventful journeys between major regions. D-088 confirms partially known starting geography with exploration-based discovery of secondary routes and secrets. D-089 confirms common baseline geographic knowledge with character-specific starting hints. D-090 confirms layered team sharing of discoveries.** This brief separates confirmed relationships from proposals. No specific geographic layout, map size, road count or generation algorithm is approved.
 
 ## Confirmed design boundaries
 
@@ -17,6 +17,7 @@
 - **D-087 approves meaningful journeys:** travel between major regions should give players discovery, risk, optional opportunities and real routing decisions; do not treat distance as filler or require a pre-approved transportation system. Actual scale and duration remain unchosen.
 - **D-088 approves a partially charted starting map:** broad geography and major destinations are known; secondary routes, hidden sites and other lesser-known opportunities are discovered by travel or clues. Static map knowledge is distinct from current enemy position, patrol behavior, faction intelligence and sight-based information.
 - **D-089 approves a shared starting chart plus specialty clues:** all eight players start from the same broad geographic map while individual characters may receive extra role-relevant hints. Hints do not grant live enemy positions, automatically expose enemy secrets, or imply full accuracy. Exact content, communication and reveal rules remain undecided.
+- **D-090 approves layered sharing:** ordinary public geography discovered by a player updates the allied faction's map automatically, while personal class clues, unverified hypotheses and sensitive intelligence stay private until deliberately communicated. D-012 confirmed Dark Scout sighting alerts are shared regardless, with live Scout vision owner-private.
 
 ## Proposed strategic geography (not canon)
 
@@ -76,14 +77,22 @@ The world generator should validate that major paths have meaningful activity op
 
 **Examples for exploration, not yet approved:** the Alchemist might recognize where certain ingredient habitats could be found, the Witch might suspect that a district has a sacred history, or a Dark commander might know that an established road serves an important logistics corridor. Do not codify these as guaranteed starting facts without another design choice.
 
-## Next design choice: discoveries and team sharing (UNRESOLVED)
+## Confirmed team discovery sharing (D-090)
 
-**A. Automatic team sharing:** when someone finds a road, landmark, or clue, that information is immediately recorded for all allies.
+**Selected C: layered sharing.** Ordinary public road and landmark discoveries automatically populate the same-faction exploration chart. Personal character clues, hypotheses and sensitive reconnaissance are not automatically broadcast. Their owners can share them deliberately, through an interaction to be designed.
 
-**B. Personal knowledge until communicated:** explorers retain discoveries privately until they choose to relay them, creating coordination, secrecy, and possible communication costs.
+**Security and intelligence boundary:** D-012 overrides any generic sharing scheme for Dark Scout confirmed sightings: every Dark player receives the time-stamped confirmed alert; only the Scout owner has live Scout vision. Updating the map must not reveal hidden enemies or formerly secret opposing locations simply because the map geometry becomes known. A road is not proof of who's currently using it.
 
-**C. Layered sharing:** ordinary geographical discoveries such as roads and public landmarks update the team map automatically, while sensitive character-specific clues, hypotheses and strategic intelligence remain personal unless explicitly shared. Confirmed Dark Scout sighting alerts still follow D-012 regardless.
+**Implementation still open:** exact geography/sensitive-info classification, choice of sharing gestures, inaccuracies and staleness, cooperation UX, reveal radius/detail, and persistence/reconnection.
 
-**Recommendation, not approved: C.** It lets the party navigate a huge world together without repetitive map administration, while preserving special discoveries and private intelligence as meaningful choices. Exact collaboration interface, reliability and persistence must be specified later.
+## Next design choice: how should biomes fit the kingdom? (UNRESOLVED)
 
-Unresolved: exact world size/travel time and potential transportation, starting map detail, hint accuracy/content and team discovery sharing, road hierarchy and route-count guarantees, terrain elevations, settlement density, landmark and secret site placement, caves/interiors, supply routes, visibility/discovery, and long-distance activity.
+**A. Broad biome bands:** large predictable climatic zones with relatively clear transitions and resource geography. Easy to learn but can make seed variation and route choices repetitive.
+
+**B. Highly mixed biomes:** numerous distinct nearby environments with abrupt changes. Dense variety, but risks incoherent geography and removes the feeling of traveling to remote specialized places.
+
+**C. Geographic regions with local exceptions:** large coherent forests, uplands, marshes and settled valleys tied to rivers, elevation, climate and routes, with some smaller unusual pockets and transition zones. Seeded topology and generator constraints keep relevant character opportunities reachable.
+
+**Recommendation, not approved: C.** Cohesive broad regions make expeditions legible and valuable, while unusual pockets support surprising discoveries. This is geography design only, not approval of any fixed biome lineup, rarity table or ingredient recipe.
+
+Unresolved: exact world size/travel time and potential transportation, starting map detail, hint accuracy/content and sharing UI, road hierarchy and route-count guarantees, terrain elevations, settlement density, landmark and secret site placement, caves/interiors, supply routes, visibility/discovery, and long-distance activity.
