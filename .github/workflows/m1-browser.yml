@@ -1,0 +1,63 @@
+name: M1 browser gameplay verification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  browser-gameplay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Build game and server
+        run: npm run build
+
+      - name: Install browser-test runtime
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Start reproducible M1 server
+        shell: bash
+        run: |
+          GRIMM_BOTS=none GRIMM_SEED=7 npm start > /tmp/grimm-browser-server.log 2>&1 &
+          for attempt in $(seq 1 45); do
+            if (echo > /dev/tcp/127.0.0.1/2567) >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/grimm-browser-server.log
+          exit 1
+
+      - name: Verify M0 browser and camera regression
+        run: npm run verify:browser -- http://127.0.0.1:2567
+
+      - name: Verify M1 multiplayer hunt and information privacy
+        run: npm run verify:m1 -- http://127.0.0.1:2567
+
+      - name: Archive actual browser evidence and server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-browser-evidence
+          path: |
+            docs/evidence/*.png
+            /tmp/grimm-browser-server.log
+          if-no-files-found: warn
