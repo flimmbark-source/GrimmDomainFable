@@ -27,7 +27,7 @@ function loadPlaywright() {
     return require(resolve(globalRoot, 'playwright'));
   } catch (error) {
     if (error?.code !== 'MODULE_NOT_FOUND') throw error;
-    throw new Error('Playwright is missing. In the repository root run:\\n  npm install --no-save playwright\\n  npx playwright install chromium\\nThen rerun the browser check.');
+    throw new Error('Playwright is missing. In the repository root run:\n  npm install --no-save playwright\n  npx playwright install chromium\nThen rerun the browser check.');
   }
 }
 
