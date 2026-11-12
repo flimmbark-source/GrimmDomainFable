@@ -69,7 +69,7 @@ export class InputController {
     if (e.code === 'Space') {
       e.preventDefault();
       const hero = this.host.heroPosition();
-      if (hero) this.host.rig.focusOn(hero);
+      if (hero) this.host.rig.followHero(hero);
     }
     if (e.code === 'KeyX' && !e.repeat) this.host.send({ type: 'stop' });
     if (e.code === 'KeyF' && !e.repeat) this.host.send({ type: 'whistle' });
