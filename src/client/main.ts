@@ -149,7 +149,8 @@ async function start(): Promise<void> {
     const hero = heroPosition();
     if (hero && !initialFocusDone) {
       initialFocusDone = true;
-      rig.focusOn(new THREE.Vector3(hero.x, 0, hero.z - 6));
+      // Start centered on the hero and follow their movement in strategy view.
+      rig.followHero(hero);
       if (params.get('cam') === 'hero') input.setMode('hero');
       if (params.get('debug') === '1') {
         debugOverlay.visible = true;
