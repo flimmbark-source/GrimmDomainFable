@@ -48,10 +48,11 @@ const { chromium } = loadPlaywright();
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 const problems = [];
 
-async function open(query) {
-  // In CI use a smaller software-rendered commander view to avoid starving
-  // network snapshot processing, while keeping the Light gameplay view large.
-  const viewport = process.env.CI && query === 'team=dark'
+async function open(query, lightweight = false) {
+  // Keep the commander's real 1280x720 viewport: its right-click orders
+  // require accurate ground-ray targeting at normal zoom. Only the passive
+  // Dark teammate's observer tab is reduced in CI to lower software GPU load.
+  const viewport = process.env.CI && lightweight
     ? { width: 480, height: 270 }
     : { width: 1280, height: 720 };
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
@@ -122,7 +123,7 @@ const fmt = (a) => (a ? `${a.x.toFixed(1)}, ${a.z.toFixed(1)}` : 'not sent');
 try {
   const light = await open('team=light');
   const owner = await open('team=dark'); // first Dark seat: owns the Scout
-  const mate = await open('team=dark'); // second Dark seat: owns nothing
+  const mate = await open('team=dark', true); // second Dark seat, observer-only tab
   const seats = await Promise.all([light, owner, mate].map(async (p) => (await snap(p)).you.slot));
   check('three tabs seated: Light 4, Dark 0 (Scout owner), Dark 1', seats.join() === '4,0,1', seats.join());
 
