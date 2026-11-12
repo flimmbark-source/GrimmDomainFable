@@ -63,6 +63,8 @@ export class CameraRig {
   private heroClear = 1;
   /** Largest hero-camera distance that keeps the lens out of foliage (smoothed). */
   private foliageReach = Infinity;
+  /** 0..1: how far the hero camera has dropped under a canopy. */
+  private canopyDrop = 0;
 
   constructor(panLimit: number | PanLimits, private readonly world: CameraWorld | null = null) {
     this.limits = typeof panLimit === 'number' ? { minX: -panLimit, maxX: panLimit, minZ: -panLimit, maxZ: panLimit } : panLimit;
@@ -150,25 +152,37 @@ export class CameraRig {
       // hero's shoulder instead of pressing the lens into its back.
       const liftFor = (r: number) => Math.max(0, 3 - r) * 1.1;
       let lift = liftFor(reach);
+      let drop = 0;
       if (world?.inFoliage) {
-        // Shorten the camera until the lens is out of every crown; under a
-        // canopy, do not rise into it either.
-        const at = (r: number, l: number): [number, number, number] => [
+        // Keep the lens out of every crown. First try going under the canopy
+        // (as a walker in an orchard sees it), then come closer, and never rise into leaves.
+        const low = 1.55;
+        const at = (r: number, l: number, under: boolean): [number, number, number] => [
           heroPosition.x - forwardX * r * Math.cos(this.heroPitch),
-          baseY + HERO.lookHeight + r * Math.sin(this.heroPitch) + l,
+          under ? baseY + low : baseY + HERO.lookHeight + r * Math.sin(this.heroPitch) + l,
           heroPosition.z - forwardZ * r * Math.cos(this.heroPitch),
         ];
         let free = reach;
-        while (free > 1.4 && world.inFoliage(...at(free, liftFor(free)))) free -= 0.35;
+        let under = false;
+        for (; free > 1.4; free -= 0.35) {
+          if (!world.inFoliage(...at(free, liftFor(free), false))) break;
+          if (!world.inFoliage(...at(free, 0, true))) {
+            under = true;
+            break;
+          }
+        }
         this.foliageReach = free < this.foliageReach ? free : this.foliageReach + (free - this.foliageReach) * Math.min(1, dt * 2.5);
+        this.canopyDrop += ((under ? 1 : 0) - this.canopyDrop) * Math.min(1, dt * (under ? 10 : 2.5));
         reach = Math.min(reach, this.foliageReach);
         lift = liftFor(reach);
-        if (world.inFoliage(...at(reach, lift))) lift = 0;
+        if (under || world.inFoliage(...at(reach, lift, false))) lift = 0;
+        const normalY = HERO.lookHeight + reach * Math.sin(this.heroPitch) + lift;
+        drop = (normalY - low) * this.canopyDrop;
       }
-      target.lookAt.set(heroPosition.x, baseY + HERO.lookHeight - lift * 0.35, heroPosition.z);
+      target.lookAt.set(heroPosition.x, baseY + HERO.lookHeight - lift * 0.35 - drop * 0.45, heroPosition.z);
       target.position.set(
         heroPosition.x - forwardX * reach * Math.cos(this.heroPitch),
-        baseY + HERO.lookHeight + reach * Math.sin(this.heroPitch) + lift,
+        baseY + HERO.lookHeight + reach * Math.sin(this.heroPitch) + lift - drop,
         heroPosition.z - forwardZ * reach * Math.cos(this.heroPitch),
       );
       // Never under the ground (terrace above, river bank below).

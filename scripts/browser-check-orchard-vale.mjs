@@ -154,7 +154,7 @@ try {
 
   // --- Tour: orchard, ford, boundary walk, ruin ------------------------------------
   await walkTo(-60, 22);
-  await shot('hero-orchard-lane', { mode: 'hero', yaw: -1.2, pitch: 0.14, distance: 8 });
+  await shot('hero-orchard-lane', { mode: 'hero', yaw: 1.9, pitch: 0.14, distance: 8 });
   // Sweep the hero camera round in the orchard: the lens must never end up inside a crown.
   const inLeaves = [];
   for (const yaw of [-1.2, -0.4, 0.4, 1.2, 2.0, 2.8, 3.6, 4.4]) {

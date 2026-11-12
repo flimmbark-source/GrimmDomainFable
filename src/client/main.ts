@@ -30,16 +30,20 @@ const CROWNS: Partial<Record<string, [number, number, number]>> = {
 /** Is a point inside some tree's crown (an ellipsoid round its centre)? */
 function foliageTest(map: MapDef, heightAt: (x: number, z: number) => number): (x: number, y: number, z: number) => boolean {
   return (x, y, z) => {
-    const near = propsNearBox(map, x - 7, x + 7, z - 7, z + 7);
+    const near = propsNearBox(map, x - 9, x + 9, z - 9, z + 9);
     const list = near ?? map.props.map((_, i) => i);
     for (const i of list) {
       const p = map.props[i]!;
       const crown = CROWNS[p.kind];
       if (!crown) continue;
       const [cy, rh, rv] = crown;
-      const dx = (x - p.x) / (rh * p.scale);
-      const dz = (z - p.z) / (rh * p.scale);
-      const dy = (y - heightAt(p.x, p.z) - cy * p.scale) / (rv * p.scale);
+      // Lumps and fruit poke out past the nominal crown, and the lens has a
+      // near plane: test a generously padded ellipsoid.
+      const h = rh * p.scale * 1.3 + 0.6;
+      const v = rv * p.scale * 1.3 + 0.4;
+      const dx = (x - p.x) / h;
+      const dz = (z - p.z) / h;
+      const dy = (y - heightAt(p.x, p.z) - cy * p.scale) / v;
       if (dx * dx + dy * dy + dz * dz < 1) return true;
     }
     return false;
