@@ -65,13 +65,13 @@ Open **http://localhost:2567/?region=orchard_vale**. With `npm run dev` instead,
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | clean |
-| `npm test` | **113 passed** in 8 files (86 existing + 27 new in `tests/orchard-vale.test.ts`) |
+| `npm test` | **114 passed** in 8 files (86 existing + 28 new in `tests/orchard-vale.test.ts`) |
 | `npm run build` | client and server built |
-| `npm run verify:orchard` (new, 3 real Chromium tabs) | **20/20** |
+| `npm run verify:orchard` (new, 3 real Chromium tabs; also run by the owner's new CI job) | **21/21** |
 | `npm run verify:browser` (M0, default map) | **17/17** |
 | `npm run verify:m1` (M1 hunt, default map) | **36/36** on a fresh server; see the flakiness note below |
 
-`verify:orchard` covers, with real mouse and keyboard input against the real server: default map unchanged; region chosen by server room; eight slots; hero drawn on shared ground height; mouse click on sloping terrain; strategy follow, pan and Space recentre; crossing the ford; walking the bridge crown; holding W in hero view until the river bank stops the hero short of the water; the hero camera pulling in against a cottage wall; climbing the terrace ramp; a Scout sighting reaching both Dark seats while live vision stays with the owner; the Light client receiving no Dark evidence or monster state; escaping over the ford until the Scout searches; no console errors.
+`verify:orchard` covers, with real mouse and keyboard input against the real server: default map unchanged; region chosen by server room; eight slots; hero drawn on shared ground height; mouse click on sloping terrain; strategy follow, pan and Space recentre; crossing the ford; walking the bridge crown; holding W in hero view until the river bank stops the hero short of the water; the hero camera pulling in against a cottage wall; the hero camera keeping its lens out of tree crowns at 8 headings in the orchard; climbing the terrace ramp; a Scout sighting reaching both Dark seats while live vision stays with the owner; the Light client receiving no Dark evidence or monster state; escaping over the ford until the Scout searches; no console errors.
 
 **M1 browser check flakiness.** Run as CI runs it (M0 then M1 on one server), M1 once failed 4 to 5 steps that wait 4 to 5 seconds of wall-clock time for the Scout to react, in a browser drawing about one frame per second; the next identical sequence passed 36/36. The forest-crossing simulation is unchanged (it takes the old code paths; all M1 determinism and story tests pass). To separate environment timing from regression, the same sequence was run three times on each build, alternating, each on a fresh server:
 
@@ -89,12 +89,12 @@ Device: this cloud container, headless Chromium with **SwiftShader** (software W
 
 | View | Draw calls | Triangles drawn (incl. shadow pass) | FPS (software) |
 | --- | --- | --- | --- |
-| Strategy, village overview, zoomed out | 338 | 686k | 0.7 to 1.4 |
-| Strategy, west gate | 173 | 471k | 1.3 to 1.7 |
-| Hero, orchard lane (worst case seen) | 335 | 712k | 0.5 to 1.0 |
-| Hero, mill yard | 171 | 523k | 1.2 to 1.4 |
+| Strategy, village overview, zoomed out | 339 | 746k | 0.5 to 1.5 |
+| Strategy, west gate | 160 | 535k | 1.3 to 2.3 |
+| Hero, inside an orchard row (worst case seen) | 330 | 778k | 0.5 to 1.2 |
+| Hero, mill yard | 171 | 573k | 0.7 to 3.0 |
 
-GPU objects after a full tour: about 350 geometries, 6 textures, 16 shader programs. JS heap 40 to 48 MB. Load (connect plus build) about 15 s in this browser. Triangles per layer before culling: barriers 87k, ground cover 85k, apple trees 69k, backdrop 62k, ground 56k, oldwood 36k.
+GPU objects after a full tour: 290 to 350 geometries, 6 textures, 16 shader programs. JS heap 40 to 51 MB. Load (connect plus build) about 13 to 18 s in this browser. Triangles per layer before culling: ground cover 117k, barriers 87k, apple trees 81k, backdrop 62k, ground 56k, oldwood 43k.
 **Not measured:** a hardware-GPU browser. On ordinary desktop GPUs this load is expected to be comfortable, but that is an expectation, not a result. The obvious next optimisations, if needed, are merged hedge LOD, ground-cover distance fade and fewer shadow casters.
 
 ## Visual review against the brief
@@ -102,7 +102,8 @@ GPU objects after a full tour: about 350 geometries, 6 textures, 16 shader progr
 **The concept image `docs/references/orchard-vale-concept.png` was not in the repository, on any branch, or attached to the session**, so it could not be viewed. The comparison below is against the brief's written description of it (composition, painterly materials, orchard density, settlement atmosphere, visible paths) and the region doc's visual identity section. It should be repeated against the actual image.
 
 **Iteration 1** (first in-engine capture, `orchard-vale-iteration1-*.png`): buildings read well, but grass cards were lit from below and showed as black scratches everywhere; foliage crowns showed hard dark facets and self-shadow streaks; roads looked bright orange-beige; the ground was cut off sharply at the region edge; the region took long enough to load that clients were dropped by the server heartbeat.
-**Fixes applied:** cards lit with ground normals; crowns and hedges stopped receiving their own shadow map and use flatter colour ranges; road and roof palette desaturated; painted apron with roads running out of the region; brighter sky light and softer sun; thatch ridges rebuilt; fruit made smaller; region build split into stages with a longer server heartbeat grace.
+**Fixes applied:** cards lit with ground normals; crowns and hedges stopped receiving their own shadow map and use flatter colour ranges; road and roof palette desaturated; painted apron with roads running out of the region; brighter sky light and softer sun; thatch ridges rebuilt; fruit made smaller and rounder; region build split into stages with a longer server heartbeat grace.
+**Iteration 2 (camera):** the final captures exposed that inside an orchard row the hero camera put its lens in a neighbouring crown, hiding the hero. Wall avoidance had ignored thin trunks on purpose. Now the camera first drops under the canopy (about 1.55 m, as a walker sees an orchard), then comes closer, and never rises into leaves; a browser check sweeps eight headings in the orchard. The same review found the orchard rows had shifted when an unrelated wall was added (they shared one random stream); rows and scatters now draw from their own seeded streams, with a unit test.
 **Final captures** (`orchard-vale-strategy-*.png`, `orchard-vale-hero-*.png`, all from the running game):
 - Strengths: the strategy view now reads as a working valley before any monster appears: river, bridge, roofs, rows and lanes are legible at a glance; the hero view has depth (village and bridge framed by the oldwood, castle on the skyline); the terraces, ramp and witness-tree bend are physically present, not painted.
 - Weaknesses still visible: tree crowns are lumpy low-poly blobs rather than painted foliage masses; the ground texture is soft up close in hero view; there are no characters or animals besides the heroes and monsters, so "lived-in" relies on props and smoke; building roofs are clean (little moss or repair variety); far backdrop trees are simple; lighting is a single fixed afternoon.

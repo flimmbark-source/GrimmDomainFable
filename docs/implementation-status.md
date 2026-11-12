@@ -39,11 +39,11 @@ npm start
 | Command | What it does |
 | --- | --- |
 | `npm run typecheck` | `tsc --noEmit` over client, server, shared, tests |
-| `npm test` | Vitest: 113 tests in 8 files (27 for Orchard Vale) |
+| `npm test` | Vitest: 114 tests in 8 files (28 for Orchard Vale) |
 | `npm run build` | client to `dist/client`, server to `dist/server` |
 | `npm run verify:browser [url]` | M0 regression in real Chromium (16 checks) |
 | `npm run verify:m1 [url]` | M1 hunt scenario in three real Chromium tabs (36 checks). Start the server with `GRIMM_BOTS=none GRIMM_SEED=7` |
-| `npm run verify:orchard [url]` | Orchard Vale in three real Chromium tabs (20 checks) and evidence screenshots. Default url http://localhost:2567 |
+| `npm run verify:orchard [url]` | Orchard Vale in three real Chromium tabs (21 checks) and evidence screenshots. Default url http://localhost:2567 |
 | `npm run plot:region [mapId] [out.svg]` | Top-down plan of a map's colliders, paths and reachable ground |
 
 Server switches (environment variables, never client options): `GRIMM_BOTS=none` or `1,5`; `GRIMM_SEED=7`; `GRIMM_MAP=forest_crossing_v1_brute` (adds a Brute); `GRIMM_DEBUG=1` streams every monster's senses to all clients for the `G` overlay and **switches information hiding off**.
