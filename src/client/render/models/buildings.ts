@@ -148,6 +148,16 @@ function chimney(m: Model, kind: BuildingKind, y0: number, st: Style, size = 0.9
   m.post(0.14, 0.18, 0.34, C.roofDark, { p: [c.x + size * 0.22, c.y, c.z + 0.05], shade: 0.1 });
 }
 
+/** A thatched ridge: a rolled cap with pegged liggers, built along local x. */
+function thatchRidge(m: Model, length: number, x: number, y: number, seed: number): void {
+  const r = new Rand(seed + 17);
+  m.cyl(0.32, 0.32, length, C.thatchDark, { p: [x, y, 0], r: [0, 0, Math.PI / 2], mottle: C.thatch, shade: 0.15 }, 8);
+  for (let i = 0; i < Math.round(length / 0.9); i++) {
+    const lx = x - length / 2 + 0.45 + i * 0.9;
+    m.box(0.1, 0.06, 0.74, C.timberPale, { p: [lx, y + 0.08, 0], r: [0, r.range(-0.05, 0.05), 0], shade: 0 });
+  }
+}
+
 /** A patch of ivy climbing the +z face. */
 function ivy(m: Model, x: number, y: number, z: number, w: number, h: number, seed: number): void {
   const r = new Rand(seed);
@@ -230,7 +240,7 @@ function cottageB(variant: number): Part[] {
   // Thatch: thick, rounded, low eaves.
   const thA = tint(C.thatch, variant * 0.01);
   gableRoof(m, { length: mainW, span: D, y: wallTop, pitch: 3.0, eave: 0.7, verge: 0.45, courses: 6, a: thA, b: C.thatchDark, gable: st.plaster, timber: st.timber, seed: variant + 5, sag: 0.1 });
-  m.lump(0.5, C.thatchDark, { p: [mx, wallTop + 3.15, 0], s: [mainW * 1.1, 0.6, 0.9], soft: true, shade: 0.2 }, 1, variant);
+  thatchRidge(m, mainW + 0.9, mx, wallTop + 3.1, variant);
   // Lean-to on the right end: weatherboard, mono-pitch.
   m.block(1.5, 1.95, D - 0.9, C.board, { p: [hx - 0.75, 0.45, -0.2], mottle: C.boardGrey, shade: 0.25 });
   m.box(1.9, 0.14, D - 0.5, st.roofB, { p: [hx - 0.72, 2.75, -0.2], r: [0, 0, -0.42], mottle: C.roofMoss, shade: 0.2 });
@@ -569,7 +579,7 @@ function barn(variant: number): Part[] {
   for (const yaw of [0, Math.PI]) m.at([0, 0, 0], yaw, () => frameFace(m, W, 0.7, top, hz - 0.01, st, 4, false, 3));
   for (const yaw of [Math.PI / 2, -Math.PI / 2]) m.at([0, 0, 0], yaw, () => frameFace(m, D, 0.7, top, hx - 0.01, st, 3, true, 5));
   gableRoof(m, { length: W, span: D, y: top, pitch: 3.7, courses: 9, eave: 0.7, verge: 0.5, a: tint(C.thatch, -0.02), b: C.thatchDark, gable: C.board, timber: st.timber, seed: variant + 61, sag: 0.12 });
-  m.lump(0.5, C.thatchDark, { p: [0, top + 3.85, 0], s: [W * 1.05, 0.55, 0.9], soft: true, shade: 0.2 }, 1, 4);
+  thatchRidge(m, W + 1.0, 0, top + 3.8, variant + 4);
   // Great doors (one leaf ajar is drawn flat: the barn is solid), with cross braces.
   for (const sx of [-1, 1]) {
     m.box(1.7, 3.0, 0.12, st.door, { p: [sx * 0.9, 2.2, hz + 0.04], mottle: tint(st.door, 0.06), shade: 0.2 });

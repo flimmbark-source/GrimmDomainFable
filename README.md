@@ -41,6 +41,9 @@ npm run dev
 
 Open http://localhost:5173. The Colyseus server is on port 2567. Browser connection and test commands are in [implementation status](docs/implementation-status.md).
 
+## Orchard Vale test region
+After `npm run build && npm start`, open http://localhost:2567/?region=orchard_vale. See the [Orchard Vale implementation report](docs/production/orchard-vale-implementation-report.md). The region's folklore is candidate direction, not canon.
+
 ## Review and next work
 1. Read [confirmed and open decisions](docs/decisions.md) before changing game mechanics.
 2. Review [PR #5](https://github.com/flimmbark-source/GrimmDomainFable/pull/5) for M0 integration and run the verification checks from [issue #2](https://github.com/flimmbark-source/GrimmDomainFable/issues/2).

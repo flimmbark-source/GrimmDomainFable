@@ -13,7 +13,7 @@ import { Model, Rand, tint } from '../modelkit.ts';
 import { VALE as C } from '../palette.ts';
 import { barrel } from './buildings.ts';
 
-const octa = (r: number) => new THREE.OctahedronGeometry(r, 0);
+const octa = (r: number) => new THREE.IcosahedronGeometry(r, 0);
 
 function wheel(m: Model, x: number, y: number, z: number, r: number): void {
   m.cyl(r, r, 0.1, C.timberDark, { p: [x, y, z], r: [0, 0, Math.PI / 2], shade: 0.1 }, 12);
@@ -419,7 +419,7 @@ const COVER: Record<CoverKind, () => Part[]> = {
   },
   windfall: () => {
     const m = new Model();
-    for (const [x, z, c] of [[0, 0, C.appleFruit], [0.3, 0.12, C.appleFruitGold], [-0.15, 0.3, C.appleFruit], [0.1, -0.3, 0x8a4a2a]] as const) m.add(octa(0.085), c, { p: [x, 0.06, z], shade: 0.1 });
+    for (const [x, z, c] of [[0, 0, C.appleFruit], [0.3, 0.12, C.appleFruitGold], [-0.15, 0.3, C.appleFruit], [0.1, -0.3, 0x8a4a2a]] as const) m.add(octa(0.07), c, { p: [x, 0.05, z], shade: 0.1 });
     return m.parts;
   },
 };

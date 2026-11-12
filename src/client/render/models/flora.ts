@@ -42,7 +42,7 @@ function crown(m: Model, r: Rand, centre: V3, radius: number, clumps: number, c:
       const a = r.range(0, Math.PI * 2);
       const e = r.range(-0.5, 0.35);
       const rad = radius * r.range(0.82, 1.0);
-      m.add(octa(0.11), o.fruit[i % o.fruit.length]!, {
+      m.add(octa(0.075), o.fruit[i % o.fruit.length]!, {
         p: [centre[0] + Math.cos(a) * Math.cos(e) * rad, centre[1] + Math.sin(e) * rad * flat, centre[2] + Math.sin(a) * Math.cos(e) * rad],
         shade: 0.1, sway: sway * 1.3,
       });
@@ -50,7 +50,8 @@ function crown(m: Model, r: Rand, centre: V3, radius: number, clumps: number, c:
   }
 }
 
-const octa = (r: number) => new THREE.OctahedronGeometry(r, 0);
+/** Fruit: a small faceted ball, not a gem. */
+const octa = (r: number) => new THREE.IcosahedronGeometry(r, 0);
 
 /** Root flare at the foot of a trunk. */
 function roots(m: Model, r: Rand, radius: number, color: number, n: number, reach = 2.2): void {
