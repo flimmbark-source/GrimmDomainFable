@@ -9,6 +9,7 @@ import type { MonsterType } from '../protocol.ts';
 import { clamp, distance, exposure, sightBlocked } from './geometry.ts';
 import type { MapDef } from './map.ts';
 import { addEvidence, startChase, startInvestigate } from './monster.ts';
+import { clampToMap } from './movement.ts';
 import { rngNext } from './rng.ts';
 import type { ActorState, MonsterBrain, Noise, SimState, TargetMemory } from './state.ts';
 import { TUNING } from './tuning.ts';
@@ -137,9 +138,9 @@ function hear(state: SimState, map: MapDef, monster: ActorState, brain: MonsterB
   const rx = rngNext(state.rng);
   const rz = rngNext(rx.state);
   state.rng = rz.state;
-  const limit = map.halfSize - monster.radius;
-  const x = clamp(noise.x + (rx.value * 2 - 1) * error, -limit, limit);
-  const z = clamp(noise.z + (rz.value * 2 - 1) * error, -limit, limit);
+  const heard = clampToMap(map, noise.x + (rx.value * 2 - 1) * error, noise.z + (rz.value * 2 - 1) * error, monster.radius);
+  const x = heard.x;
+  const z = heard.z;
 
   if (brain.mode === 'investigate' && lead) {
     const record = state.evidence.find((e) => e.id === lead.evidenceId);

@@ -2,8 +2,8 @@
  * Actor movement: path-following goto orders, held directions, static
  * collision and turning. Deterministic (+ - * / sqrt only).
  */
-import { clamp } from './geometry.ts';
-import type { MapDef } from './map.ts';
+import { clamp, propsNearBox } from './geometry.ts';
+import { boundsOf, type MapDef, type PropDef } from './map.ts';
 import { findPath } from './nav.ts';
 import type { ActorState } from './state.ts';
 import { TUNING, type Rotation } from './tuning.ts';
@@ -28,8 +28,8 @@ export function stopActor(actor: ActorState): void {
  * when no route exists.
  */
 export function orderGoto(actor: ActorState, map: MapDef, x: number, z: number): boolean {
-  const limit = map.halfSize - actor.radius;
-  const path = findPath(map, actor.radius, { x: actor.x, z: actor.z }, { x: clamp(x, -limit, limit), z: clamp(z, -limit, limit) });
+  const target = clampToMap(map, x, z, actor.radius);
+  const path = findPath(map, actor.radius, { x: actor.x, z: actor.z }, target);
   if (!path || path.length === 0) {
     stopActor(actor);
     return false;
@@ -40,6 +40,12 @@ export function orderGoto(actor: ActorState, map: MapDef, x: number, z: number):
   actor.stuckTicks = 0;
   actor.replanned = false;
   return true;
+}
+
+/** The nearest point to (x, z) that a body of `radius` can occupy inside the map's rectangle. */
+export function clampToMap(map: MapDef, x: number, z: number, radius: number): { x: number; z: number } {
+  const b = boundsOf(map);
+  return { x: clamp(x, b.minX + radius, b.maxX - radius), z: clamp(z, b.minZ + radius, b.maxZ - radius) };
 }
 
 /** Turn a unit facing towards (tx, tz) by at most one rotation step. */
@@ -142,53 +148,95 @@ export function moveActor(actor: ActorState, map: MapDef): void {
   }
 }
 
+/** Push the actor out of one collider. */
+function pushOut(actor: ActorState, prop: PropDef): void {
+  const c = prop.collider;
+  if (c.shape === 'circle') {
+    const ox = actor.x - prop.x;
+    const oz = actor.z - prop.z;
+    const min = actor.radius + c.radius;
+    const d2 = ox * ox + oz * oz;
+    if (d2 >= min * min) return;
+    const d = Math.sqrt(d2);
+    if (d < 1e-9) {
+      actor.x = prop.x + min; // dead centre: pick a fixed direction
+    } else {
+      actor.x = prop.x + (ox / d) * min;
+      actor.z = prop.z + (oz / d) * min;
+    }
+    return;
+  }
+  if (c.shape === 'box') {
+    // Closest point on the box to the actor centre.
+    const cx = clamp(actor.x, prop.x - c.hx, prop.x + c.hx);
+    const cz = clamp(actor.z, prop.z - c.hz, prop.z + c.hz);
+    const ox = actor.x - cx;
+    const oz = actor.z - cz;
+    const d2 = ox * ox + oz * oz;
+    if (d2 >= actor.radius * actor.radius) return;
+    if (d2 > 1e-12) {
+      const d = Math.sqrt(d2);
+      actor.x = cx + (ox / d) * actor.radius;
+      actor.z = cz + (oz / d) * actor.radius;
+    } else {
+      // Centre is inside the box: leave through the nearest face.
+      const left = actor.x - (prop.x - c.hx);
+      const right = prop.x + c.hx - actor.x;
+      const top = actor.z - (prop.z - c.hz);
+      const bottom = prop.z + c.hz - actor.z;
+      const m = Math.min(left, right, top, bottom);
+      if (m === left) actor.x = prop.x - c.hx - actor.radius;
+      else if (m === right) actor.x = prop.x + c.hx + actor.radius;
+      else if (m === top) actor.z = prop.z - c.hz - actor.radius;
+      else actor.z = prop.z + c.hz + actor.radius;
+    }
+    return;
+  }
+  // Turned box: the same push, worked out in the box's own frame.
+  const wx = actor.x - prop.x;
+  const wz = actor.z - prop.z;
+  let lx = wx * c.ux + wz * c.uz;
+  let lz = wz * c.ux - wx * c.uz;
+  const cx = clamp(lx, -c.hx, c.hx);
+  const cz = clamp(lz, -c.hz, c.hz);
+  const ox = lx - cx;
+  const oz = lz - cz;
+  const d2 = ox * ox + oz * oz;
+  if (d2 >= actor.radius * actor.radius) return;
+  if (d2 > 1e-12) {
+    const d = Math.sqrt(d2);
+    lx = cx + (ox / d) * actor.radius;
+    lz = cz + (oz / d) * actor.radius;
+  } else {
+    const left = lx + c.hx;
+    const right = c.hx - lx;
+    const top = lz + c.hz;
+    const bottom = c.hz - lz;
+    const m = Math.min(left, right, top, bottom);
+    if (m === left) lx = -c.hx - actor.radius;
+    else if (m === right) lx = c.hx + actor.radius;
+    else if (m === top) lz = -c.hz - actor.radius;
+    else lz = c.hz + actor.radius;
+  }
+  actor.x = prop.x + lx * c.ux - lz * c.uz;
+  actor.z = prop.z + lx * c.uz + lz * c.ux;
+}
+
 /** Push the actor out of every static collider, then keep it inside the map. */
 function resolveCollisions(actor: ActorState, map: MapDef): void {
   // Two passes so a push out of one collider into another is corrected.
   for (let pass = 0; pass < 2; pass++) {
-    for (const prop of map.props) {
-      const c = prop.collider;
-      if (c.shape === 'circle') {
-        const ox = actor.x - prop.x;
-        const oz = actor.z - prop.z;
-        const min = actor.radius + c.radius;
-        const d2 = ox * ox + oz * oz;
-        if (d2 >= min * min) continue;
-        const d = Math.sqrt(d2);
-        if (d < 1e-9) {
-          actor.x = prop.x + min; // dead centre: pick a fixed direction
-        } else {
-          actor.x = prop.x + (ox / d) * min;
-          actor.z = prop.z + (oz / d) * min;
-        }
-      } else {
-        // Closest point on the box to the actor centre.
-        const cx = clamp(actor.x, prop.x - c.hx, prop.x + c.hx);
-        const cz = clamp(actor.z, prop.z - c.hz, prop.z + c.hz);
-        const ox = actor.x - cx;
-        const oz = actor.z - cz;
-        const d2 = ox * ox + oz * oz;
-        if (d2 >= actor.radius * actor.radius) continue;
-        if (d2 > 1e-12) {
-          const d = Math.sqrt(d2);
-          actor.x = cx + (ox / d) * actor.radius;
-          actor.z = cz + (oz / d) * actor.radius;
-        } else {
-          // Centre is inside the box: leave through the nearest face.
-          const left = actor.x - (prop.x - c.hx);
-          const right = prop.x + c.hx - actor.x;
-          const top = actor.z - (prop.z - c.hz);
-          const bottom = prop.z + c.hz - actor.z;
-          const m = Math.min(left, right, top, bottom);
-          if (m === left) actor.x = prop.x - c.hx - actor.radius;
-          else if (m === right) actor.x = prop.x + c.hx + actor.radius;
-          else if (m === top) actor.z = prop.z - c.hz - actor.radius;
-          else actor.z = prop.z + c.hz + actor.radius;
-        }
-      }
+    const reach = actor.radius + 0.01;
+    const near = propsNearBox(map, actor.x - reach, actor.x + reach, actor.z - reach, actor.z + reach);
+    if (!near) {
+      for (const prop of map.props) pushOut(actor, prop);
+    } else {
+      // A push moves the actor by less than its own radius, and every prop
+      // within reach of the starting point was collected, so the copy is safe.
+      for (const i of near.slice()) pushOut(actor, map.props[i]!);
     }
   }
-  const limit = map.halfSize - actor.radius;
-  actor.x = clamp(actor.x, -limit, limit);
-  actor.z = clamp(actor.z, -limit, limit);
+  const b = boundsOf(map);
+  actor.x = clamp(actor.x, b.minX + actor.radius, b.maxX - actor.radius);
+  actor.z = clamp(actor.z, b.minZ + actor.radius, b.maxZ - actor.radius);
 }

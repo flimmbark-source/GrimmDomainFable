@@ -6,6 +6,9 @@
  * Units are metres on the ground plane; +x is east, +z is south (towards the
  * default camera). The world is flat.
  */
+import { ORCHARD_VALE } from '../world/orchardVale.ts';
+import type { RegionDef } from './region.ts';
+import type { TerrainDef } from './terrain.ts';
 
 export type PropKind =
   | 'tree_pine'
@@ -16,7 +19,48 @@ export type PropKind =
   | 'thicket'
   | 'ruin_wall'
   | 'standing_stone'
-  | 'crooked_house';
+  | 'crooked_house'
+  // --- Settled-valley kit (first used by the Orchard Vale region) ---
+  | 'tree_apple'
+  | 'tree_apple_old'
+  | 'tree_apple_young'
+  | 'tree_apple_feral'
+  | 'tree_witness'
+  | 'tree_oldwood'
+  | 'tree_birch'
+  | 'tree_willow'
+  | 'coppice_stool'
+  | 'sapling'
+  | 'hedge'
+  | 'stone_wall'
+  | 'terrace_wall'
+  | 'fence'
+  | 'ruin_fragment'
+  | 'ruin_chimney'
+  | 'boundary_stone'
+  | 'boundary_stone_fallen'
+  | 'cottage_a'
+  | 'cottage_b'
+  | 'cottage_c'
+  | 'longhouse'
+  | 'press_house'
+  | 'storehouse'
+  | 'cart_shed'
+  | 'mill'
+  | 'barn'
+  | 'bridge_parapet'
+  | 'well'
+  | 'cart'
+  | 'barrel_stack'
+  | 'crate_stack'
+  | 'haystack'
+  | 'log_pile'
+  | 'cider_press'
+  | 'trough'
+  | 'signpost'
+  | 'beehives'
+  // Invisible blockers whose visible form is drawn from other map data.
+  | 'water';
 
 export interface CircleCollider {
   shape: 'circle';
@@ -30,6 +74,21 @@ export interface BoxCollider {
   hz: number;
 }
 
+/**
+ * Box turned to any angle. (ux, uz) is the unit direction of the box's local
+ * x axis; it is derived with sqrt only (never trig), so the simulation stays
+ * bit-reproducible.
+ */
+export interface OrientedBoxCollider {
+  shape: 'obox';
+  hx: number;
+  hz: number;
+  ux: number;
+  uz: number;
+}
+
+export type Collider = CircleCollider | BoxCollider | OrientedBoxCollider;
+
 export interface PropDef {
   kind: PropKind;
   x: number;
@@ -38,10 +97,20 @@ export interface PropDef {
   yaw: number;
   /** Visual scale multiplier (the collider below is already final-sized). */
   scale: number;
-  collider: CircleCollider | BoxCollider;
+  collider: Collider;
   /** Does this prop hide what is behind it? The occluder IS the collider:
    *  cover is exactly the solid thing the player sees and bumps into. */
   blocksSight: boolean;
+  /** Render only: picks one of a kind's look-alike variants. */
+  variant?: number;
+}
+
+/** Axis-aligned playable rectangle. */
+export interface Bounds {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
 }
 
 export interface Point {
@@ -62,6 +131,18 @@ export interface MonsterSpawn {
   post?: Point;
 }
 
+const boundsCache = new WeakMap<MapDef, Bounds>();
+
+/** The playable rectangle of any map. */
+export function boundsOf(map: MapDef): Bounds {
+  let b = boundsCache.get(map);
+  if (!b) {
+    b = map.bounds ?? { minX: -map.halfSize, maxX: map.halfSize, minZ: -map.halfSize, maxZ: map.halfSize };
+    boundsCache.set(map, b);
+  }
+  return b;
+}
+
 /** A place worth crossing the map for. Placeholder objective for M1: the
  *  resource economy itself is M2 and undecided. */
 export interface SiteDef {
@@ -72,8 +153,15 @@ export interface SiteDef {
 
 export interface MapDef {
   id: string;
-  /** Playable area is [-halfSize, halfSize] on both axes. */
+  /** Playable area is [-halfSize, halfSize] on both axes, unless `bounds`
+   *  is given (then halfSize is only the largest half extent). */
   halfSize: number;
+  /** Playable rectangle. Use boundsOf() rather than reading this directly. */
+  bounds?: Bounds;
+  /** Ground relief shared by server and client (see terrain.ts). Absent = flat. */
+  terrain?: TerrainDef;
+  /** Render-only description of the region beyond its colliders (see region.ts). */
+  region?: RegionDef;
   props: PropDef[];
   /** Dirt paths, render-only (may run on past the playable area). */
   paths: { width: number; points: Point[] }[];
@@ -210,6 +298,7 @@ export const FOREST_CROSSING_BRUTE: MapDef = {
 const MAPS: Record<string, MapDef> = {
   [FOREST_CROSSING.id]: FOREST_CROSSING,
   [FOREST_CROSSING_BRUTE.id]: FOREST_CROSSING_BRUTE,
+  [ORCHARD_VALE.id]: ORCHARD_VALE,
 };
 
 export function getMap(id: string): MapDef {

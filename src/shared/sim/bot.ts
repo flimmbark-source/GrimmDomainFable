@@ -10,7 +10,7 @@
  * bot behaviour (difficulty, takeover rules) is future, undecided work.
  */
 import type { Command, Snapshot } from '../protocol.ts';
-import type { MapDef } from './map.ts';
+import { boundsOf, type MapDef } from './map.ts';
 import { isBlocked } from './simulation.ts';
 
 export interface BotMemory {
@@ -58,10 +58,16 @@ export function botThink(memory: BotMemory, view: Snapshot, map: MapDef): Comman
     const site = full[Math.floor(nextRandom(memory) * full.length)];
     if (site) return { type: 'moveTo', x: site.x, z: site.z };
   }
-  const range = map.halfSize - 4;
+  // Wander inside the playable rectangle, 4 m in from its edge. (For a square
+  // map centred on the origin this is the same arithmetic as before.)
+  const b = boundsOf(map);
+  const cx = (b.minX + b.maxX) / 2;
+  const cz = (b.minZ + b.maxZ) / 2;
+  const rangeX = (b.maxX - b.minX) / 2 - 4;
+  const rangeZ = (b.maxZ - b.minZ) / 2 - 4;
   for (let attempt = 0; attempt < 8; attempt++) {
-    const x = (nextRandom(memory) * 2 - 1) * range;
-    const z = (nextRandom(memory) * 2 - 1) * range;
+    const x = cx + (nextRandom(memory) * 2 - 1) * rangeX;
+    const z = cz + (nextRandom(memory) * 2 - 1) * rangeZ;
     if (!isBlocked(map, x, z, me.radius + 0.5)) return { type: 'moveTo', x, z };
   }
   return null;
