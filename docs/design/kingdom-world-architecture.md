@@ -1,6 +1,6 @@
 # Kingdom geography and large-world architecture
 
-**Status:** D-084 confirms a huge, seamless, interconnected kingdom as the end-state target. **D-085 confirms guided procedural geography:** each match can generate a substantially different kingdom while preserving designed strategic relationships and playability. This brief separates confirmed principles from proposals. No particular geographic topology, map size or generation algorithm is approved yet.
+**Status:** D-084 confirms a huge, seamless, interconnected kingdom as the end-state target. D-085 confirms guided procedural geography. **D-086 confirms hybrid strategic topology: castle approaches plus independent regional connections and loops.** This brief separates confirmed relationships from proposals. No specific geographic layout, map size, road count or generation algorithm is approved.
 
 ## Confirmed design boundaries
 
@@ -13,6 +13,7 @@
 - M1 creator feedback is positive specifically about breaking Scout line of sight to escape. Preserve this behavior at large scale.
 - D-084 establishes **one traversable, strategically interconnected kingdom**, not separated encounter maps.
 - **D-085 approves guided procedural geography**: substantially varied match-specific roads, regions, settlement and landmark layouts within stable strategic/gameplay constraints. Generation must preserve accessibility, fair opposing opportunities, meaningful routes and seeded authoritative determinism. The exact geography graph remains unapproved.
+- **D-086 approves hybrid topology**: the castle anchors several major approaches, while regional hubs, outer roads and wilderness corridors provide independent loops, routes and flanking opportunities. The castle need not occupy the geometric center. The precise arrangement changes with the seed under D-085 and no fixed route count is approved.
 
 ## Proposed strategic geography (not canon)
 
@@ -48,14 +49,20 @@ Design the world architecture and strategic geography constraints before adding 
 
 **Selected C: guided procedural geography.** The kingdom is broadly reshaped between matches within gameplay and world-coherence constraints. Reject the implication that all locations have fixed positions, or that arbitrary raw noise is sufficient to produce a working 4v4 world.
 
-## Next design choice: strategic topology (UNRESOLVED)
+## Confirmed strategic topology (D-086)
 
-**A. Castle-centered radial routes:** main roads lead inward toward the Dark Lord's castle with interconnected peripheral roads; risks funneling travel toward a predictable center.
+**Selected C: hybrid castle approaches plus regional networks.** Major roads create strategic approaches to the castle, while other regional connections, outer road loops and wilderness alternatives allow meaningful cross-kingdom travel without forcing everyone through a central intersection. The castle's position is free to vary with the seed: it is **strategically central as the ultimate objective**, not necessarily geometrically central.
 
-**B. Distributed geography:** several regional hubs and branching routes, with the castle as one important destination among them spatially (although the central victory objective); offers organic movement but could reduce the castle's orienting role.
+The generator should test that major destinations are connected, that a single road cannot inevitably monopolize all movement, that geography gives Dark logistics defendable places with alternatives available to Light where intended, and that the M1 cover/chase encounter remains legitimate along routes. Exact minimum route counts, travel speeds and thresholds remain to be approved.
 
-**C. Hybrid backbone and regional networks:** the castle anchors several strategic approaches, while multiple outer roads, wilderness corridors, and regional hubs form independent loops, flank opportunities, and competing objectives. Its exact position need not be the geometric center.
+## Next design choice: travel scale and pacing (UNRESOLVED)
 
-**Recommendation, not yet approved: C**, provided the generator can test route diversity and travel pacing. This fixes strategic relationships rather than a specific layout.
+A. **Dense but large world:** most regional destinations are relatively close; travel is short and attention is concentrated in many local activities.
 
-Unresolved: world size/travel times, terrain heights, changes between matches, settlement densities, landmark and secret site placement, caves/interiors, supply routes, darkness/visibility and long-distance player activity.
+B. **Meaningful journeys:** crossing between major regions takes a deliberate expedition, with discoveries, danger, and optional objectives on the way.
+
+C. **Vast expedition world with transportation:** long journeys are substantial, while travel networks or mobility methods (still to be designed) offer strategic ways to move faster.
+
+Avoid setting an exact world diameter before determining match duration, movement speed, player agency during travel and Dark response times. These are design alternatives, not approved transport mechanics.
+
+Unresolved: world scale/travel pacing and potential transport, road hierarchy and route-count guarantees, terrain elevations, settlement density, landmark and secret site placement, caves/interiors, supply routes, visibility/discovery, and long-distance activity.
