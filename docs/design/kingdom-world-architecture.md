@@ -1,6 +1,6 @@
 # Kingdom geography and large-world architecture
 
-**Status:** D-084 confirms a huge, seamless, interconnected kingdom as the end-state target. D-085 confirms guided procedural geography. **D-086 confirms hybrid strategic topology: castle approaches plus independent regional connections and loops. D-087 confirms deliberate, eventful journeys between major regions. D-088 confirms partially known starting geography with exploration-based discovery of secondary routes and secrets.** This brief separates confirmed relationships from proposals. No specific geographic layout, map size, road count or generation algorithm is approved.
+**Status:** D-084 confirms a huge, seamless, interconnected kingdom as the end-state target. D-085 confirms guided procedural geography. **D-086 confirms hybrid strategic topology: castle approaches plus independent regional connections and loops. D-087 confirms deliberate, eventful journeys between major regions. D-088 confirms partially known starting geography with exploration-based discovery of secondary routes and secrets. D-089 confirms common baseline geographic knowledge with character-specific starting hints.** This brief separates confirmed relationships from proposals. No specific geographic layout, map size, road count or generation algorithm is approved.
 
 ## Confirmed design boundaries
 
@@ -16,6 +16,7 @@
 - **D-086 approves hybrid topology**: the castle anchors several major approaches, while regional hubs, outer roads and wilderness corridors provide independent loops, routes and flanking opportunities. The castle need not occupy the geometric center. The precise arrangement changes with the seed under D-085 and no fixed route count is approved.
 - **D-087 approves meaningful journeys:** travel between major regions should give players discovery, risk, optional opportunities and real routing decisions; do not treat distance as filler or require a pre-approved transportation system. Actual scale and duration remain unchosen.
 - **D-088 approves a partially charted starting map:** broad geography and major destinations are known; secondary routes, hidden sites and other lesser-known opportunities are discovered by travel or clues. Static map knowledge is distinct from current enemy position, patrol behavior, faction intelligence and sight-based information.
+- **D-089 approves a shared starting chart plus specialty clues:** all eight players start from the same broad geographic map while individual characters may receive extra role-relevant hints. Hints do not grant live enemy positions, automatically expose enemy secrets, or imply full accuracy. Exact content, communication and reveal rules remain undecided.
 
 ## Proposed strategic geography (not canon)
 
@@ -69,14 +70,20 @@ The world generator should validate that major paths have meaningful activity op
 
 **Unresolved implementation questions:** starting map resolution and symbols, local geometry reveal, what counts as discovered, whether discoveries persist across deaths or a match, team and role-specific cartography, sharing of map knowledge, and update rules for stale information.
 
-## Next design choice: Light/Dark geographic starting knowledge (UNRESOLVED)
+## Confirmed starting knowledge differences (D-089)
 
-**A. Equal starting charts:** both factions know the same broad geography and major public locations; their movement and intelligence still differ.
+**Selected C: common baseline chart, character-specific clues.** Both Light and Dark players see the same broad geographic layout and major destinations initially. Characters can also begin with specialty-related hints about possible discoveries, landmarks, or opportunities. A hint can guide exploration without guaranteeing a precise position or revealing enemy movement, current control, or hidden opposing locations. It does **not** replace the confirmed live sight, clues, and private Scout-owner perception boundary of D-012.
 
-**B. Faction-specific charts:** both have basic orientation, but the Dark side begins knowing more about established roads, logistical sites and defensive approaches, while Light starts with different local knowledge, such as certain natural routes or historical landmarks. Sensitive hideouts and secret sites are not automatically public. Exact knowledge categories still need approval.
+**Examples for exploration, not yet approved:** the Alchemist might recognize where certain ingredient habitats could be found, the Witch might suspect that a district has a sacred history, or a Dark commander might know that an established road serves an important logistics corridor. Do not codify these as guaranteed starting facts without another design choice.
 
-**C. Shared baseline plus role-specific clues:** all eight players get the same broad chart, while particular Heroes receive initial hints related to their class or controlled forces. These hints are neither omniscient nor automatically confirmed live intel.
+## Next design choice: discoveries and team sharing (UNRESOLVED)
 
-**Recommendation, not approved: C.** Preserve fair shared orientation while giving differentiated characters exploration identities, without making either side omniscient about the other side's secrets.
+**A. Automatic team sharing:** when someone finds a road, landmark, or clue, that information is immediately recorded for all allies.
 
-Unresolved: exact world size/travel time and potential transportation, starting map detail, faction/hero knowledge differences and discovery sharing, road hierarchy and route-count guarantees, terrain elevations, settlement density, landmark and secret site placement, caves/interiors, supply routes, visibility/discovery, and long-distance activity.
+**B. Personal knowledge until communicated:** explorers retain discoveries privately until they choose to relay them, creating coordination, secrecy, and possible communication costs.
+
+**C. Layered sharing:** ordinary geographical discoveries such as roads and public landmarks update the team map automatically, while sensitive character-specific clues, hypotheses and strategic intelligence remain personal unless explicitly shared. Confirmed Dark Scout sighting alerts still follow D-012 regardless.
+
+**Recommendation, not approved: C.** It lets the party navigate a huge world together without repetitive map administration, while preserving special discoveries and private intelligence as meaningful choices. Exact collaboration interface, reliability and persistence must be specified later.
+
+Unresolved: exact world size/travel time and potential transportation, starting map detail, hint accuracy/content and team discovery sharing, road hierarchy and route-count guarantees, terrain elevations, settlement density, landmark and secret site placement, caves/interiors, supply routes, visibility/discovery, and long-distance activity.
