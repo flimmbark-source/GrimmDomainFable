@@ -2,7 +2,13 @@
 
 **Status:** Proposed engineering/design specification for a **non-destructive world-generation proof**, not a confirmed implementation algorithm or authorization to replace the current M1 world. Last written 2026-11-12.
 
-**Design authority:** D-084 large seamless kingdom; D-085 seeded guided procedural geography; D-086 castle approaches plus independent regional loops; D-087 journeys with discoveries/risks/opportunities; D-088 partial starting map; D-089 shared baseline chart with personal role clues; D-090 layered information sharing; D-091 coherent biomes with smaller unusual pockets. Existing stealth, Dark Scout information and class progression decisions remain in force.
+**Design authority:** D-084 large seamless kingdom; D-085 seeded guided procedural geography; D-086 castle approaches plus independent regional loops; D-087 journeys with discoveries/risks/opportunities; D-088 partial starting map; D-089 shared baseline chart with personal role clues; D-090 layered information sharing; D-091 coherent biomes with smaller unusual pockets; D-092 fairy-tale civilization within older mythic magic under increasing Dark influence. Existing stealth, Dark Scout information and class progression decisions remain in force.
+
+## Thematic gate (D-092)
+
+**Dependency:** read [kingdom theme grammar](kingdom-theme-grammar.md). A geographically valid layout is insufficient if its regions have no world identity. Before completing a **production visual/content generator**, define data-driven hooks for regional ecology, human use/history, local folklore, older supernatural character, current conflict pressure, and emotional contrast. These are proposed dimensions for review, **not** approval to fabricate lore or build new game mechanics.
+
+For **Phase 0** (graph/biome proof), optional stub metadata and mock identifiers are sufficient; do not block topology validation on authored regional lore. But do not claim the kingdom is thematically validated from a graph or randomly colored biome inspector. Later visual production needs an explicit creator-approved vocabulary/material/art direction pass.
 
 ## Goal
 
