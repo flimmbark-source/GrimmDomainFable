@@ -119,7 +119,13 @@ try {
   check('hero staged south of the house', dist(staged.sim, { x: -9, z: 3 }) < 0.2, fmt(staged.sim));
 
   await page.keyboard.press('Tab');
-  await page.waitForTimeout(1200);
+  // A software-rendered CI browser may run at ~1 fps. Camera blending uses
+  // frame-clamped dt, so 1.2 seconds of wall time does not guarantee that the
+  // 0.55-second in-game transition has finished. Wait for its actual endpoint.
+  await page.waitForFunction(() => {
+    const g = window.__grimm;
+    return g.mode() === 'hero' && Math.abs(g.camera().fov - 58) < 0.5;
+  }, null, { timeout: 20000, polling: 100 });
   const cameraHero = await page.evaluate(() => window.__grimm.camera());
   check('hero camera is a different rig from the strategy camera', (await page.evaluate(() => window.__grimm.mode())) === 'hero' && Math.abs(cameraHero.fov - cameraRts.fov) > 5 && cameraHero.position[1] < cameraRts.position[1] / 3, `strategy y=${cameraRts.position[1].toFixed(1)} fov=${cameraRts.fov} | hero y=${cameraHero.position[1].toFixed(1)} fov=${cameraHero.fov.toFixed(0)}`);
 
