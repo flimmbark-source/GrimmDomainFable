@@ -1,6 +1,6 @@
 # Kingdom thematic grammar
 
-**Status:** First thematic framework, 2026-11-12. The **core premise is confirmed as D-092**. The parameters, procedural rules and illustrative regions below are **proposals for creator review, not additional approved lore or mechanics**.
+**Status:** First thematic framework, 2026-11-12. The **core premise is confirmed as D-092 and regionally varied relationships with old magic are confirmed as D-093**. Detailed parameters, procedural rules and illustrative regions below remain **proposals for creator review, not additional approved lore or mechanics**.
 
 ## Confirmed identity and limits
 
@@ -24,10 +24,30 @@ This layering distinguishes *old and strange* from *currently corrupted*. A haun
 | --- | --- | --- |
 | **Physical ecology** | Terrain, weather cues, vegetation, material availability, travel visibility and natural hazards | Wet river valley, beech woodland, upland moor |
 | **Civilian footprint** | Settlement pattern, work, trade, construction density, maintenance and abandonment | Orchard hamlets, timber camps, quarry roads |
-| **Folkloric relationship** | The local customs and implied boundaries between ordinary people and older forces | Offerings at trees, taboo paths, ritual stones |
+| **Folkloric relationship** | **D-093:** communities differ in how familiar, accepting, fearful, distant, skeptical or forgetful they are about older forces; local customs and practices should express these differences | Welcoming household customs, respected taboo paths, forgotten ritual stones (examples only) |
 | **Supernatural character** | The flavor and intensity of older magic, including benign, unsettling or uncertain elements | Dreamlike groves, peculiar springs, ancestral echoes |
 | **Current conflict pressure** | Where Dark operations, corruption sources, Light defenses and contested routes are relevant | Guarded trade junction, corrupted shrine, vulnerable sanctuary |
 | **Emotional register** | The balance of wonder, homeliness, melancholy, unease and dread | Warm village at dusk beside a forbidding wood |
+
+### Regional relationship to old magic (confirmed variable D-093)
+
+The setting does **not** impose one degree of magic familiarity everywhere. Regions and communities vary, and the **same biome** can support different attitudes depending on livelihoods, history, nearby landmarks and cultural exchange. Designers should be able to represent at least these *potential*, nonexclusive relationships without treating them as required categories or fixed percentages:
+
+- **Familiar/coexistent:** unusual forces are acknowledged as part of daily life, and local practice is pragmatic rather than necessarily reverent.
+- **Respectful/distant:** residents believe old powers exist, but interact mainly through customs, boundaries, warnings and rituals.
+- **Fearful/avoidant:** legends and lived experience encourage protective behavior, detours or abandonment.
+- **Forgetful/skeptical:** people dismiss, reinterpret or simply no longer remember older practices despite evidence in the surrounding landscape.
+- **Internally contested:** generations, professions or neighbors differ, leaving visible contradictions in what people maintain and avoid.
+
+These are suggested descriptors, **not a one-of-five enum or a guarantee that communities have scripted conversations**. More importantly, a region's attitude must not be assumed to equal its amount of actual magic, and neither variable equals the severity of current Dark corruption.
+
+#### Proposed causality and world-building hooks
+
+For a potential region, derive attitude from the interaction of **historical experience, living traditions, access to supernatural sites, neighboring communities and present conflict**. Express it via settlement form, path maintenance, shrine upkeep, symbolism, household details and clues rather than expository text alone.
+
+Illustrative comparison for exactly the same older supernatural feature: a spring might be integrated into a village's daily gathering traditions, avoided behind a stone boundary by another settlement, and forgotten beneath a ruined road elsewhere. Each case would alter environmental storytelling and perhaps optional exploration incentives, **not automatically change confirmed gameplay mechanics or shrine rules**.
+
+**Generation gate:** two regions with equally dense woods and the same actual supernatural presence may still look and feel culturally different. Conversely, a highly supernatural landscape may surround a skeptical settlement. The generator should combine correlated world parameters, not equate `biome=forest` with `attitude=superstitious` or `magic=Dark`.
 
 The six must correlate plausibly, not each be chosen independently. A waterlogged valley should influence building materials and transport. A trade town needs usable connections. A strong supernatural signature needs environmental storytelling that explains why people treat the site unusually.
 
@@ -76,8 +96,10 @@ For every generated region, ask:
 
 A generator passing graph connectivity and biome labels alone **does not pass this thematic gate**.
 
-## Next design workshop, not yet decided
+## Confirmed parameter and next thematic work
 
-**Choose the older world's relationship to ordinary people.** Are supernatural forces broadly woven into daily life and accepted, distant and treated with rituals/taboos, or varied regionally with a few densely magical places? The answer governs the common world grammar more than a list of biomes does. This remains open for the creator.
+**D-093 selects the regionally varied relationship.** The team should now test the thematic grammar by developing a few **distinct regional identity sheets** using ecology, livelihood/history, local relationship to old magic, actual supernatural phenomena, current Dark pressure, mood and tactical affordances. These should be candidate examples for creator review, not immediately canonical regions or generated content.
 
-Do not silently write new mechanics or numeric per-region probabilities from the examples above. If implementation proceeds before the workshop, use **data-driven placeholders** for culture/folklore/supernatural/conflict/emotional axes, not an invented canonical culture list.
+**Important next unresolved question:** how does **Dark influence manifest within the already inhabited, magically varied world**? Confirmed corruption sources control strategic Dark Energy, but specific physical/cultural consequences and how local people respond have **not** been approved. Define that before requiring corruption visual variants in the production generator.
+
+Do not silently write new mechanics or numeric per-region probabilities from the examples above. If implementation proceeds, use **data-driven placeholders** for culture/folklore/supernatural/conflict/emotional axes, not invented canonical culture lists.
