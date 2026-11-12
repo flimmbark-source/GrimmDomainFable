@@ -1,6 +1,6 @@
 # Kingdom geography and large-world architecture
 
-**Status:** D-084 confirms a huge, seamless, interconnected kingdom as the end-state target. D-085 confirms guided procedural geography. **D-086 confirms hybrid strategic topology: castle approaches plus independent regional connections and loops. D-087 confirms deliberate, eventful journeys between major regions.** This brief separates confirmed relationships from proposals. No specific geographic layout, map size, road count or generation algorithm is approved.
+**Status:** D-084 confirms a huge, seamless, interconnected kingdom as the end-state target. D-085 confirms guided procedural geography. **D-086 confirms hybrid strategic topology: castle approaches plus independent regional connections and loops. D-087 confirms deliberate, eventful journeys between major regions. D-088 confirms partially known starting geography with exploration-based discovery of secondary routes and secrets.** This brief separates confirmed relationships from proposals. No specific geographic layout, map size, road count or generation algorithm is approved.
 
 ## Confirmed design boundaries
 
@@ -15,6 +15,7 @@
 - **D-085 approves guided procedural geography**: substantially varied match-specific roads, regions, settlement and landmark layouts within stable strategic/gameplay constraints. Generation must preserve accessibility, fair opposing opportunities, meaningful routes and seeded authoritative determinism. The exact geography graph remains unapproved.
 - **D-086 approves hybrid topology**: the castle anchors several major approaches, while regional hubs, outer roads and wilderness corridors provide independent loops, routes and flanking opportunities. The castle need not occupy the geometric center. The precise arrangement changes with the seed under D-085 and no fixed route count is approved.
 - **D-087 approves meaningful journeys:** travel between major regions should give players discovery, risk, optional opportunities and real routing decisions; do not treat distance as filler or require a pre-approved transportation system. Actual scale and duration remain unchosen.
+- **D-088 approves a partially charted starting map:** broad geography and major destinations are known; secondary routes, hidden sites and other lesser-known opportunities are discovered by travel or clues. Static map knowledge is distinct from current enemy position, patrol behavior, faction intelligence and sight-based information.
 
 ## Proposed strategic geography (not canon)
 
@@ -62,14 +63,20 @@ The generator should test that major destinations are connected, that a single r
 
 The world generator should validate that major paths have meaningful activity opportunities and counterplay, but not force events on a timer or compromise the hidden-information system. Any travel content should connect to approved class-specific resource gathering, stealth/scouting, logistics and corruption gameplay.
 
-## Next design choice: how much of the world is mapped initially? (UNRESOLVED)
+## Confirmed partial starting knowledge (D-088)
 
-A. **Known geography:** major roads, biomes and settlements appear on every player's map from the start, while enemies and dynamic events require genuine scouting.
+**Selected B: partially charted kingdom.** At match start, players have an orienting map of the broad terrain and significant destinations. The secondary road network, minor landmarks, hidden opportunities and secret sites require exploration, investigation or clues. This is not a requirement that every undiscovered road be visibly fogged in the physical world, or that specific characters have omniscient knowledge of secrets. Distinguish geographical knowledge from live visibility and information about enemies: map discovery may reveal a road without identifying a Scout, the location of a Dark army, or who currently occupies a site.
 
-B. **Partial starting knowledge:** broad kingdom structure and significant destinations are known, but secondary roads, minor landmarks and hidden opportunities are revealed through travel, clues or exploration.
+**Unresolved implementation questions:** starting map resolution and symbols, local geometry reveal, what counts as discovered, whether discoveries persist across deaths or a match, team and role-specific cartography, sharing of map knowledge, and update rules for stale information.
 
-C. **Mostly uncharted kingdom:** even major routes and landmark locations must be discovered; extensive navigation and reconnaissance are essential to each match.
+## Next design choice: Light/Dark geographic starting knowledge (UNRESOLVED)
 
-**Recommendation, not approved: B** because a huge guided procedural kingdom needs enough orientation for a strategic 4v4 match while still rewarding exploration and concealment. Whether Light and Dark begin with different map knowledge is not yet resolved.
+**A. Equal starting charts:** both factions know the same broad geography and major public locations; their movement and intelligence still differ.
 
-Unresolved: exact world size/travel time and potential transportation, starting map knowledge and asymmetric discovery, road hierarchy and route-count guarantees, terrain elevations, settlement density, landmark and secret site placement, caves/interiors, supply routes, visibility/discovery, and long-distance activity.
+**B. Faction-specific charts:** both have basic orientation, but the Dark side begins knowing more about established roads, logistical sites and defensive approaches, while Light starts with different local knowledge, such as certain natural routes or historical landmarks. Sensitive hideouts and secret sites are not automatically public. Exact knowledge categories still need approval.
+
+**C. Shared baseline plus role-specific clues:** all eight players get the same broad chart, while particular Heroes receive initial hints related to their class or controlled forces. These hints are neither omniscient nor automatically confirmed live intel.
+
+**Recommendation, not approved: C.** Preserve fair shared orientation while giving differentiated characters exploration identities, without making either side omniscient about the other side's secrets.
+
+Unresolved: exact world size/travel time and potential transportation, starting map detail, faction/hero knowledge differences and discovery sharing, road hierarchy and route-count guarantees, terrain elevations, settlement density, landmark and secret site placement, caves/interiors, supply routes, visibility/discovery, and long-distance activity.
