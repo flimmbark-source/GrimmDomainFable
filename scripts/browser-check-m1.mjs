@@ -9,7 +9,8 @@
 // plays the scenario with real key and mouse events and checks what each tab
 // was actually sent and what it actually shows. Screenshots go to
 // docs/evidence/m1-*.png. Playwright is not a project dependency: a locally
-// or globally installed `playwright` package is used.
+// or globally installed `playwright` package is used. In Codespaces first run
+// `npm install --no-save playwright && npx playwright install chromium`.
 import { execSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -20,9 +21,15 @@ const require = createRequire(import.meta.url);
 function loadPlaywright() {
   try {
     return require('playwright');
-  } catch {
-    const globalRoot = execSync('npm root -g', { encoding: 'utf8' }).trim();
+  } catch (error) {
+    if (error?.code !== 'MODULE_NOT_FOUND' || !error.message.includes("'playwright'")) throw error;
+  }
+  const globalRoot = execSync('npm root -g', { encoding: 'utf8' }).trim();
+  try {
     return require(resolve(globalRoot, 'playwright'));
+  } catch (error) {
+    if (error?.code !== 'MODULE_NOT_FOUND') throw error;
+    throw new Error('Playwright is missing. In the repository root run:\\n  npm install --no-save playwright\\n  npx playwright install chromium\\nThen rerun the browser check.');
   }
 }
 
