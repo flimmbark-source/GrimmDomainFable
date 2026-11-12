@@ -23,6 +23,9 @@ export const PALETTE = {
   oakLight: 0x7aae3a,
   rock: 0x7d8491,
   moss: 0x5d8a4a,
+  thicket: 0x3a7040,
+  ruin: 0x8d8798,
+  ruinDark: 0x6a6578,
 
   plaster: 0xcdbb95,
   timber: 0x4a3226,

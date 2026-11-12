@@ -116,6 +116,32 @@ Procedural placeholders are baked into a single vertex-coloured, flat-shaded geo
 
 The map definition is shared: the collider the simulation uses for a prop and the position the renderer draws it at come from the same `PropDef`. Press `G` in the client to see the simulation's colliders drawn over the scene.
 
+## M1 additions (2026-11-11)
+
+```
+src/shared/sim/
+  tuning.ts       every tunable number, in one object (proposals, not canon)
+  state.ts        SimState types
+  geometry.ts     segment-vs-collider tests: collision, walkable segments, line of sight
+  nav.ts          walkable grid from the map colliders, integer-cost A*, path straightening
+  movement.ts     path following, collision, finite turn rate for monsters
+  perception.ts   who sees whom, attention build-up and decay, hearing, evidence records
+  monster.ts      patrol -> investigate -> chase -> search -> return
+  projection.ts   per-viewer filtering (see the header comment for the full rule set)
+```
+
+**Occluders are the colliders.** A prop either blocks sight or does not (`blocksSight`), and what blocks sight is exactly the shape that blocks movement. There are no invisible sight volumes, so cover is what the player can see and bump into.
+
+**A monster may not read hidden truth.** `monster.ts` reads a target's position in exactly one place, guarded by "perception saw it this tick". Everything else works from `lastSeen`. The tests prove this by non-interference: two runs in which the unseen hero goes different ways produce bit-identical Scout behaviour.
+
+**Tick order:** commands, monster decisions (from the previous tick's perception), movement, footsteps, caches, perception.
+
+**Room configuration cannot come from a client.** Colyseus merges the creating client's join options into `onCreate`. The room now trusts only a `MatchConfig` class instance, which JSON from a client can never be. Before this, a client could choose the seed; with M1 it could also have switched on the debug stream.
+
+**Debug stream.** `GRIMM_DEBUG=1` makes the server broadcast every monster's senses and memory for the `G` overlay. It defeats information hiding by design and is off unless that variable is set on the server.
+
+**Snapshots are still full, per client, per tick.** Projection now costs a few hundred segment tests per client per tick; not measured under eight clients.
+
 ## How this supports the full game
 - **Eight sessions:** room capacity is the eight slots plus spectators; seat assignment, per-seat authority and per-seat projection are already per connection.
 - **Bots:** permanent, slot-based, on the human command path.

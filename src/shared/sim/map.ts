@@ -4,7 +4,7 @@
  * whatever blocks movement here is what the client draws there.
  *
  * Units are metres on the ground plane; +x is east, +z is south (towards the
- * default camera). The world is flat for M0.
+ * default camera). The world is flat.
  */
 
 export type PropKind =
@@ -12,6 +12,9 @@ export type PropKind =
   | 'tree_oak'
   | 'tree_dead'
   | 'rock'
+  | 'boulder'
+  | 'thicket'
+  | 'ruin_wall'
   | 'standing_stone'
   | 'crooked_house';
 
@@ -36,9 +39,33 @@ export interface PropDef {
   /** Visual scale multiplier (the collider below is already final-sized). */
   scale: number;
   collider: CircleCollider | BoxCollider;
+  /** Does this prop hide what is behind it? The occluder IS the collider:
+   *  cover is exactly the solid thing the player sees and bumps into. */
+  blocksSight: boolean;
 }
 
 export interface Point {
+  x: number;
+  z: number;
+}
+
+export type MonsterType = 'scout' | 'brute';
+
+export interface MonsterSpawn {
+  type: MonsterType;
+  /** Dark slot (0-3) that owns this monster: only that seat receives its
+   *  live vision and may give it orders (D-012). */
+  ownerSlot: number;
+  /** Patrol this route (index into patrolRoutes)... */
+  route?: number;
+  /** ...or stand guard here. */
+  post?: Point;
+}
+
+/** A place worth crossing the map for. Placeholder objective for M1: the
+ *  resource economy itself is M2 and undecided. */
+export interface SiteDef {
+  id: number;
   x: number;
   z: number;
 }
@@ -48,57 +75,106 @@ export interface MapDef {
   /** Playable area is [-halfSize, halfSize] on both axes. */
   halfSize: number;
   props: PropDef[];
-  /** Dirt paths, render-only for now (may run on past the playable area). */
+  /** Dirt paths, render-only (may run on past the playable area). */
   paths: { width: number; points: Point[] }[];
   /** Spawn point per slot id (length 8). */
   spawns: Point[];
   /** Closed patrol loops for autonomous monsters. */
   patrolRoutes: Point[][];
+  monsters: MonsterSpawn[];
+  sites: SiteDef[];
   /** Distant scenery anchors (never collidable, outside the playable area). */
   landmarks: { kind: 'castle'; x: number; z: number }[];
 }
 
 function tree(kind: PropKind, x: number, z: number, yaw: number, scale: number): PropDef {
   const base = kind === 'tree_oak' ? 0.75 : kind === 'tree_pine' ? 0.55 : 0.45;
-  return { kind, x, z, yaw, scale, collider: { shape: 'circle', radius: base * scale } };
+  return { kind, x, z, yaw, scale, collider: { shape: 'circle', radius: base * scale }, blocksSight: true };
 }
 
+/** Knee-high rock: stops feet, hides nothing. */
 function rock(x: number, z: number, yaw: number, scale: number): PropDef {
-  return { kind: 'rock', x, z, yaw, scale, collider: { shape: 'circle', radius: 0.9 * scale } };
+  return { kind: 'rock', x, z, yaw, scale, collider: { shape: 'circle', radius: 0.9 * scale }, blocksSight: false };
 }
 
-export const FOREST_CLEARING: MapDef = {
-  id: 'forest_clearing_v0',
+/** Rock taller than a hero: solid cover. */
+function boulder(x: number, z: number, yaw: number, scale: number): PropDef {
+  return { kind: 'boulder', x, z, yaw, scale, collider: { shape: 'circle', radius: 1.5 * scale }, blocksSight: true };
+}
+
+/** Dense bramble hedge, axis-aligned: solid cover. */
+function thicket(x: number, z: number, hx: number, hz: number): PropDef {
+  return { kind: 'thicket', x, z, yaw: 0, scale: 1, collider: { shape: 'box', hx, hz }, blocksSight: true };
+}
+
+/** Stretch of ruined wall, axis-aligned: solid cover. */
+function ruinWall(x: number, z: number, hx: number, hz: number): PropDef {
+  return { kind: 'ruin_wall', x, z, yaw: 0, scale: 1, collider: { shape: 'box', hx, hz }, blocksSight: true };
+}
+
+function stone(x: number, z: number, yaw: number, scale: number): PropDef {
+  // Imported GLB asset (see public/models): proves the model import path.
+  return { kind: 'standing_stone', x, z, yaw, scale, collider: { shape: 'circle', radius: 0.8 * scale }, blocksSight: true };
+}
+
+/**
+ * M1 hunt-and-escape scene: a forest crossing.
+ *
+ *   - Two caches, one far west and one far east, both outside the Scout's
+ *     normal view. Collecting both means crossing the middle.
+ *   - DIRECT route: straight across the open clearing and the road, which the
+ *     Scout patrols. Short, exposed, with two standing stones as the only cover.
+ *   - SOUTH route: behind a belt of ruined wall, thicket and boulder. Longer,
+ *     covered, except for one gap where the road cuts through the belt.
+ *   - NORTH route: behind the crooked house and a second belt. Covered from
+ *     the road, but it passes the Dark side's spawn.
+ *
+ * tests/m1-map.test.ts checks these claims against the real geometry.
+ */
+export const FOREST_CROSSING: MapDef = {
+  id: 'forest_crossing_v1',
   halfSize: 30,
   props: [
-    { kind: 'crooked_house', x: -9, z: -5, yaw: 0, scale: 1, collider: { shape: 'box', hx: 3.2, hz: 2.6 } },
+    { kind: 'crooked_house', x: -9, z: -5, yaw: 0, scale: 1, collider: { shape: 'box', hx: 3.2, hz: 2.6 }, blocksSight: true },
 
-    // The three tree species, placed where they are easy to compare.
+    // Middle of the clearing: thin cover only.
+    stone(1.5, 1, 0.35, 1),
+    stone(-1.8, -2.6, 2.1, 0.8),
     tree('tree_pine', 6, 4, 0.3, 1.25),
     tree('tree_oak', 12, -4, 1.1, 1.3),
     tree('tree_dead', 2, -9, 2.0, 1.2),
+    rock(-8, 9.5, 0.9, 0.7),
 
+    // South belt (covered route runs along z = 15..16, south of these).
+    ruinWall(-12.75, 12.5, 3.25, 0.5),
+    thicket(-6.25, 13, 3.25, 0.9),
+    // ...the road cuts through here: a 5.5 m gap with no cover...
+    ruinWall(5.5, 12.8, 3, 0.5),
+    boulder(11.5, 12, 0.7, 1),
+    thicket(16, 9.5, 1.2, 3),
+    rock(4, 17, 0.4, 1.0),
+
+    // North belt (covered route runs along z = -16..-17).
+    ruinWall(-2, -13.5, 4, 0.5),
+    thicket(9.5, -14, 3, 1),
+    boulder(15, -10, 2.2, 0.9),
+
+    // West side, around the west cache.
     tree('tree_pine', -16, 6, 1.7, 1.1),
     tree('tree_pine', -19, 9, 0.2, 1.4),
-    tree('tree_pine', 18, 10, 2.4, 1.2),
-    tree('tree_pine', 21, -12, 0.9, 1.35),
-    tree('tree_pine', -4, 14, 1.3, 1.0),
-    tree('tree_oak', -18, -14, 0.5, 1.45),
-    tree('tree_oak', 15, 17, 2.9, 1.2),
-    tree('tree_oak', -12, 18, 0.1, 1.25),
-    tree('tree_oak', 22, 2, 1.9, 1.1),
     tree('tree_dead', -22, -3, 0.7, 1.3),
-    tree('tree_dead', 9, -18, 2.6, 1.1),
-    tree('tree_dead', -3, -20, 1.5, 0.95),
+    rock(-18.5, -2, 1.2, 0.8),
+    tree('tree_oak', -18, -14, 0.5, 1.45),
+    tree('tree_oak', -12, 18, 0.1, 1.25),
 
-    rock(5, 12, 0.4, 1.0),
-    rock(-19, -2, 1.2, 0.8),
-    rock(16, -9, 2.2, 1.3),
-    rock(-8, 10, 0.9, 0.7),
+    // East side, around the east cache.
+    tree('tree_oak', 22, 2, 1.9, 1.1),
+    tree('tree_pine', 20, 12, 2.4, 1.2),
+    tree('tree_pine', 21, -12, 0.9, 1.35),
+    tree('tree_oak', 15, 18, 2.9, 1.2),
 
-    // Imported GLB asset (see public/models) - proves the model import path.
-    { kind: 'standing_stone', x: 1.5, z: 1, yaw: 0.35, scale: 1, collider: { shape: 'circle', radius: 0.8 } },
-    { kind: 'standing_stone', x: -1.8, z: -2.6, yaw: 2.1, scale: 0.8, collider: { shape: 'circle', radius: 0.65 } },
+    tree('tree_dead', 9, -19, 2.6, 1.1),
+    tree('tree_dead', -4, -20, 1.5, 0.95),
   ],
   paths: [
     // South gate -> clearing centre -> north towards the castle.
@@ -113,15 +189,37 @@ export const FOREST_CLEARING: MapDef = {
     { x: -3, z: 24 }, { x: 0, z: 25 }, { x: 3, z: 24 }, { x: 6, z: 25 },
   ],
   patrolRoutes: [
-    [{ x: -4, z: -11 }, { x: 7, z: -3 }, { x: 9, z: 8 }, { x: -2, z: 10 }, { x: -13, z: 3 }, { x: -16, z: -9 }],
+    // Up and down the road through the middle of the crossing.
+    [{ x: -1.5, z: 9 }, { x: -4.5, z: 1.5 }, { x: 4.5, z: -7.5 }, { x: 3.5, z: -1.5 }],
+  ],
+  monsters: [{ type: 'scout', ownerSlot: 0, route: 0 }],
+  sites: [
+    { id: 0, x: -21, z: 3 },
+    { id: 1, x: 20, z: -2 },
   ],
   landmarks: [{ kind: 'castle', x: 6, z: -230 }],
 };
 
-const MAPS: Record<string, MapDef> = { [FOREST_CLEARING.id]: FOREST_CLEARING };
+/** Same scene plus a Brute posted in the north, for the alert-response story (M1-07). */
+export const FOREST_CROSSING_BRUTE: MapDef = {
+  ...FOREST_CROSSING,
+  id: 'forest_crossing_v1_brute',
+  monsters: [...FOREST_CROSSING.monsters, { type: 'brute', ownerSlot: 1, post: { x: 12, z: -19 } }],
+};
+
+const MAPS: Record<string, MapDef> = {
+  [FOREST_CROSSING.id]: FOREST_CROSSING,
+  [FOREST_CROSSING_BRUTE.id]: FOREST_CROSSING_BRUTE,
+};
 
 export function getMap(id: string): MapDef {
   const map = MAPS[id];
   if (!map) throw new Error(`Unknown map: ${id}`);
+  return map;
+}
+
+/** Add a map at runtime (tests build small purpose-made arenas). */
+export function registerMap(map: MapDef): MapDef {
+  MAPS[map.id] = map;
   return map;
 }

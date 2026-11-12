@@ -18,7 +18,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "assets:placeholder": "node scripts/make-placeholder-glb.mjs",
-    "verify:browser": "node scripts/browser-check.mjs"
+    "verify:browser": "node scripts/browser-check.mjs",
+    "verify:m1": "node scripts/browser-check-m1.mjs"
   },
   "dependencies": {
     "@colyseus/sdk": "0.18.10",

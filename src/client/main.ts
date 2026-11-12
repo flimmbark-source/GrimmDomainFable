@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import type { Command, Snapshot, Team } from '../shared/protocol.ts';
 import { getMap } from '../shared/sim/map.ts';
+import { AudioCues } from './audio.ts';
 import { CameraRig, type CameraMode } from './cameras.ts';
 import { Hud } from './hud.ts';
 import { InputController } from './input.ts';
 import { connect, serverUrl } from './net.ts';
 import { ActorLayer } from './render/actors.ts';
 import { AssetLibrary } from './render/assets.ts';
+import { MarkerLayer } from './render/markers.ts';
 import { buildCollisionDebug, buildWorld } from './render/world.ts';
 
 /** Read-only hooks for automated browser verification and manual debugging. */
@@ -19,7 +21,17 @@ interface DebugApi {
   renderedPosition(actorId: number): { x: number; z: number } | null;
   screenPosition(actorId: number): { x: number; y: number } | null;
   camera(): { position: number[]; fov: number };
+  /** Screen pixel of a ground point, for driving real mouse clicks in tests. */
+  worldToScreen(x: number, z: number): { x: number; y: number };
+  /** Centre the strategy camera on a ground point. */
+  focus(x: number, z: number): void;
   stats(): { fps: number; drawCalls: number; triangles: number; snapshots: number; renderer: string; assets: Record<string, string> };
+  /** Cues played so far, by kind, and whether the audio context is running. */
+  audio(): { played: Record<string, number>; };
+  /** Text of the on-screen attention indicator and report list, as shown. */
+  hud(): { attention: string; attentionState: string; reports: string; objective: string };
+  /** True once the server has streamed development-only perception data. */
+  debugStream(): boolean;
 }
 declare global {
   interface Window {
@@ -52,7 +64,7 @@ async function start(): Promise<void> {
   hud.setStatus(`Connecting to ${serverUrl()}…`);
   const requestedTeam = params.get('team');
   const team: Team | undefined = requestedTeam === 'dark' || requestedTeam === 'light' ? requestedTeam : 'light';
-  const connection = await connect({ team });
+  const connection = await connect(params.get('spectate') === '1' ? { spectate: true } : { team });
   const map = getMap(connection.welcome.mapId);
 
   const scene = new THREE.Scene();
@@ -61,6 +73,9 @@ async function start(): Promise<void> {
   scene.add(debugOverlay);
   const actors = new ActorLayer(assets);
   scene.add(actors.group);
+  const markers = new MarkerLayer(assets);
+  scene.add(markers.group);
+  const audio = new AudioCues();
 
   const rig = new CameraRig(map.halfSize + 6);
   const heroPosition = (): THREE.Vector3 | null => {
@@ -69,10 +84,31 @@ async function start(): Promise<void> {
   };
 
   let snapshotCount = 0;
+  let wasSpotted = false;
+  let newestAlert = 0;
+  let debugStream = false;
   connection.onSnapshot((snapshot) => {
     snapshotCount++;
-    actors.push(snapshot, performance.now());
+    const now = performance.now();
+    actors.push(snapshot, now);
     hud.setSnapshot(snapshot);
+    // Audio: world sounds this hero can hear, plus the local attention cue.
+    for (const sound of snapshot.sounds) audio.play(sound);
+    const you = snapshot.you;
+    if (you?.team === 'light') {
+      audio.attention(you.attention, you.spotted, now);
+      if (you.spotted && !wasSpotted) audio.spotted();
+      wasSpotted = you.spotted;
+    }
+    for (const e of snapshot.evidence) {
+      if (e.kind !== 'sighting' || e.id <= newestAlert) continue;
+      newestAlert = e.id;
+      audio.alert();
+    }
+  });
+  connection.onDebug((message) => {
+    debugStream = true;
+    markers.setDebug(message);
   });
   connection.onClosed((reason) => hud.setStatus(`Disconnected: ${reason}. Reload to rejoin.`, 'error'));
 
@@ -81,12 +117,16 @@ async function start(): Promise<void> {
     rig,
     send: (command) => connection.send(command),
     heroPosition,
-    toggleDebug: () => (debugOverlay.visible = !debugOverlay.visible),
+    toggleDebug: () => {
+      debugOverlay.visible = !debugOverlay.visible;
+      markers.debug.visible = debugOverlay.visible;
+    },
     onModeChanged: (mode) => hud.setMode(mode),
+    ownedMonster: () => actors.latest?.actors.find((a) => a.kind === 'monster' && a.mode !== undefined)?.id ?? null,
   });
   hud.setMode(rig.mode);
   const slot = connection.welcome.slot;
-  hud.setStatus(slot === null ? 'Connected as spectator (all eight slots are taken)' : `Connected · you control slot ${slot}`, slot === null ? 'warn' : 'ok');
+  hud.setStatus(slot === null ? 'Connected as spectator' : `Connected · you control slot ${slot}`, slot === null ? 'warn' : 'ok');
 
   const resize = () => renderer.setSize(window.innerWidth, window.innerHeight, false);
   window.addEventListener('resize', resize);
@@ -105,12 +145,17 @@ async function start(): Promise<void> {
 
     input.update(dt);
     actors.update(now, dt);
+    if (actors.latest) markers.update(actors.latest, now);
     const hero = heroPosition();
     if (hero && !initialFocusDone) {
       initialFocusDone = true;
-      rig.focusOn(new THREE.Vector3(hero.x, 0, hero.z - 6));
+      // Start centered on the hero and follow their movement in strategy view.
+      rig.followHero(hero);
       if (params.get('cam') === 'hero') input.setMode('hero');
-      if (params.get('debug') === '1') debugOverlay.visible = true;
+      if (params.get('debug') === '1') {
+        debugOverlay.visible = true;
+        markers.debug.visible = true;
+      }
     }
     rig.update(dt, window.innerWidth / window.innerHeight, hero);
     renderer.render(scene, rig.camera);
@@ -146,6 +191,11 @@ async function start(): Promise<void> {
       return { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight };
     },
     camera: () => ({ position: rig.camera.position.toArray(), fov: rig.camera.fov }),
+    worldToScreen: (x, z) => {
+      const v = new THREE.Vector3(x, 0, z).project(rig.camera);
+      return { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight };
+    },
+    focus: (x, z) => rig.focusOn(new THREE.Vector3(x, 0, z)),
     stats: () => ({
       fps,
       drawCalls: renderer.info.render.calls,
@@ -154,6 +204,14 @@ async function start(): Promise<void> {
       renderer: renderer.getContext().getParameter(renderer.getContext().VERSION) as string,
       assets: { ...assets.sources } as Record<string, string>,
     }),
+    audio: () => ({ played: { ...audio.played } }),
+    hud: () => ({
+      attention: document.getElementById('attention-label')?.textContent ?? '',
+      attentionState: document.getElementById('attention')?.dataset.state ?? '',
+      reports: document.getElementById('reports')?.textContent ?? '',
+      objective: document.getElementById('objective')?.textContent ?? '',
+    }),
+    debugStream: () => debugStream,
   };
 }
 

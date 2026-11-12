@@ -110,6 +110,24 @@
 - Bots and humans submit compatible commands. Bot difficulty and takeover semantics are not yet decided.
 - A narrow initial playable test may use a subset of the eight slots, but the full product remains 4v4.
 
+## Provisional choices made while implementing M1 (need creator review)
+Engineering had to pick something to make M1 run. Each is the most restrictive reading of an open rule, is isolated in code, and is **not** approved design. All numbers live in `src/shared/sim/tuning.ts`.
+
+| ID | Choice in the build | Why it needs a decision |
+| --- | --- | --- |
+| P-1 | Allies always see each other, including allied monsters | A Dark teammate can watch another player's Scout run and infer roughly where a hero is. That is in-world inference, not server-provided tracking, but it softens D-012 |
+| P-2 | Vision is per seat: a player sees enemies only through their own hero (and, for Dark, their own monsters). Light heroes do not share vision with each other | Team vision sharing for Light is unresolved rule 5 |
+| P-3 | Only **confirmed sightings** are shared with the Dark team. Glimpses, noises and last-seen points go to the Scout's owner only | D-012 leaves other evidence sharing open |
+| P-4 | The owner is shown a hero through the Scout only after **confirmation**. Before that the owner gets a "glimpse" marker with no identity | Follows the spec's evidence types; D-012 says "live vision" without saying when it starts |
+| P-5 | The Scout on each map is owned by Dark slot 0. No way yet to choose or transfer ownership | Army assignment is undecided |
+| P-6 | Heroes see 20 m all round with line of sight. Monsters see a 120 degree arc to 14 m, plus 2 m all round | All tuning |
+| P-7 | Sneak (Shift): 45% speed, silent. Running is audible within 7 m. Whistle (F): audible within 16 m, 4 s cooldown | Sneak and whistle are new player verbs added so hearing has counterplay. They are proposals, not approved abilities |
+| P-8 | Scout chase speed 4.6 against hero 6.0 | Engineering tuning proposal, not confirmed canon. **Creator's M1 human playtest found the chase works great specifically because breaking line of sight allows escape.** Do not revive the engineer's old negative qualitative judgment without new playtest evidence |
+| P-9 | Caches: stand still 3 s to open, refill after 30 s, opening is audible within 9 m | Placeholder objective so the crossing has a purpose. Not the M2 economy |
+| P-10 | A caught hero suffers nothing: the Scout stops beside it | No combat or capture rule exists yet |
+| P-11 | Spectators receive only actors the opposing team can currently see | Spectator policy was never specified; this cannot leak |
+| P-12 | A commander order overrides whatever the Scout is doing, but does not blind it: it will chase again if it still sees a confirmed hero | "Subject to unit behavior rules" in the spec |
+
 ## Unresolved rules (do NOT silently decide these as canon)
 1. **Core rule decided by D-015 to D-018:** Dark Lord starts dormant; Light can breach sanctum and kill him before awakening; Dark Energy accrues naturally over time, receives small one-time gains from evil deeds by Dark Heroes and minions, and accrues faster through corruption sources; awakening triggers Dark Lord + Dark Heroes vs Light Heroes final battle. **D-019/D-020 confirm** Light Heroes can slow awakening by sabotaging corruption sources, without directly reversing accumulated Dark Energy. **Unresolved:** meter formula/tiers, qualifying evil deeds, corruption/constructible source types, placement rules, source stacking and maintenance, boss abilities, pre-awakening sanctum vulnerability, post-awakening terminal rules, and whether sleeping influence exists.
 2. What camera(s) and controls does each Light Hero have? What triggers switching? How is aiming balanced against high-level RTS control?

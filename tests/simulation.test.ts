@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SLOT_COUNT, type SlotCommand } from '../src/shared/protocol.ts';
-import { FOREST_CLEARING } from '../src/shared/sim/map.ts';
+import { FOREST_CROSSING } from '../src/shared/sim/map.ts';
 import {
   HERO_RADIUS,
   HERO_SPEED,
@@ -16,7 +16,7 @@ import {
   type SimState,
 } from '../src/shared/sim/simulation.ts';
 
-const MAP = FOREST_CLEARING;
+const MAP = FOREST_CROSSING;
 const LIGHT = 4;
 
 function newSim(seed = 1234): SimState {
@@ -156,7 +156,7 @@ describe('collision', () => {
     }
   });
 
-  it('a moveTo into an obstacle gives up instead of pushing forever', () => {
+  it('a moveTo into an obstacle ends at a standable point instead of pushing forever', () => {
     const sim = newSim();
     const hero = actorOfSlot(sim, LIGHT)!;
     hero.x = house.x;
@@ -165,6 +165,7 @@ describe('collision', () => {
     run(sim, 150);
     expect(hero.intent.type).toBe('idle');
     expect(hero.moving).toBe(false);
+    expect(isBlocked(MAP, hero.x, hero.z, HERO_RADIUS)).toBe(false);
   });
 
   it('the hero cannot leave the map', () => {
@@ -197,7 +198,7 @@ describe('autonomous patrol', () => {
       const target = route[next]!;
       if (Math.hypot(monster.x - target.x, monster.z - target.z) < 0.1) visited.push(next);
     }
-    expect(visited).toEqual([1, 2, 3, 4, 5, 0, 1].slice(0, route.length + 1));
+    expect(visited).toEqual(Array.from({ length: route.length + 1 }, (_, i) => (i + 1) % route.length));
   });
 
   it('the patrol is never blocked: the monster never has to abandon a leg', () => {

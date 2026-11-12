@@ -6,14 +6,36 @@
  */
 import { Room, type Client } from 'colyseus';
 import { MSG, SLOT_COUNT, TEAMS, type JoinOptions, type Team, type WelcomeMessage } from '../shared/protocol.ts';
-import { FOREST_CLEARING } from '../shared/sim/map.ts';
+import { FOREST_CROSSING } from '../shared/sim/map.ts';
 import { TICK_RATE } from '../shared/sim/simulation.ts';
 import { Match } from './match.ts';
 
+/**
+ * Server-side room configuration. It is a class on purpose: Colyseus merges
+ * the creating client's join options into onCreate's argument, and a client
+ * can send any JSON it likes but can never send an instance of this class.
+ * The room therefore ignores every plain value and trusts only a MatchConfig
+ * built by server code. (A client must not choose the seed, the map, or
+ * switch on the debug stream.)
+ */
+export class MatchConfig {
+  readonly seed: number | undefined;
+  /** Slots to fill with bots at creation. */
+  readonly botSlots: number[];
+  readonly mapId: string;
+  /** Send development-only perception data to every client. NEVER enable for real play. */
+  readonly debug: boolean;
+
+  constructor(init: { seed?: number; botSlots?: number[]; mapId?: string; debug?: boolean } = {}) {
+    this.seed = init.seed;
+    this.botSlots = init.botSlots ?? [1, 5];
+    this.mapId = init.mapId ?? FOREST_CROSSING.id;
+    this.debug = init.debug === true;
+  }
+}
+
 export interface MatchRoomOptions {
-  seed?: number;
-  /** Slots to fill with bots at creation. Defaults to one Light and one Dark bot. */
-  botSlots?: number[];
+  config?: MatchConfig;
 }
 
 export class MatchRoom extends Room {
@@ -24,12 +46,9 @@ export class MatchRoom extends Room {
   private match!: Match;
 
   override onCreate(options: MatchRoomOptions = {}): void {
-    const seed = Number.isFinite(options.seed) ? Number(options.seed) : Date.now() >>> 0;
-    this.match = new Match({
-      seed,
-      mapId: FOREST_CLEARING.id,
-      botSlots: options.botSlots ?? [1, 5],
-    });
+    const config = options.config instanceof MatchConfig ? options.config : new MatchConfig();
+    const seed = config.seed ?? Date.now() >>> 0;
+    this.match = new Match({ seed, mapId: config.mapId, botSlots: config.botSlots });
 
     // No schema state is set, so Colyseus' patch broadcast is a no-op. Do NOT
     // disable it with `patchRate = null`: measured on colyseus 0.18.12, that
@@ -44,6 +63,7 @@ export class MatchRoom extends Room {
       for (const client of this.clients) {
         client.send(MSG.snapshot, this.match.snapshotFor(client.sessionId));
       }
+      if (config.debug) this.broadcast(MSG.debug, this.match.debugMessage());
     }, TICK_RATE);
 
     console.log(`[match ${this.roomId}] created, seed=${seed}, map=${this.match.map.id}`);
@@ -51,7 +71,7 @@ export class MatchRoom extends Room {
 
   override onJoin(client: Client, options?: JoinOptions): void {
     const team: Team | undefined = TEAMS.find((t) => t === options?.team);
-    const slot = this.match.join(client.sessionId, team);
+    const slot = options?.spectate === true ? null : this.match.join(client.sessionId, team);
     const welcome: WelcomeMessage = { tickRate: TICK_RATE, mapId: this.match.map.id, slot };
     client.send(MSG.welcome, welcome);
     console.log(`[match ${this.roomId}] ${client.sessionId} joined as ${slot === null ? 'spectator' : `slot ${slot}`}`);
