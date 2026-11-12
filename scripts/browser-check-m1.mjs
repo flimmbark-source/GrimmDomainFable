@@ -49,14 +49,19 @@ const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--ena
 const problems = [];
 
 async function open(query) {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+  // In CI use a smaller software-rendered commander view to avoid starving
+  // network snapshot processing, while keeping the Light gameplay view large.
+  const viewport = process.env.CI && query === 'team=dark'
+    ? { width: 480, height: 270 }
+    : { width: 1280, height: 720 };
+  const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
   page.on('console', (m) => m.type() === 'error' && problems.push(`${query}: ${m.text()}`));
   page.on('pageerror', (e) => problems.push(`${query}: ${e.message}`));
   await page.goto(`${url}/?${query}`);
   await page.waitForFunction(() => window.__grimm?.ready && window.__grimm.snapshot()?.you, null, { timeout: 30000 });
   // Record, inside the page, everything the tab is sent between polls.
   await page.evaluate(() => {
-    const rec = (window.__rec = { maxAttention: 0, sawEnemyHero: false, moods: [], evidenceKinds: [], heroTicks: 0, modes: [], sounds: [], indicator: [], lastTick: 0 });
+    const rec = (window.__rec = { maxAttention: 0, sawEnemyHero: false, moods: [], evidenceKinds: [], firstSighting: null, sawSightingHud: false, heroTicks: 0, modes: [], sounds: [], indicator: [], lastTick: 0 });
     setInterval(() => {
       const s = window.__grimm.snapshot();
       if (!s || s.tick === rec.lastTick) return;
@@ -72,7 +77,11 @@ async function open(query) {
         if (a.mood && rec.moods.at(-1) !== a.mood) rec.moods.push(a.mood);
         if (a.mode && rec.modes.at(-1) !== a.mode) rec.modes.push(a.mode);
       }
-      for (const e of s.evidence) if (!rec.evidenceKinds.includes(e.kind)) rec.evidenceKinds.push(e.kind);
+      for (const e of s.evidence) {
+        if (!rec.evidenceKinds.includes(e.kind)) rec.evidenceKinds.push(e.kind);
+        if (e.kind === 'sighting' && !rec.firstSighting) rec.firstSighting = { ...e };
+      }
+      if (/Hero SIGHTED/.test(window.__grimm.hud().reports)) rec.sawSightingHud = true;
       for (const snd of s.sounds) rec.sounds.push(snd.kind);
     }, 10);
   });
@@ -81,7 +90,7 @@ async function open(query) {
 
 const snap = (page) => page.evaluate(() => window.__grimm.snapshot());
 const rec = (page) => page.evaluate(() => window.__rec);
-const resetRec = (page) => page.evaluate(() => Object.assign(window.__rec, { maxAttention: 0, sawEnemyHero: false, heroTicks: 0, moods: [], modes: [], sounds: [], indicator: [] }));
+const resetRec = (page) => page.evaluate(() => Object.assign(window.__rec, { maxAttention: 0, sawEnemyHero: false, heroTicks: 0, moods: [], modes: [], sounds: [], indicator: [], firstSighting: null, sawSightingHud: false, evidenceKinds: [] }));
 const hud = (page) => page.evaluate(() => window.__grimm.hud());
 const me = async (page) => {
   const s = await snap(page);
@@ -153,6 +162,12 @@ try {
   check('a monster that is watching the hero is visible to the hero', (await snap(light)).actors.some((a) => a.kind === 'monster'));
 
   const spotted = await until(light, () => window.__grimm.snapshot().you.spotted, 60000);
+  // Observe receipt immediately without blocking the fleeing player's input.
+  // Screenshots can take long enough on software WebGL to outlive evidence TTL.
+  const mateSightingPromise = mate.waitForFunction(
+    () => window.__grimm.snapshot().evidence.some((e) => e.kind === 'sighting'),
+    null, { timeout: 15000, polling: 100 },
+  ).then(() => true, () => false);
   // Flee at once, as a player would: east, behind the ruined wall and the boulder.
   // (Standing still for a few seconds lets the Scout close in, and from point-blank
   // range this route does not shake it: see known defects.)
@@ -179,9 +194,11 @@ try {
   await shot(mate, 'm1-dark-teammate-alert-only.png');
   check('OWNER tab is sent the hero live (its Scout\'s vision)', Boolean(oHero) || (await rec(owner)).sawEnemyHero, fmt(oHero));
   check('TEAMMATE tab is NOT sent the hero', !mHero, fmt(mHero));
-  const mAlert = mAfter.evidence.find((e) => e.kind === 'sighting');
-  check('TEAMMATE tab has the shared sighting alert, with its time', Boolean(mAlert) && mAfter.evidence.every((e) => e.kind === 'sighting'), mAlert ? `at ${fmt(mAlert)}, tick ${mAlert.tick}` : 'none');
-  check('both Dark tabs list the alert in their report panel', /Hero SIGHTED\d+s ago/.test((await hud(owner)).reports) && /Hero SIGHTED\d+s ago/.test((await hud(mate)).reports), (await hud(mate)).reports);
+  const mateAlertArrived = await mateSightingPromise;
+  const [ownerHistory, mateHistory] = await Promise.all([rec(owner), rec(mate)]);
+  const mAlert = mAfter.evidence.find((e) => e.kind === 'sighting') ?? mateHistory.firstSighting;
+  check('TEAMMATE tab received the shared time-stamped sighting (no private evidence)', mateAlertArrived && Boolean(mAlert) && mAfter.evidence.every((e) => e.kind === 'sighting'), mAlert ? `at ${fmt(mAlert)}, tick ${mAlert.tick}` : `none; observed kinds: ${mateHistory.evidenceKinds.join(',')}`);
+  check('both Dark tabs displayed the confirmed sighting alert', ownerHistory.sawSightingHud && mateHistory.sawSightingHud, `owner=${ownerHistory.sawSightingHud}, teammate=${mateHistory.sawSightingHud}; current=${(await hud(mate)).reports}`);
   const darkAudio = await mate.evaluate(() => window.__grimm.audio().played);
   check('the teammate tab rang the alert bell', darkAudio.bell > 0, JSON.stringify(darkAudio));
 
