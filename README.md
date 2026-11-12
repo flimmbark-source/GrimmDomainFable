@@ -1,6 +1,6 @@
 # Grimm Dominion
 
-**Status:** M0 game source integrated for review in draft PR #5. Claude reports a running 3D browser build and passing automated tests, but independent CI and human playtesting are separate acceptance gates. This repository is the canonical workspace for developing Grimm Dominion as a complete, original game, using Fable/Claude Code for implementation and ChatGPT plus the creator for gameplay direction, review, and production specifications.
+**Status:** M1 (hunt, cover, Scout perception, private information) is implemented on the integration branch and awaits creator playtest; see [implementation status](docs/implementation-status.md). M0 game source integrated for review in draft PR #5. Claude reports a running 3D browser build and passing automated tests, but independent CI and human playtesting are separate acceptance gates. This repository is the canonical workspace for developing Grimm Dominion as a complete, original game, using Fable/Claude Code for implementation and ChatGPT plus the creator for gameplay direction, review, and production specifications.
 
 ## Vision currently established
 - Asymmetric dark-fairytale strategy/action game built around hunting, hiding, growing stronger, and a castle assault.

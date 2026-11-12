@@ -7,7 +7,7 @@ The target is a full 4v4 asymmetric action/strategy game. Milestones are cumulat
 | Milestone | Deliverable | Dependency / completion gate | Status |
 | --- | --- | --- | --- |
 | **M0** | Running 3D browser scene, actor/camera proof, seeded simulation, typed protocol, minimal server, art import path, 4v4 slots | Fable reported local tests and browser checks; independent CI and human GPU playtest remain | **IN REVIEW (PR #5)** |
-| **M1** | One meaningful hunt-and-escape encounter: patrol, sight, hearing, alert, last-known position, search, concealment | M0 game loop + perception tests + visible debug layers | PLANNED |
+| **M1** | One meaningful hunt-and-escape encounter: patrol, sight, hearing, alert, last-known position, search, concealment | M0 game loop + perception tests + visible debug layers | **IMPLEMENTED, AWAITING PLAYTEST** |
 | **M2** | Two-sided match loop: commander spawns/orders monsters; light hero gains resources/upgrades; castle victory and defeat conditions for short test | M1, explicit design approval for core scoring/revival | PLANNED |
 | **M3** | Character identity: Goblin, Alchemist, Knight, Witch power economies; Dark Hero classes; combat/abilities | M2, individual mechanic specifications | PLANNED |
 | **M4** | Full 4v4 network matches + bots/reconnect/lobby/seat assignment/team information filtering | M0 authority and M1 perception, validated at eight clients | PLANNED |
@@ -39,3 +39,4 @@ Fable reported executing the M0 build and tests on its implementation branch (so
 | Milestone | Running build | Tests passing | User playtested | Evidence |
 | --- | --- | --- | --- | --- |
 | M0 | **Fable reported yes** | **Fable reports 35 unit/integration and 16 browser checks passed** | **No** | [Implementation report](../implementation-status.md), [PR #5](https://github.com/flimmbark-source/GrimmDomainFable/pull/5), GitHub Actions on PR |
+| M1 | **Yes** (headless Chromium, software rendering) | **86 unit/integration tests; M0 browser 16/16; M1 browser 34/36 on last full run, two script issues fixed and not rerun** | **No** | [Implementation report](../implementation-status.md), [playtest checklist](../playtests/m1-playtest-checklist.md), `docs/evidence/m1-*.png` |

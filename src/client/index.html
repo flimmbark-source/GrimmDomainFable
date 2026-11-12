@@ -30,6 +30,28 @@
       #mode:hover { background: #52385f; }
       #right small { display: block; margin-top: 5px; color: #b9a98c; }
       #controls { bottom: 10px; left: 320px; right: 10px; text-align: center; font-size: 13px; }
+      #objective { top: 10px; left: 50%; transform: translateX(-50%); font-size: 13px; white-space: nowrap; }
+      #reports { top: 96px; right: 10px; width: 236px; font-size: 13px; }
+      .report { display: flex; justify-content: space-between; margin-top: 3px; padding-left: 6px; border-left: 3px solid #ffd84a; }
+      .report.sighting { border-color: #ff4b2e; color: #ffb3a4; font-weight: bold; }
+      .report.lastSeen { border-color: #ff8a5c; }
+      .report.none { border-color: #55495f; color: #8d8399; }
+      /* Local attention indicator: deliberately small and central-low, away from the action. */
+      #attention { position: fixed; left: 50%; bottom: 62px; transform: translateX(-50%); text-align: center;
+        opacity: 0; transition: opacity 0.25s; pointer-events: none; }
+      #attention-eye { width: 64px; height: 34px; margin: 0 auto; border-radius: 50%; border: 2px solid #f3d27a;
+        background: rgba(20, 15, 28, 0.7); overflow: hidden; position: relative; }
+      #attention-fill { position: absolute; inset: 0; background: #f3d27a; transform-origin: 50% 50%; transform: scaleY(0.08);
+        border-radius: 50%; }
+      #attention-eye::after { content: ''; position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+        border-radius: 50%; background: #1b1420; }
+      #attention-label { margin-top: 4px; font-size: 12px; letter-spacing: 1px; color: #f3d27a; text-shadow: 0 1px 3px #000; }
+      #attention[data-state='spotted'] #attention-eye { border-color: #ff4b2e; }
+      #attention[data-state='spotted'] #attention-fill { background: #ff4b2e; }
+      #attention[data-state='spotted'] #attention-label { color: #ff8a7a; font-weight: bold; }
+      #vignette { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+        box-shadow: inset 0 0 140px 30px rgba(243, 210, 122, 0.35); }
+      #vignette[data-state='spotted'] { box-shadow: inset 0 0 160px 40px rgba(255, 60, 40, 0.5); }
       #debug { bottom: 10px; left: 10px; width: 270px; box-sizing: border-box; overflow: hidden; font: 11px/1.3 ui-monospace, Menlo, Consolas, monospace; white-space: pre; color: #b9c3d6; }
     </style>
   </head>
@@ -44,6 +66,10 @@
       <button id="mode" type="button">Switch view (Tab)</button>
       <small>Camera switching is a technical experiment, not final design.</small>
     </div>
+    <div id="vignette"></div>
+    <div id="objective" class="panel"></div>
+    <div id="reports" class="panel" style="display: none"></div>
+    <div id="attention"><div id="attention-eye"><div id="attention-fill"></div></div><div id="attention-label"></div></div>
     <div id="controls" class="panel"></div>
     <div id="debug" class="panel"></div>
     <script type="module" src="./main.ts"></script>

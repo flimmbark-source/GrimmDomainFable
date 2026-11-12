@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineRoom, defineServer } from 'colyseus';
 import { DEFAULT_SERVER_PORT, ROOM_NAME } from '../shared/protocol.ts';
-import { MatchRoom } from './MatchRoom.ts';
+import { MatchConfig, MatchRoom } from './MatchRoom.ts';
 
 const port = Number(process.env.PORT ?? DEFAULT_SERVER_PORT);
 
@@ -13,8 +13,17 @@ const clientDir = [resolve(here, '../../client'), resolve(here, '../../dist/clie
   existsSync(resolve(dir, 'index.html')),
 );
 
+// Development switches. GRIMM_DEBUG=1 streams monster senses and memory
+// (including hidden hero positions) to every client: never use it for real play.
+const debug = process.env.GRIMM_DEBUG === '1';
+const mapId = process.env.GRIMM_MAP || undefined;
+// Reproducible sessions for testing: GRIMM_SEED=123, GRIMM_BOTS=none or e.g. GRIMM_BOTS=1,5
+const seed = process.env.GRIMM_SEED ? Number(process.env.GRIMM_SEED) : undefined;
+const bots = process.env.GRIMM_BOTS;
+const botSlots = bots === undefined ? undefined : bots === 'none' ? [] : bots.split(',').map(Number).filter(Number.isInteger);
+
 const server = defineServer({
-  rooms: { [ROOM_NAME]: defineRoom(MatchRoom) },
+  rooms: { [ROOM_NAME]: defineRoom(MatchRoom, { config: new MatchConfig({ debug, mapId, seed: Number.isFinite(seed) ? seed : undefined, botSlots }) }) },
   greet: false,
   express: async (app) => {
     if (!clientDir) return;
@@ -26,3 +35,4 @@ const server = defineServer({
 await server.listen(port);
 console.log(`Grimm Dominion server listening on http://localhost:${port}`);
 console.log(clientDir ? `Serving built client from ${clientDir}` : 'No built client found (use `npm run dev` or `npm run build`).');
+if (debug) console.warn('GRIMM_DEBUG=1: perception debug data is being sent to all clients. Information hiding is OFF.');

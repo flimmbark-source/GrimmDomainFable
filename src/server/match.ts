@@ -7,6 +7,7 @@
 import {
   parseCommand,
   type Command,
+  type DebugMessage,
   type SlotCommand,
   type SlotId,
   type Snapshot,
@@ -16,6 +17,7 @@ import { botThink, createBotMemory, type BotMemory } from '../shared/sim/bot.ts'
 import { getMap, type MapDef } from '../shared/sim/map.ts';
 import { projectSnapshot, viewerForSlot } from '../shared/sim/projection.ts';
 import { createSim, findFreeSlot, occupySlot, step, vacateSlot, type SimState } from '../shared/sim/simulation.ts';
+import { TUNING } from '../shared/sim/tuning.ts';
 
 export interface MatchOptions {
   seed: number;
@@ -62,7 +64,7 @@ export class Match {
 
   /**
    * Free a connection's seat. Reconnect grace periods and bot takeover are
-   * unresolved design questions (decisions.md #6); M0 simply empties the slot.
+   * unresolved design questions (decisions.md #6); the slot is simply emptied.
    */
   leave(sessionId: string): void {
     const slot = this.seats.get(sessionId);
@@ -110,5 +112,43 @@ export class Match {
   snapshotFor(sessionId: string | null): Snapshot {
     const slot = sessionId === null ? null : this.slotOf(sessionId);
     return projectSnapshot(this.state, viewerForSlot(this.state, slot));
+  }
+
+  /**
+   * SERVER-SIDE ONLY: the full authoritative state, for tests and tools that
+   * run inside the server process. Never send this to a client.
+   */
+  inspect(): Readonly<SimState> {
+    return this.state;
+  }
+
+  /**
+   * DEVELOPMENT ONLY: every monster's senses and memory, including what it
+   * knows about hidden heroes. The room sends this only when the server was
+   * started with GRIMM_DEBUG=1.
+   */
+  debugMessage(): DebugMessage {
+    return {
+      tick: this.state.tick,
+      monsters: this.state.actors.flatMap((a) => {
+        const b = a.brain;
+        if (!b) return [];
+        const profile = TUNING.monsters[b.type];
+        return [{
+          id: a.id,
+          x: a.x,
+          z: a.z,
+          dirX: a.dirX,
+          dirZ: a.dirZ,
+          mode: b.mode,
+          viewRange: profile.viewRange,
+          viewHalfArcCos: profile.viewHalfArcCos,
+          targets: b.targets.map((t) => ({ actorId: t.actorId, attention: t.attention, visible: t.visible, confirmed: t.confirmed })),
+          lastSeen: b.lastSeen ? { x: b.lastSeen.x, z: b.lastSeen.z } : null,
+          searchPoints: b.search ? b.search.points.map((p) => ({ x: p.x, z: p.z })) : [],
+          path: a.path.map((p) => ({ x: p.x, z: p.z })),
+        }];
+      }),
+    };
   }
 }

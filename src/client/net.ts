@@ -8,6 +8,7 @@ import {
   MSG,
   ROOM_NAME,
   type Command,
+  type DebugMessage,
   type JoinOptions,
   type Snapshot,
   type WelcomeMessage,
@@ -18,6 +19,8 @@ export interface Connection {
   send(command: Command): void;
   onSnapshot(handler: (snapshot: Snapshot) => void): void;
   onClosed(handler: (reason: string) => void): void;
+  /** Development only: fires if the server was started with GRIMM_DEBUG=1. */
+  onDebug(handler: (message: DebugMessage) => void): void;
   leave(): void;
 }
 
@@ -41,6 +44,9 @@ export async function connect(options: JoinOptions): Promise<Connection> {
     snapshotHandler(snapshot);
   });
 
+  let debugHandler: (message: DebugMessage) => void = () => {};
+  room.onMessage(MSG.debug, (message: DebugMessage) => debugHandler(message));
+
   const welcome = await new Promise<WelcomeMessage>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Server did not send a welcome message')), 5000);
     room.onMessage(MSG.welcome, (message: WelcomeMessage) => {
@@ -56,6 +62,7 @@ export async function connect(options: JoinOptions): Promise<Connection> {
       snapshotHandler = handler;
       if (latestEarly) handler(latestEarly);
     },
+    onDebug: (handler) => (debugHandler = handler),
     onClosed: (handler) => {
       room.onLeave((code: number) => handler(`connection closed (code ${code})`));
       room.onError((code: number, message?: string) => handler(`room error ${code}: ${message ?? ''}`));

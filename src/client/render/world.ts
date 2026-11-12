@@ -216,7 +216,13 @@ export function buildWorld(scene: THREE.Scene, map: MapDef, assets: AssetLibrary
     const object = assets.instantiate(prop.kind);
     object.position.set(prop.x, 0, prop.z);
     object.rotation.y = prop.yaw;
-    object.scale.setScalar(prop.scale);
+    // Hedges and walls are modelled on a 2 x 2 footprint and stretched to the
+    // collider, so the visible shape is exactly what blocks movement and sight.
+    if (prop.collider.shape === 'box' && (prop.kind === 'thicket' || prop.kind === 'ruin_wall')) {
+      object.scale.set(prop.collider.hx, 1, prop.collider.hz);
+    } else {
+      object.scale.setScalar(prop.scale);
+    }
     object.name = prop.kind;
     props.add(object);
   }
@@ -226,11 +232,14 @@ export function buildWorld(scene: THREE.Scene, map: MapDef, assets: AssetLibrary
   return { root, ground, sun };
 }
 
-/** Debug overlay: the simulation's actual colliders and patrol routes. */
+/** Debug overlay: the simulation's actual colliders and patrol routes.
+ *  Magenta = blocks movement AND sight (cover); grey = blocks movement only. */
 export function buildCollisionDebug(map: MapDef): THREE.Group {
   const group = new THREE.Group();
   group.name = 'debug-colliders';
-  const line = new THREE.LineBasicMaterial({ color: 0xff3df0, depthTest: false });
+  const cover = new THREE.LineBasicMaterial({ color: 0xff3df0, depthTest: false });
+  const low = new THREE.LineBasicMaterial({ color: 0xb8b8b8, depthTest: false });
+  let line = cover;
   const loop = (points: THREE.Vector3[], material = line) => {
     const mesh = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points), material);
     mesh.renderOrder = 10;
@@ -238,6 +247,7 @@ export function buildCollisionDebug(map: MapDef): THREE.Group {
   };
   for (const prop of map.props) {
     const c = prop.collider;
+    line = prop.blocksSight ? cover : low;
     if (c.shape === 'circle') {
       loop(Array.from({ length: 24 }, (_, i) => {
         const a = (i / 24) * Math.PI * 2;
@@ -247,6 +257,7 @@ export function buildCollisionDebug(map: MapDef): THREE.Group {
       loop([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => new THREE.Vector3(prop.x + sx! * c.hx, 0.08, prop.z + sz! * c.hz)));
     }
   }
+  line = cover;
   const h = map.halfSize;
   loop([new THREE.Vector3(-h, 0.08, -h), new THREE.Vector3(h, 0.08, -h), new THREE.Vector3(h, 0.08, h), new THREE.Vector3(-h, 0.08, h)]);
   const routeMat = new THREE.LineBasicMaterial({ color: 0xffe14a, depthTest: false });
