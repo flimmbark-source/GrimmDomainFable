@@ -34,13 +34,13 @@ function hedge(m: Model, prop: PropDef, h: Height, r: Rand): void {
   if (c.shape !== 'obox') return;
   const yaw = Math.atan2(-c.uz, c.ux);
   const w = c.hz;
-  modules(prop, 1.15, (x, z, len, i) => {
+  modules(prop, 1.3, (x, z, len, i) => {
     const y = h(x, z);
     const tall = 2.35 + r.range(-0.12, 0.3);
     const cols = [C.hedge, C.hedgeDark, C.hedgeLight, C.bramble];
     m.at([x, y, z], yaw + r.range(-0.08, 0.08), () => {
       // Dense body from the ground up: this is solid cover.
-      m.lump(0.62, cols[i % 2]!, { p: [0, 0.55, 0], s: [len * 0.98, 1.05, w * 1.42], soft: true, shade: 0.5, sway: 0.015, tip: C.hedge }, 1, i * 7 + 1, 0.18);
+      m.lump(0.62, cols[i % 2]!, { p: [0, 0.55, 0], s: [len * 0.98, 1.05, w * 1.42], soft: true, shade: 0.5, sway: 0.015, tip: C.hedge }, 0, i * 7 + 1, 0.22);
       m.lump(0.6, cols[(i + 1) % 4]!, { p: [r.range(-0.1, 0.1), 1.45, r.range(-0.08, 0.08)], s: [len * 0.95, 1.05, w * 1.3], soft: true, shade: 0.35, sway: 0.03, tip: C.hedgeLight }, 1, i * 7 + 2, 0.2);
       m.lump(0.45, i % 3 ? C.hedgeLight : C.hedge, { p: [r.range(-0.2, 0.2), tall - 0.3, r.range(-0.1, 0.1)], s: [len * 1.1, 0.75, w * 1.15], soft: true, shade: 0.2, sway: 0.06, tip: C.appleLight }, 0, i * 7 + 3, 0.25);
       // Now and then a hazel rod, a dog rose, a blackberry.
@@ -169,7 +169,7 @@ function bridge(m: Model, map: MapDef, deck: DeckFeature, channel: ChannelFeatur
       const bottom = Math.min(soffit(lx), top - 0.45);
       m.box(dl + 0.02, top - bottom, width, i % 3 ? C.stone : C.stoneWarm, { p: [lx, (top + bottom) / 2 - 0.04, 0], mottle: C.stoneWet, shade: 0.35 });
       // Cobbled roadway, tilted to the curve of the deck.
-      m.box(dl + 0.04, 0.1, deck.hz * 2, i % 2 ? C.cobble : C.gravel, { p: [lx, top - 0.03, 0], r: [0, 0, slope], mottle: C.cobbleDark, shade: 0 });
+      m.box(dl + 0.04, 0.1, deck.hz * 2, C.cobble, { p: [lx, top - 0.03, 0], r: [0, 0, slope], mottle: C.cobbleDark, shade: 0 });
       if (Math.abs(lx) <= parapetHalf) {
         for (const s of [-1, 1]) {
           const pz = s * (deck.hz + 0.15);
@@ -214,15 +214,18 @@ export function buildBarriers(map: MapDef, heightAt: Height, material: THREE.Mat
   const group = new THREE.Group();
   group.name = 'barriers';
   const models = new Map<string, Model>();
-  const modelFor = (x: number, z: number): Model => {
-    const key = `${Math.floor(x / chunk)}:${Math.floor(z / chunk)}`;
+  // Hedges are batched apart from masonry: like tree crowns they are coarse
+  // meshes with smooth normals, and receiving the shadow map would print their
+  // own facets back onto them. They still cast shadows.
+  const modelFor = (x: number, z: number, layer = 'stone'): Model => {
+    const key = `${layer}:${Math.floor(x / chunk)}:${Math.floor(z / chunk)}`;
     let m = models.get(key);
     if (!m) models.set(key, (m = new Model()));
     return m;
   };
   map.props.forEach((prop, index) => {
     const r = new Rand(index * 31 + 7);
-    const m = modelFor(prop.x, prop.z);
+    const m = modelFor(prop.x, prop.z, prop.kind === 'hedge' ? 'hedge' : 'stone');
     if (prop.kind === 'hedge') hedge(m, prop, heightAt, r);
     else if (prop.kind === 'stone_wall') stoneWall(m, prop, heightAt, r);
     else if (prop.kind === 'terrace_wall') terraceWall(m, prop, heightAt, r);
@@ -244,7 +247,7 @@ export function buildBarriers(map: MapDef, heightAt: Height, material: THREE.Mat
     geometries.push(geo);
     const mesh = new THREE.Mesh(geo, material);
     mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    mesh.receiveShadow = !key.startsWith('hedge');
     mesh.name = `barriers:${key}`;
     group.add(mesh);
   }

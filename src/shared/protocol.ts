@@ -285,4 +285,20 @@ export interface JoinOptions {
 }
 
 export const ROOM_NAME = 'match';
+
+/**
+ * Development / playtest regions other than the default match. A client may
+ * ASK for one by name (`?region=orchard_vale`); that only chooses which
+ * server-defined room it joins. Which map a room runs is decided by server
+ * code alone and reported in the welcome message; a client can never supply a
+ * map id.
+ */
+export const REGION_ROOMS = {
+  orchard_vale: 'match_orchard_vale',
+} as const;
+export type RegionName = keyof typeof REGION_ROOMS;
+
+export function roomForRegion(region: string | null | undefined): string {
+  return region && Object.hasOwn(REGION_ROOMS, region) ? REGION_ROOMS[region as RegionName] : ROOM_NAME;
+}
 export const DEFAULT_SERVER_PORT = 2567;

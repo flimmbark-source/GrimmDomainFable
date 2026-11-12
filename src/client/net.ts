@@ -33,9 +33,9 @@ export function serverUrl(): string {
   return location.origin;
 }
 
-export async function connect(options: JoinOptions): Promise<Connection> {
+export async function connect(options: JoinOptions, roomName: string = ROOM_NAME): Promise<Connection> {
   const client = new Client(serverUrl());
-  const room: Room = await client.joinOrCreate(ROOM_NAME, options);
+  const room: Room = await client.joinOrCreate(roomName, options);
 
   let snapshotHandler: (snapshot: Snapshot) => void = () => {};
   let latestEarly: Snapshot | null = null;

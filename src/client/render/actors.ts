@@ -27,6 +27,7 @@ interface ActorVisual {
   signAge: number;
   /** 0..1 fade-in after coming into view. */
   appear: number;
+  xray?: THREE.Mesh;
 }
 
 /** Posture signs: the in-world cue for what a monster is doing (D-014). */
@@ -75,7 +76,17 @@ export class ActorLayer {
   private readonly monsterMarker: THREE.Mesh;
   private readonly ownedRing: THREE.Mesh;
 
-  constructor(private readonly assets: AssetLibrary) {
+  /**
+   * @param heightAt  height of the walking surface (flat maps: always 0)
+   * @param silhouette  draw the player's own units through whatever hides
+   *   them from the camera. It shows only actors this client was already
+   *   sent, so it reveals nothing the server did not.
+   */
+  constructor(
+    private readonly assets: AssetLibrary,
+    private readonly heightAt: (x: number, z: number) => number = () => 0,
+    private readonly silhouette = false,
+  ) {
     this.group.name = 'actors';
     const ring = new THREE.RingGeometry(0.75, 0.92, 28);
     ring.rotateX(-Math.PI / 2);
@@ -134,10 +145,12 @@ export class ActorLayer {
       let visual = this.visuals.get(actor.id);
       if (!visual) {
         visual = this.createVisual(actor);
-        visual.root.position.set(actor.x, 0, actor.z);
+        visual.root.position.set(actor.x, this.heightAt(actor.x, actor.z), actor.z);
       }
       const from = previous.get(actor.id) ?? actor;
-      visual.root.position.set(from.x + (actor.x - from.x) * t, 0, from.z + (actor.z - from.z) * t);
+      const px = from.x + (actor.x - from.x) * t;
+      const pz = from.z + (actor.z - from.z) * t;
+      visual.root.position.set(px, this.heightAt(px, pz), pz);
 
       // Turn smoothly towards the simulated facing.
       const targetYaw = Math.atan2(actor.dirX, actor.dirZ);
@@ -172,22 +185,37 @@ export class ActorLayer {
     // A monster this player owns shows where it has been sent.
     const owned = latest.snapshot.actors.find((a) => a.kind === 'monster' && a.mode !== undefined);
     this.monsterMarker.visible = Boolean(owned?.order);
-    if (owned?.order) this.monsterMarker.position.set(owned.order.x, 0.07, owned.order.z);
+    if (owned?.order) this.monsterMarker.position.set(owned.order.x, this.heightAt(owned.order.x, owned.order.z) + 0.07, owned.order.z);
     const ownedVisual = owned ? this.visuals.get(owned.id) : undefined;
     this.ownedRing.visible = Boolean(ownedVisual);
-    if (ownedVisual) this.ownedRing.position.set(ownedVisual.root.position.x, 0.05, ownedVisual.root.position.z);
+    if (ownedVisual) this.ownedRing.position.set(ownedVisual.root.position.x, ownedVisual.root.position.y + 0.05, ownedVisual.root.position.z);
+    if (ownedVisual) this.addSilhouette(ownedVisual, 0xd66bff);
 
     // Selection ring and order marker for the local player's own hero only.
     const you = latest.snapshot.you;
     const mine = you ? this.visuals.get(you.actorId ?? -1) : undefined;
     this.selection.visible = Boolean(mine);
-    if (mine) this.selection.position.set(mine.root.position.x, 0.06, mine.root.position.z);
+    if (mine) this.selection.position.set(mine.root.position.x, mine.root.position.y + 0.06, mine.root.position.z);
+    if (mine) this.addSilhouette(mine, 0x9fd8ff);
     const order = you ? latest.snapshot.actors.find((a) => a.id === you.actorId)?.order : undefined;
     this.orderMarker.visible = Boolean(order);
     if (order) {
-      this.orderMarker.position.set(order.x, 0.07, order.z);
+      this.orderMarker.position.set(order.x, this.heightAt(order.x, order.z) + 0.07, order.z);
       this.orderMarker.scale.setScalar(1 + Math.sin(now / 120) * 0.15);
     }
+  }
+
+  /** A flat tint of the model drawn only where something is in front of it. */
+  private addSilhouette(visual: ActorVisual, color: number): void {
+    if (!this.silhouette || visual.xray || !(visual.model instanceof THREE.Mesh)) return;
+    // Drawn after the scenery but before the unit itself, passing only where
+    // something already drawn is nearer: so it appears on what hides the unit
+    // and never on the unit's own body.
+    const material = new THREE.MeshBasicMaterial({ color, depthFunc: THREE.GreaterDepth, depthWrite: false, fog: false });
+    visual.xray = new THREE.Mesh(visual.model.geometry, material);
+    visual.xray.renderOrder = 900;
+    visual.model.renderOrder = 901;
+    visual.model.add(visual.xray);
   }
 
   private updateSign(visual: ActorVisual, actor: ActorView, dt: number): void {

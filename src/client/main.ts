@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import type { Command, Snapshot, Team } from '../shared/protocol.ts';
-import { getMap } from '../shared/sim/map.ts';
+import { roomForRegion } from '../shared/protocol.ts';
+import { sightBlocked } from '../shared/sim/geometry.ts';
+import { boundsOf, getMap, type MapDef } from '../shared/sim/map.ts';
+import { surfaceHeight } from '../shared/sim/terrain.ts';
 import { AudioCues } from './audio.ts';
 import { CameraRig, type CameraMode } from './cameras.ts';
 import { Hud } from './hud.ts';
@@ -9,7 +12,29 @@ import { connect, serverUrl } from './net.ts';
 import { ActorLayer } from './render/actors.ts';
 import { AssetLibrary } from './render/assets.ts';
 import { MarkerLayer } from './render/markers.ts';
+import { buildRegionWorld } from './render/region/regionWorld.ts';
 import { buildCollisionDebug, buildWorld } from './render/world.ts';
+
+/**
+ * How far the hero camera's sight line stays clear of tall solid things.
+ * Uses the map's own sight-blocking colliders, minus ordinary tree trunks
+ * (a camera that jumped at every orchard tree would be unusable).
+ */
+function cameraClearance(map: MapDef): (ax: number, az: number, bx: number, bz: number) => number {
+  const solid: MapDef = {
+    ...map,
+    id: `${map.id}#camera`,
+    props: map.props.filter((p) => p.blocksSight && (p.collider.shape !== 'circle' || p.collider.radius >= 1.2)),
+  };
+  return (ax, az, bx, bz) => {
+    const steps = 14;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      if (sightBlocked(solid, ax, az, ax + (bx - ax) * t, az + (bz - az) * t)) return Math.max(0, (i - 1.3) / steps);
+    }
+    return 1;
+  };
+}
 
 /** Read-only hooks for automated browser verification and manual debugging. */
 interface DebugApi {
@@ -18,14 +43,24 @@ interface DebugApi {
   mode(): CameraMode;
   setMode(mode: CameraMode): void;
   send(command: Command): void;
-  renderedPosition(actorId: number): { x: number; z: number } | null;
+  renderedPosition(actorId: number): { x: number; y: number; z: number } | null;
   screenPosition(actorId: number): { x: number; y: number } | null;
   camera(): { position: number[]; fov: number };
   /** Screen pixel of a ground point, for driving real mouse clicks in tests. */
   worldToScreen(x: number, z: number): { x: number; y: number };
   /** Centre the strategy camera on a ground point. */
   focus(x: number, z: number): void;
-  stats(): { fps: number; drawCalls: number; triangles: number; snapshots: number; renderer: string; assets: Record<string, string> };
+  stats(): {
+    fps: number; drawCalls: number; triangles: number; snapshots: number; renderer: string; assets: Record<string, string>;
+    /** GPU objects alive, and how much scenery the region placed. */
+    geometries: number; textures: number; programs: number; scene: Record<string, number>; gpu: string; jsHeapMb: number | null;
+  };
+  /** Pose the cameras directly (evidence capture and tests): hero orbit yaw / pitch / distance, strategy distance. */
+  rig(pose: { yaw?: number; pitch?: number; distance?: number; rtsDistance?: number }): void;
+  /** Id of the map the server put this client on. */
+  mapId(): string;
+  /** Height of the walking surface at a ground point (0 on flat maps). */
+  height(x: number, z: number): number;
   /** Cues played so far, by kind, and whether the audio context is running. */
   audio(): { played: Record<string, number>; };
   /** Text of the on-screen attention indicator and report list, as shown. */
@@ -64,20 +99,35 @@ async function start(): Promise<void> {
   hud.setStatus(`Connecting to ${serverUrl()}…`);
   const requestedTeam = params.get('team');
   const team: Team | undefined = requestedTeam === 'dark' || requestedTeam === 'light' ? requestedTeam : 'light';
-  const connection = await connect(params.get('spectate') === '1' ? { spectate: true } : { team });
+  // `?region=` only picks which server room to join; the server decides the map.
+  const connection = await connect(params.get('spectate') === '1' ? { spectate: true } : { team }, roomForRegion(params.get('region')));
   const map = getMap(connection.welcome.mapId);
 
   const scene = new THREE.Scene();
-  buildWorld(scene, map, assets);
-  const debugOverlay = buildCollisionDebug(map);
+  // A map with region data gets the region renderer; the M1 crossing keeps its own.
+  // `?render=0`: an observer tab for automated checks. It joins, receives its
+  // own snapshots and runs the HUD, but builds no scenery and draws nothing.
+  const observerOnly = params.get('render') === '0';
+  const world = observerOnly
+    ? { root: new THREE.Group(), ground: new THREE.Mesh(), sun: new THREE.DirectionalLight(), heightAt: (x: number, z: number) => surfaceHeight(map, x, z) }
+    : map.region
+    ? await buildRegionWorld(scene, map, assets, renderer, (stage) => hud.setStatus(`Building the region: ${stage}…`))
+    : buildWorld(scene, map, assets);
+  const debugOverlay = buildCollisionDebug(map, world.heightAt);
   scene.add(debugOverlay);
-  const actors = new ActorLayer(assets);
+  const actors = new ActorLayer(assets, world.heightAt, Boolean(map.region));
   scene.add(actors.group);
-  const markers = new MarkerLayer(assets);
+  const markers = new MarkerLayer(assets, world.heightAt);
   scene.add(markers.group);
   const audio = new AudioCues();
 
-  const rig = new CameraRig(map.halfSize + 6);
+  const bounds = boundsOf(map);
+  const rig = map.region
+    ? new CameraRig(
+        { minX: bounds.minX - 6, maxX: bounds.maxX + 6, minZ: bounds.minZ - 6, maxZ: bounds.maxZ + 6 },
+        { heightAt: world.heightAt, clearAlong: cameraClearance(map) },
+      )
+    : new CameraRig(map.halfSize + 6);
   const heroPosition = (): THREE.Vector3 | null => {
     const id = actors.latest?.you?.actorId;
     return id == null ? null : actors.renderedPosition(id);
@@ -123,6 +173,7 @@ async function start(): Promise<void> {
     },
     onModeChanged: (mode) => hud.setMode(mode),
     ownedMonster: () => actors.latest?.actors.find((a) => a.kind === 'monster' && a.mode !== undefined)?.id ?? null,
+    ...(map.region ? { heightAt: world.heightAt } : {}),
   });
   hud.setMode(rig.mode);
   const slot = connection.welcome.slot;
@@ -158,6 +209,8 @@ async function start(): Promise<void> {
       }
     }
     rig.update(dt, window.innerWidth / window.innerHeight, hero);
+    if (observerOnly) return;
+    world.update?.(dt, rig.camera, rig.lookTarget, rig.mode);
     renderer.render(scene, rig.camera);
 
     frames++;
@@ -182,20 +235,28 @@ async function start(): Promise<void> {
     send: (command) => connection.send(command),
     renderedPosition: (id) => {
       const p = actors.renderedPosition(id);
-      return p ? { x: p.x, z: p.z } : null;
+      return p ? { x: p.x, y: p.y, z: p.z } : null;
     },
     screenPosition: (id) => {
       const p = actors.renderedPosition(id);
       if (!p) return null;
-      const v = p.clone().setY(1).project(rig.camera);
+      const v = p.clone().setY(p.y + 1).project(rig.camera);
       return { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight };
     },
     camera: () => ({ position: rig.camera.position.toArray(), fov: rig.camera.fov }),
     worldToScreen: (x, z) => {
-      const v = new THREE.Vector3(x, 0, z).project(rig.camera);
+      const v = new THREE.Vector3(x, world.heightAt(x, z), z).project(rig.camera);
       return { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight };
     },
     focus: (x, z) => rig.focusOn(new THREE.Vector3(x, 0, z)),
+    rig: (pose) => {
+      if (pose.yaw !== undefined) rig.heroYaw = pose.yaw;
+      if (pose.pitch !== undefined) rig.heroPitch = pose.pitch;
+      if (pose.distance !== undefined) rig.heroDistance = pose.distance;
+      if (pose.rtsDistance !== undefined) rig.rtsDistance = pose.rtsDistance;
+    },
+    mapId: () => map.id,
+    height: (x, z) => world.heightAt(x, z),
     stats: () => ({
       fps,
       drawCalls: renderer.info.render.calls,
@@ -203,6 +264,19 @@ async function start(): Promise<void> {
       snapshots: snapshotCount,
       renderer: renderer.getContext().getParameter(renderer.getContext().VERSION) as string,
       assets: { ...assets.sources } as Record<string, string>,
+      geometries: renderer.info.memory.geometries,
+      textures: renderer.info.memory.textures,
+      programs: renderer.info.programs?.length ?? 0,
+      scene: world.stats?.() ?? {},
+      gpu: (() => {
+        const gl = renderer.getContext();
+        const ext = gl.getExtension('WEBGL_debug_renderer_info');
+        return ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : 'unknown';
+      })(),
+      jsHeapMb: (() => {
+        const memory = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory;
+        return memory ? Math.round(memory.usedJSHeapSize / 1048576) : null;
+      })(),
     }),
     audio: () => ({ played: { ...audio.played } }),
     hud: () => ({

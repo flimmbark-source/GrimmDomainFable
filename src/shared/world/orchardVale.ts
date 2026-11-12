@@ -82,7 +82,8 @@ const TERRACE_2: TerraceFeature = {
 const WITNESS_A = { x: -20, z: -26.5 }; // the tree the lane bends round
 const WITNESS_B = { x: -52, z: -37.5 }; // the tree the orchard rows leave room for
 const RUIN = { x: -44, z: -55 };
-const WHEEL: WheelDef = { x: 60, z: 6.3, y: 1.95, radius: 2.6, width: 1.3, axleX: 0, axleZ: 1 };
+// East of the mill's gable, where it can be seen turning from the default camera.
+const WHEEL: WheelDef = { x: 68, z: 6.2, y: 1.95, radius: 2.6, width: 1.3, axleX: 0, axleZ: 1 };
 
 const TERRAIN: TerrainDef = {
   maxWalkableGrade: MAX_GRADE,
@@ -97,7 +98,7 @@ const TERRAIN: TerrainDef = {
     { type: 'swell', x: RUIN.x, z: RUIN.z, radius: 14, height: 0.9 },
     { type: 'swell', x: 0, z: 11, radius: 16, height: 0.25 },
     // Wheel pit: lets the river reach the mill wall.
-    { type: 'swell', x: WHEEL.x, z: WHEEL.z, radius: 3.2, height: -1.0 },
+    { type: 'swell', x: WHEEL.x, z: WHEEL.z - 0.8, radius: 2.4, height: -1.0 },
     TERRACE_1,
     TERRACE_2,
     RIVER,
@@ -174,7 +175,7 @@ function build(): MapDef {
   for (const s of spawns) b.reserve(s.x, s.z, 2.2);
   const sites = [
     { id: 0, x: -43.6, z: -54.6 }, // inside the ruin on the old road
-    { id: 1, x: 68.5, z: 12 }, // the mill yard
+    { id: 1, x: 69, z: 13.2 }, // the mill yard
   ];
   for (const s of sites) b.reserve(s.x, s.z, 2.6);
   b.reserve(WITNESS_A.x, WITNESS_A.z, 5.5).reserve(WITNESS_B.x, WITNESS_B.z, 6.5);
@@ -221,6 +222,8 @@ function build(): MapDef {
   b.round('barrel_stack', -3.2, 25.4, 0.9).round('crate_stack', 19.4, 18.4, 0.85).round('haystack', -15.8, -17.6, 0.8);
 
   // Garden walls and the village's own hedges.
+  // Quay wall along the wheel pit.
+  b.barrier('stone_wall', [[64.5, 7.6], [71.6, 7.6]]);
   b.barrier('stone_wall', [[-14.5, -1.4], [-14.5, 7], [-12.6, 7]]);
   b.barrier('stone_wall', [[6.2, 7.4], [12.6, 7.4], [12.6, 6.4]]);
   b.barrier('stone_wall', [[17.6, 9.6], [26.4, 9.9]], [[3.2, 5.2]]);

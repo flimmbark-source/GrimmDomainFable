@@ -18,7 +18,7 @@ import { VALE as C } from '../palette.ts';
 import { groundMaterial, skirtMaterial, type SharedUniforms } from './materials.ts';
 
 /** The painted area reaches this far past the playable rectangle. */
-const APRON = 12;
+const APRON = 30;
 const PX_PER_M = 7;
 
 export interface GroundResult {
@@ -280,6 +280,19 @@ function paint(map: MapDef, region: RegionDef, area: Bounds, heightAt: (x: numbe
     }
   }
 
+  // The roads run on out of the region through their connectors, fading into the distance.
+  for (const c of region.connectors) {
+    const w = c.kind === 'road' ? 4.4 : c.kind === 'lane' ? 3.2 : 2.6;
+    for (let k = 0; k < 6; k++) {
+      const a = { x: c.x + c.outX * (k * 5 - 0.5), z: c.z + c.outZ * (k * 5 - 0.5) };
+      const e = { x: c.x + c.outX * (k * 5 + 5), z: c.z + c.outZ * (k * 5 + 5) };
+      const fade = 1 - k / 7;
+      stroke([a, e], w + 0.5, css(C.roadDark, 0.5 * fade));
+      stroke([a, e], w, css(c.kind === 'road' ? C.road : C.lane, 0.95 * fade));
+      stroke([a, e], w * 0.45, css(C.roadPale, 0.3 * fade));
+    }
+  }
+
   // 6. Soft dark under everything that stands on the ground (grounding, not a shadow map).
   for (const prop of map.props) {
     if (prop.kind === 'water') continue;
@@ -342,9 +355,9 @@ export function buildGround(map: MapDef, region: RegionDef, shared: SharedUnifor
   const group = new THREE.Group();
   group.name = 'ground';
 
-  // Inner, painted ground at one-metre resolution.
-  const nx = Math.round(area.maxX - area.minX);
-  const nz = Math.round(area.maxZ - area.minZ);
+  // Inner, painted ground at 1.3 m resolution.
+  const nx = Math.round((area.maxX - area.minX) / 1.3);
+  const nz = Math.round((area.maxZ - area.minZ) / 1.3);
   const inner = new THREE.PlaneGeometry(area.maxX - area.minX, area.maxZ - area.minZ, nx, nz);
   inner.rotateX(-Math.PI / 2);
   inner.translate((area.minX + area.maxX) / 2, 0, (area.minZ + area.maxZ) / 2);

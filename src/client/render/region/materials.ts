@@ -25,11 +25,13 @@ float vnoise(vec3 x) {
 }
 `;
 
-function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: boolean; mottle: number; grain: number }): void {
+function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: boolean; mottle: number; grain: number; upNormals?: boolean }): void {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = shared.uTime;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\nattribute float sway;\nuniform float uTime;\nvarying vec3 vWorldP;`)
+      // Flat cards (grass, reeds) are lit as if they were the ground they grow from.
+      .replace('#include <beginnormal_vertex>', o.upNormals ? 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);' : '#include <beginnormal_vertex>')
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
@@ -67,8 +69,10 @@ export function painterlyMaterial(shared: SharedUniforms): THREE.MeshLambertMate
 
 /** Double-sided variant for grass blades and other flat cards. */
 export function cardMaterial(shared: SharedUniforms): THREE.MeshLambertMaterial {
-  const material = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-  patch(material, shared, { sway: true, mottle: 0.14, grain: 0.0 });
+  // Cards are modelled with both windings, so single-sided drawing shows both faces
+  // without the renderer flipping the (upward) normal on the far one.
+  const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+  patch(material, shared, { sway: true, mottle: 0.14, grain: 0.0, upNormals: true });
   return material;
 }
 

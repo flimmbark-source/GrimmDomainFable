@@ -29,12 +29,12 @@ function crown(m: Model, r: Rand, centre: V3, radius: number, clumps: number, c:
     const ring = i % 3 === 0 ? 0.25 : 0.62;
     const rr = radius * r.range(0.38, 0.56);
     const up = i % 3 === 0 ? radius * flat * 0.55 : r.range(-0.15, 0.3) * radius * flat;
-    m.lump(rr, i % 3 === 0 ? c.light : i % 2 ? c.mid : c.dark, {
+    m.lump(rr, i % 3 === 0 ? c.light : c.mid, {
       p: [centre[0] + Math.cos(a) * radius * ring, centre[1] + up, centre[2] + Math.sin(a) * radius * ring],
       s: [r.range(0.95, 1.25), flat * r.range(0.8, 1.05), r.range(0.95, 1.25)],
       r: [r.range(-0.3, 0.3), r.range(0, 3), r.range(-0.3, 0.3)],
       soft: true, shade: 0.36, sway: sway * 1.3, tip: i % 3 === 0 ? c.light : c.mid,
-    }, detail, Math.floor(r.next() * 99));
+    }, clumps <= 5 ? 1 : 0, Math.floor(r.next() * 99), 0.16);
   }
   if (o.fruit) {
     const n = o.fruitCount ?? 14;

@@ -148,9 +148,10 @@ function trough(): Part[] {
 function signpost(): Part[] {
   const m = new Model();
   m.post(0.09, 0.12, 3.1, C.timber, {}, 6);
-  m.box(1.4, 0.26, 0.06, C.plaster, { p: [0.6, 2.7, 0], r: [0, 0.2, 0], shade: 0.05 });
-  m.box(1.2, 0.24, 0.06, C.plasterWarm, { p: [-0.5, 2.35, 0.03], r: [0, -1.2, 0], shade: 0.05 });
-  m.box(1.0, 0.22, 0.06, C.plaster, { p: [0.2, 2.02, -0.3], r: [0, 1.5, 0], shade: 0.05 });
+  // Arms start at the post and point three ways.
+  m.at([0, 2.7, 0], 0.2, () => m.box(0.9, 0.2, 0.05, C.plaster, { p: [0.5, 0, 0], shade: 0.05 }));
+  m.at([0, 2.42, 0], 2.3, () => m.box(0.8, 0.2, 0.05, C.plasterWarm, { p: [0.45, 0, 0], shade: 0.05 }));
+  m.at([0, 2.14, 0], -1.5, () => m.box(0.7, 0.18, 0.05, C.plaster, { p: [0.4, 0, 0], shade: 0.05 }));
   m.cone(0.16, 0.3, C.timberDark, { p: [0, 3.2, 0] }, 5);
   m.cyl(0.3, 0.36, 0.3, C.stone, { p: [0, 0.14, 0], mottle: C.moss }, 7);
   return m.parts;
@@ -365,7 +366,7 @@ function flower(color: number): () => Part[] {
     for (let i = 0; i < 4; i++) {
       const x = Math.cos(i * 2.2) * 0.16;
       const z = Math.sin(i * 2.2) * 0.16;
-      blade(m, x, z, 0.3, 0.03, 0.03, i * 0.9, C.grassDark, C.grass, 0.5);
+      blade(m, x, z, 0.3, 0.03, 0.03, i * 0.9, C.grass, C.grassLight, 0.5);
       m.add(octa(0.07), color, { p: [x + 0.03, 0.33, z], s: [1, 0.6, 1], shade: 0, sway: 0.5 });
     }
     return m.parts;
@@ -375,9 +376,9 @@ function flower(color: number): () => Part[] {
 const COVER: Record<CoverKind, () => Part[]> = {
   grass_tuft: () => {
     const m = new Model();
-    for (let i = 0; i < 7; i++) {
-      const a = i * 0.9;
-      blade(m, Math.cos(a) * 0.1, Math.sin(a) * 0.1, 0.3 + (i % 3) * 0.09, 0.05, ((i % 3) - 1) * 0.12, a, C.grassDark, C.grassLight, 0.55);
+    for (let i = 0; i < 5; i++) {
+      const a = i * 1.3;
+      blade(m, Math.cos(a) * 0.12, Math.sin(a) * 0.12, 0.24 + (i % 3) * 0.09, 0.04, ((i % 3) - 1) * 0.12, a, C.grass, C.grassLight, 0.55);
     }
     return m.parts;
   },
@@ -387,9 +388,9 @@ const COVER: Record<CoverKind, () => Part[]> = {
   flower_violet: flower(C.flowerViolet),
   reed: () => {
     const m = new Model();
-    for (let i = 0; i < 6; i++) {
-      const a = i * 1.1;
-      blade(m, Math.cos(a) * 0.18, Math.sin(a) * 0.18, 0.75 + (i % 3) * 0.14, 0.035, ((i % 3) - 1) * 0.1, a, C.hedgeDark, C.reed, 0.6);
+    for (let i = 0; i < 5; i++) {
+      const a = i * 1.3;
+      blade(m, Math.cos(a) * 0.18, Math.sin(a) * 0.18, 0.75 + (i % 3) * 0.14, 0.045, ((i % 3) - 1) * 0.1, a, C.hedge, C.reed, 0.6);
     }
     m.cyl(0.035, 0.035, 0.16, 0x5a3c26, { p: [0.05, 0.86, 0.05], sway: 0.6, shade: 0 }, 4);
     return m.parts;
@@ -398,7 +399,7 @@ const COVER: Record<CoverKind, () => Part[]> = {
     const m = new Model();
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
-      blade(m, 0, 0, 0.36, 0.11, 0.42, a + Math.PI / 2, C.oldwoodDark, C.oldwoodLight, 0.3);
+      blade(m, 0, 0, 0.36, 0.11, 0.42, a + Math.PI / 2, C.oldwood, C.hedgeLight, 0.3);
     }
     return m.parts;
   },

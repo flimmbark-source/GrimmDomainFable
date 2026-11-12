@@ -95,11 +95,15 @@ export function buildInstances(
     const kind = ALIAS[b.kind] ?? b.kind;
     const near = assets.geometryFor(`${kind}:${b.variant}:0`, () => variantParts(kind, b.variant, 0)!);
     const nearMesh = instanced(near, materials.solid, b.matrices, key, true);
+    // Crowns are coarse meshes shaded with smooth normals; receiving the shadow
+    // map would print their own facets back onto them. They still cast.
+    if (kind in FLORA_BUILDERS) nearMesh.receiveShadow = false;
     group.add(nearMesh);
     let farMesh: THREE.InstancedMesh | null = null;
     if (HAS_LOD(kind)) {
       const far = assets.geometryFor(`${kind}:${b.variant}:1`, () => variantParts(kind, b.variant, 1)!);
       farMesh = instanced(far, materials.solid, b.matrices, `${key}:far`, true);
+      farMesh.receiveShadow = false;
       farMesh.visible = false;
       group.add(farMesh);
     }
@@ -160,7 +164,7 @@ export function buildInstances(
     }
     return null;
   };
-  const step = 1.55;
+  const step = 1.7;
   for (let gz = b.minZ - 8; gz < b.maxZ + 8; gz += step) {
     for (let gx = b.minX - 8; gx < b.maxX + 8; gx += step) {
       const x = gx + (rnd() - 0.5) * step;
