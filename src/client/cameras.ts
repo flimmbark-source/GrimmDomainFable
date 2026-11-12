@@ -22,6 +22,8 @@ export interface CameraWorld {
   heightAt(x: number, z: number): number;
   /** How far along the line from a to b (0..1) the view stays clear of tall solid things. */
   clearAlong(ax: number, az: number, bx: number, bz: number): number;
+  /** Is this point inside a tree's crown? (Foliage is not cover, but a lens inside it sees nothing.) */
+  inFoliage?(x: number, y: number, z: number): boolean;
 }
 
 export interface PanLimits {
@@ -59,6 +61,8 @@ export class CameraRig {
   private readonly limits: PanLimits;
   /** 0..1: how much of the hero camera's distance is currently usable. */
   private heroClear = 1;
+  /** Largest hero-camera distance that keeps the lens out of foliage (smoothed). */
+  private foliageReach = Infinity;
 
   constructor(panLimit: number | PanLimits, private readonly world: CameraWorld | null = null) {
     this.limits = typeof panLimit === 'number' ? { minX: -panLimit, maxX: panLimit, minZ: -panLimit, maxZ: panLimit } : panLimit;
@@ -144,7 +148,23 @@ export class CameraRig {
       }
       // Squeezed close against something tall: rise and look down over the
       // hero's shoulder instead of pressing the lens into its back.
-      const lift = Math.max(0, 3 - reach) * 1.1;
+      const liftFor = (r: number) => Math.max(0, 3 - r) * 1.1;
+      let lift = liftFor(reach);
+      if (world?.inFoliage) {
+        // Shorten the camera until the lens is out of every crown; under a
+        // canopy, do not rise into it either.
+        const at = (r: number, l: number): [number, number, number] => [
+          heroPosition.x - forwardX * r * Math.cos(this.heroPitch),
+          baseY + HERO.lookHeight + r * Math.sin(this.heroPitch) + l,
+          heroPosition.z - forwardZ * r * Math.cos(this.heroPitch),
+        ];
+        let free = reach;
+        while (free > 1.4 && world.inFoliage(...at(free, liftFor(free)))) free -= 0.35;
+        this.foliageReach = free < this.foliageReach ? free : this.foliageReach + (free - this.foliageReach) * Math.min(1, dt * 2.5);
+        reach = Math.min(reach, this.foliageReach);
+        lift = liftFor(reach);
+        if (world.inFoliage(...at(reach, lift))) lift = 0;
+      }
       target.lookAt.set(heroPosition.x, baseY + HERO.lookHeight - lift * 0.35, heroPosition.z);
       target.position.set(
         heroPosition.x - forwardX * reach * Math.cos(this.heroPitch),

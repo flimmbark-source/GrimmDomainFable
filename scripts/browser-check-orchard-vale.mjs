@@ -155,6 +155,14 @@ try {
   // --- Tour: orchard, ford, boundary walk, ruin ------------------------------------
   await walkTo(-60, 22);
   await shot('hero-orchard-lane', { mode: 'hero', yaw: -1.2, pitch: 0.14, distance: 8 });
+  // Sweep the hero camera round in the orchard: the lens must never end up inside a crown.
+  const inLeaves = [];
+  for (const yaw of [-1.2, -0.4, 0.4, 1.2, 2.0, 2.8, 3.6, 4.4]) {
+    await page.evaluate((y) => window.__grimm.rig({ yaw: y }), yaw);
+    await page.waitForTimeout(1200);
+    if (await page.evaluate(() => window.__grimm.cameraInFoliage())) inLeaves.push(yaw);
+  }
+  check('in the orchard, the hero camera keeps its lens out of tree crowns at every heading', inLeaves.length === 0, inLeaves.length ? `inside foliage at yaw ${inLeaves.join(', ')}` : '8 headings');
   await setMode('rts');
   await walkTo(-70, 2);
   await shot('hero-ford-lane', { mode: 'hero', yaw: -0.15, pitch: 0.2, distance: 9 });

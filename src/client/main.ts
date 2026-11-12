@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Command, Snapshot, Team } from '../shared/protocol.ts';
 import { roomForRegion } from '../shared/protocol.ts';
-import { sightBlocked } from '../shared/sim/geometry.ts';
+import { propsNearBox, sightBlocked } from '../shared/sim/geometry.ts';
 import { boundsOf, getMap, type MapDef } from '../shared/sim/map.ts';
 import { surfaceHeight } from '../shared/sim/terrain.ts';
 import { AudioCues } from './audio.ts';
@@ -20,6 +20,32 @@ import { buildCollisionDebug, buildWorld } from './render/world.ts';
  * Uses the map's own sight-blocking colliders, minus ordinary tree trunks
  * (a camera that jumped at every orchard tree would be unusable).
  */
+/** Crown of each tree kind at scale 1: centre height, horizontal and vertical radius (render-side figures). */
+const CROWNS: Partial<Record<string, [number, number, number]>> = {
+  tree_apple: [3.4, 2.3, 1.5], tree_apple_old: [3.9, 2.6, 1.6], tree_apple_feral: [3.9, 2.0, 1.8], tree_apple_young: [2.3, 0.7, 0.6],
+  tree_witness: [10.5, 6.2, 4.0], tree_oldwood: [9.6, 3.9, 3.2], tree_oak: [5.9, 3.6, 2.4], tree_willow: [4.0, 3.2, 2.2],
+  tree_birch: [6.2, 1.7, 2.0], coppice_stool: [2.6, 1.2, 2.0], tree_pine: [4.0, 1.9, 2.6], tree_dead: [3.8, 1.2, 1.2],
+};
+
+/** Is a point inside some tree's crown (an ellipsoid round its centre)? */
+function foliageTest(map: MapDef, heightAt: (x: number, z: number) => number): (x: number, y: number, z: number) => boolean {
+  return (x, y, z) => {
+    const near = propsNearBox(map, x - 7, x + 7, z - 7, z + 7);
+    const list = near ?? map.props.map((_, i) => i);
+    for (const i of list) {
+      const p = map.props[i]!;
+      const crown = CROWNS[p.kind];
+      if (!crown) continue;
+      const [cy, rh, rv] = crown;
+      const dx = (x - p.x) / (rh * p.scale);
+      const dz = (z - p.z) / (rh * p.scale);
+      const dy = (y - heightAt(p.x, p.z) - cy * p.scale) / (rv * p.scale);
+      if (dx * dx + dy * dy + dz * dz < 1) return true;
+    }
+    return false;
+  };
+}
+
 function cameraClearance(map: MapDef): (ax: number, az: number, bx: number, bz: number) => number {
   const solid: MapDef = {
     ...map,
@@ -57,6 +83,8 @@ interface DebugApi {
   };
   /** Pose the cameras directly (evidence capture and tests): hero orbit yaw / pitch / distance, strategy distance. */
   rig(pose: { yaw?: number; pitch?: number; distance?: number; rtsDistance?: number }): void;
+  /** Is the camera lens currently inside a tree crown? (false on maps without region data) */
+  cameraInFoliage(): boolean;
   /** Id of the map the server put this client on. */
   mapId(): string;
   /** Height of the walking surface at a ground point (0 on flat maps). */
@@ -125,7 +153,7 @@ async function start(): Promise<void> {
   const rig = map.region
     ? new CameraRig(
         { minX: bounds.minX - 6, maxX: bounds.maxX + 6, minZ: bounds.minZ - 6, maxZ: bounds.maxZ + 6 },
-        { heightAt: world.heightAt, clearAlong: cameraClearance(map) },
+        { heightAt: world.heightAt, clearAlong: cameraClearance(map), inFoliage: foliageTest(map, world.heightAt) },
       )
     : new CameraRig(map.halfSize + 6);
   const heroPosition = (): THREE.Vector3 | null => {
@@ -254,6 +282,11 @@ async function start(): Promise<void> {
       if (pose.pitch !== undefined) rig.heroPitch = pose.pitch;
       if (pose.distance !== undefined) rig.heroDistance = pose.distance;
       if (pose.rtsDistance !== undefined) rig.rtsDistance = pose.rtsDistance;
+    },
+    cameraInFoliage: () => {
+      if (!map.region) return false;
+      const p = rig.camera.position;
+      return foliageTest(map, world.heightAt)(p.x, p.y, p.z);
     },
     mapId: () => map.id,
     height: (x, z) => world.heightAt(x, z),
