@@ -7,7 +7,8 @@
 // Drives Chromium through Playwright with real mouse/keyboard events and
 // asserts on what the page actually simulates and renders. Screenshots are
 // written to docs/evidence/. Playwright is not a project dependency: the
-// script uses a locally or globally installed `playwright` package.
+// script uses a locally or globally installed `playwright` package. For a new
+// Codespace run: npm install --no-save playwright && npx playwright install chromium.
 import { execSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -18,9 +19,15 @@ const require = createRequire(import.meta.url);
 function loadPlaywright() {
   try {
     return require('playwright');
-  } catch {
-    const globalRoot = execSync('npm root -g', { encoding: 'utf8' }).trim();
+  } catch (error) {
+    if (error?.code !== 'MODULE_NOT_FOUND' || !error.message.includes("'playwright'")) throw error;
+  }
+  const globalRoot = execSync('npm root -g', { encoding: 'utf8' }).trim();
+  try {
     return require(resolve(globalRoot, 'playwright'));
+  } catch (error) {
+    if (error?.code !== 'MODULE_NOT_FOUND') throw error;
+    throw new Error('Playwright is missing. In the repository root run:\\n  npm install --no-save playwright\\n  npx playwright install chromium\\nThen rerun the browser check.');
   }
 }
 
@@ -89,12 +96,14 @@ try {
   const cameraRts = await page.evaluate(() => window.__grimm.camera());
   await page.mouse.click(640, 250);
   await page.waitForTimeout(1200);
+  const whileMoving = await page.evaluate(() => { const g = window.__grimm; return g.screenPosition(g.snapshot().you.actorId); });
+  check('strategy camera follows the hero while moving', Math.hypot(whileMoving.x - 640, whileMoving.y - 360) < 55, `hero on screen at ${whileMoving.x.toFixed(0)}, ${whileMoving.y.toFixed(0)}`);
   await waitIdle();
   const afterClick = await hero();
   check('click-to-move changes simulation state', dist(before.sim, afterClick.sim) > 3, `${fmt(before.sim)} -> ${fmt(afterClick.sim)}`);
   check('3D rendering follows the simulation', dist(afterClick.sim, afterClick.rendered) < 0.05, `rendered ${fmt(afterClick.rendered)}`);
   const screen = await page.evaluate(() => { const g = window.__grimm; return g.screenPosition(g.snapshot().you.actorId); });
-  check('hero arrived under the clicked screen point', Math.hypot(screen.x - 640, screen.y - 250) < 60, `hero on screen at ${screen.x.toFixed(0)}, ${screen.y.toFixed(0)}`);
+  check('strategy camera keeps the hero centered after click-to-move', Math.hypot(screen.x - 640, screen.y - 360) < 55, `hero on screen at ${screen.x.toFixed(0)}, ${screen.y.toFixed(0)}`);
 
   // 3. The monster patrols by itself (no input was addressed to it).
   const monsterAfter = await monster();
