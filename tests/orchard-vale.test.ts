@@ -430,3 +430,17 @@ describe('the spatial index answers exactly like a full scan', () => {
     }
   });
 });
+
+describe('authoring kit stability', () => {
+  it('an orchard row is planted the same whatever unrelated randomness came before it', async () => {
+    const { RegionBuilder } = await import('../src/shared/world/kit.ts');
+    const plant = (extraDraws: number) => {
+      const b = new RegionBuilder({ minX: -50, maxX: 50, minZ: -50, maxZ: 50 }, 7);
+      for (let i = 0; i < extraDraws; i++) b.random();
+      b.orchardRow(-30, 0, 30, 0, 4.7);
+      return b.props.map((p) => [p.kind, p.x.toFixed(3), p.z.toFixed(3)].join(' '));
+    };
+    expect(plant(0)).toEqual(plant(17));
+    expect(plant(0).length).toBeGreaterThan(8);
+  });
+});

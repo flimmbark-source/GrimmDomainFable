@@ -174,6 +174,23 @@ export class RegionBuilder {
     return x / 4294967296;
   }
 
+  /**
+   * Run `fn` with its own random stream, seeded from `key` (for example a row's
+   * end points), then resume the shared stream where it was. A planted row then
+   * looks the same however many unrelated props were added before it.
+   */
+  private stream(key: number[], fn: () => void): void {
+    const saved = this.rng;
+    let h = 0x811c9dc5;
+    for (const v of key) h = Math.imul(h ^ (Math.round(v * 100) | 0), 16777619) >>> 0;
+    this.rng = h || 1;
+    try {
+      fn();
+    } finally {
+      this.rng = saved;
+    }
+  }
+
   range(lo: number, hi: number): number {
     return lo + (hi - lo) * this.random();
   }
@@ -415,6 +432,11 @@ export class RegionBuilder {
    * (ladders, baskets, windfalls) is added as dressing.
    */
   orchardRow(ax: number, az: number, bx: number, bz: number, spacing: number, opts: { feral?: boolean; clutter?: number } = {}): this {
+    this.stream([ax, az, bx, bz, spacing], () => this.plantRow(ax, az, bx, bz, spacing, opts));
+    return this;
+  }
+
+  private plantRow(ax: number, az: number, bx: number, bz: number, spacing: number, opts: { feral?: boolean; clutter?: number }): void {
     const u = unit(bx - ax, bz - az);
     const n = Math.floor(u.len / spacing);
     const clutter = opts.clutter ?? 0.16;
@@ -447,7 +469,6 @@ export class RegionBuilder {
         this.dress('apple_pile', x + (this.random() - 0.5) * 2.6, z + (this.random() - 0.5) * 2.6, this.random() * 6.28, 0.8 + this.random() * 0.5);
       }
     }
-    return this;
   }
 
   /**
@@ -462,6 +483,18 @@ export class RegionBuilder {
     gap = 0.8,
     pathGap = 1.0,
   ): this {
+    this.stream([area.minX, area.maxX, area.minZ, area.maxZ, spacing], () => this.scatterIn(area, spacing, accept, pick, gap, pathGap));
+    return this;
+  }
+
+  private scatterIn(
+    area: Bounds,
+    spacing: number,
+    accept: (x: number, z: number) => boolean,
+    pick: (x: number, z: number, roll: number) => { kind: TreeKind; scale: number } | null,
+    gap: number,
+    pathGap: number,
+  ): void {
     for (let gz = area.minZ; gz <= area.maxZ; gz += spacing) {
       for (let gx = area.minX; gx <= area.maxX; gx += spacing) {
         const x = gx + (this.random() - 0.5) * spacing * 0.8;
@@ -472,7 +505,6 @@ export class RegionBuilder {
         if (choice) this.tryTree(choice.kind, x, z, choice.scale, gap, pathGap);
       }
     }
-    return this;
   }
 }
 
