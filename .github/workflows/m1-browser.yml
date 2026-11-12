@@ -61,3 +61,54 @@ jobs:
             docs/evidence/*.png
             /tmp/grimm-browser-server.log
           if-no-files-found: warn
+
+  orchard-browser:
+    name: Orchard Vale real-browser traversal and privacy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Build game and server
+        run: npm run build
+
+      - name: Install browser-test runtime
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Start reproducible Orchard Vale server
+        shell: bash
+        run: |
+          GRIMM_BOTS=none GRIMM_SEED=7 npm start > /tmp/grimm-orchard-server.log 2>&1 &
+          for attempt in $(seq 1 45); do
+            if (echo > /dev/tcp/127.0.0.1/2567) >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/grimm-orchard-server.log
+          exit 1
+
+      - name: Verify Orchard Vale movement, terrain, chase and privacy in Chromium
+        run: npm run verify:orchard -- http://127.0.0.1:2567
+
+      - name: Archive Orchard browser evidence and server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchard-vale-browser-evidence
+          path: |
+            docs/evidence/orchard-vale-*.png
+            /tmp/grimm-orchard-server.log
+          if-no-files-found: warn
