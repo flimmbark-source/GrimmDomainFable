@@ -19,6 +19,8 @@ export interface InputHost {
   /** Height of the walking surface; omitted on flat maps. */
   heightAt?(x: number, z: number): number;
   workOperation?(): boolean;
+  handleUiKey?(event: KeyboardEvent): boolean;
+  inventoryOpen?(): boolean;
 }
 
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -27,6 +29,7 @@ export class InputController {
   private readonly keys = new Set<string>();
   private lastDir = { dx: 0, dz: 0 };
   private sneaking = false;
+  private sneakToggled = false;
   private dragging = false;
   private readonly raycaster = new THREE.Raycaster();
 
@@ -62,7 +65,16 @@ export class InputController {
     this.host.onModeChanged(mode);
   }
 
+  toggleSneak(): void {
+    this.sneakToggled = !this.sneakToggled;
+  }
+
   private onKeyDown(e: KeyboardEvent): void {
+    if (this.host.handleUiKey?.(e)) {
+      e.preventDefault();
+      return;
+    }
+    if (this.host.inventoryOpen?.() || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.code === 'Tab') {
       e.preventDefault();
       if (!e.repeat) this.setMode(this.host.rig.mode === 'rts' ? 'hero' : 'rts');
@@ -85,6 +97,7 @@ export class InputController {
   }
 
   private onPointerDown(e: PointerEvent): void {
+    if (this.host.inventoryOpen?.()) return;
     const rig = this.host.rig;
     if (rig.mode === 'hero') {
       this.dragging = true;
@@ -119,8 +132,12 @@ export class InputController {
   /** Call once per rendered frame. */
   update(dt: number): void {
     const rig = this.host.rig;
+    if (this.host.inventoryOpen?.()) {
+      this.keys.clear();
+      this.dragging = false;
+    }
     // Hold Shift to sneak, in either view.
-    const sneak = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
+    const sneak = this.sneakToggled || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
     if (sneak !== this.sneaking) {
       this.sneaking = sneak;
       this.host.send({ type: 'setGait', sneak });

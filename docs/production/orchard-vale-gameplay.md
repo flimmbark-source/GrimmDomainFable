@@ -13,6 +13,12 @@ Open `/?region=orchard_operation&bakedShadows=1` on the running game server. Lig
 
 The relay, interaction timings, interruption range, and local scoring are playtest proposals. They instantiate D-017 and D-019 through D-021. A local result ends this regional playtest. The kingdom match still ends under the separate castle and Dark Lord rules. The old M1 cache hunt is available through `/?region=orchard_vale`.
 
+## Goblin player interface
+
+The Light relay seat starts in hero view with the new player dock. **Tab** switches views, **I** opens inventory, and **Esc** closes it. The dock reads live detection and whistle cooldown from the player snapshot. Use **Shift** or the Sneak button for stealth, and **F** or the Whistle button to distract a Scout. The relay action appears when the simulation permits it.
+
+Append `&hud=preview` to the Orchard operation URL to try the sample kit. Select a carried item to inspect it, equip or unequip a gear piece, drop one item from a stack, or assign a quick item to **1–3**. Outside assignment, those keys inspect the item. The kit resets on reload. Preview health and cargo are sample values. Strike, evade, item effects, and acquiring real gear or heist cargo are pending gameplay rules.
+
 ## Fog of war
 
 Unseen terrain is dark grey. Terrain visited or seen before is dimmed when it leaves current sight. Current sight is clear. The mask updates from the local hero and the viewer's own monsters, using the same sight blockers, ranges, and monster arcs as the simulation. A teammate sees confirmed reports and retains the existing visibility of allied actors. Their Scout's sight cone stays private. Enemy actors still come exclusively from server projections.

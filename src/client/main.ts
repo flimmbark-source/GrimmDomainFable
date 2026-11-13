@@ -10,6 +10,7 @@ import { CameraRig, type CameraMode } from './cameras.ts';
 import { Hud } from './hud.ts';
 import { InputController } from './input.ts';
 import { connect, serverUrl } from './net.ts';
+import { PlayerHud } from './player-hud.ts';
 import { ActorLayer } from './render/actors.ts';
 import { AssetLibrary } from './render/assets.ts';
 import { MarkerLayer } from './render/markers.ts';
@@ -196,7 +197,17 @@ declare global {
 
 async function start(): Promise<void> {
   const params = new URLSearchParams(location.search);
-  const hud = new Hud(() => input.setMode(rig.mode === 'rts' ? 'hero' : 'rts'));
+  const toggleCamera = () => input.setMode(rig.mode === 'rts' ? 'hero' : 'rts');
+  const hud = new Hud(toggleCamera);
+  const playerHud = params.get('region') === 'orchard_operation' && params.get('spectate') !== '1' && params.get('team') !== 'dark'
+    ? new PlayerHud(params.get('hud') === 'preview', (action) => {
+      if (action === 'camera') toggleCamera();
+      if (action === 'sneak') input.toggleSneak();
+      if (action === 'whistle') connection.send({ type: 'whistle' });
+      if (action === 'relay' && actors.latest?.operation?.interaction) connection.send({ type: 'workOperation' });
+      if (action === 'stop') connection.send({ type: 'stop' });
+    })
+    : null;
   const canvas = document.getElementById('view') as HTMLCanvasElement;
 
   let renderer: THREE.WebGLRenderer;
@@ -270,6 +281,8 @@ async function start(): Promise<void> {
     const now = performance.now();
     actors.push(snapshot, now);
     hud.setSnapshot(snapshot);
+    playerHud?.setEnabled(Boolean(snapshot.operation && snapshot.you?.team === 'light'));
+    playerHud?.setSnapshot(snapshot);
     // Audio: world sounds this hero can hear, plus the local attention cue.
     for (const sound of snapshot.sounds) audio.play(sound);
     const you = snapshot.you;
@@ -288,7 +301,10 @@ async function start(): Promise<void> {
     debugStream = true;
     markers.setDebug(message);
   });
-  connection.onClosed((reason) => hud.setStatus(`Disconnected: ${reason}. Reload to rejoin.`, 'error'));
+  connection.onClosed((reason) => {
+    playerHud?.setEnabled(false);
+    hud.setStatus(`Disconnected: ${reason}. Reload to rejoin.`, 'error');
+  });
 
   const input = new InputController({
     canvas,
@@ -298,10 +314,16 @@ async function start(): Promise<void> {
     toggleDebug: () => {
       debugOverlay.visible = !debugOverlay.visible;
       markers.debug.visible = debugOverlay.visible;
+      document.body.classList.toggle('show-playtest-debug', debugOverlay.visible);
     },
-    onModeChanged: (mode) => hud.setMode(mode),
+    onModeChanged: (mode) => {
+      hud.setMode(mode);
+      playerHud?.setMode(mode === 'hero');
+    },
     ownedMonster: () => actors.latest?.actors.find((a) => a.kind === 'monster' && a.mode !== undefined)?.id ?? null,
     workOperation: () => Boolean(actors.latest?.operation?.interaction),
+    handleUiKey: (event) => playerHud?.handleKey(event) ?? false,
+    inventoryOpen: () => playerHud?.isOpen ?? false,
     ...(map.region ? { heightAt: world.heightAt } : {}),
   });
   hud.setMode(rig.mode);
@@ -332,10 +354,11 @@ async function start(): Promise<void> {
       initialFocusDone = true;
       // Start centered on the hero and follow their movement in strategy view.
       rig.followHero(hero);
-      if (params.get('cam') === 'hero') input.setMode('hero');
+      if (params.get('cam') === 'hero' || (playerHud && params.get('cam') !== 'rts')) input.setMode('hero');
       if (params.get('debug') === '1') {
         debugOverlay.visible = true;
         markers.debug.visible = true;
+        document.body.classList.add('show-playtest-debug');
       }
     }
     rig.update(dt, window.innerWidth / window.innerHeight, hero);
