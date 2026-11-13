@@ -66,7 +66,62 @@ function cameraClearance(map: MapDef): (ax: number, az: number, bx: number, bz: 
   };
 }
 
-/** Read-only hooks for automated browser verification and manual debugging. */
+interface RenderProfile {
+  test: string;
+  buffer: string;
+  fps: number;
+  medianMs: number;
+  p95Ms: number;
+}
+
+/** Compare the same stationary view with less pixel work or a cached shadow map. */
+async function profileRendering(renderer: THREE.WebGLRenderer): Promise<RenderProfile[]> {
+  const pixelRatio = renderer.getPixelRatio();
+  const { shadowMap } = renderer;
+  const autoUpdate = shadowMap.autoUpdate;
+  const results: RenderProfile[] = [];
+  const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
+
+  try {
+    for (const { test, scale, updateShadows } of [
+      { test: 'Full resolution', scale: 1, updateShadows: true },
+      { test: 'Half pixel count', scale: Math.SQRT1_2, updateShadows: true },
+      { test: 'Full resolution, reuse shadows', scale: 1, updateShadows: false },
+    ]) {
+      renderer.setPixelRatio(pixelRatio * scale);
+      shadowMap.autoUpdate = updateShadows;
+      shadowMap.needsUpdate = true;
+      const settleUntil = performance.now() + 1000;
+      while (await nextFrame() < settleUntil) { /* wait for the resize or shadow update */ }
+
+      const frameTimes: number[] = [];
+      const start = await nextFrame();
+      let previous = start;
+      while (previous - start < 2500) {
+        const now = await nextFrame();
+        if (document.hidden) throw new Error('Keep the game tab visible while profiling.');
+        frameTimes.push(now - previous);
+        previous = now;
+      }
+      frameTimes.sort((a, b) => a - b);
+      const percentile = (fraction: number) => Number(frameTimes[Math.ceil(frameTimes.length * fraction) - 1]!.toFixed(1));
+      results.push({
+        test,
+        buffer: `${renderer.domElement.width}×${renderer.domElement.height}`,
+        fps: Math.round(frameTimes.length * 1000 / (previous - start)),
+        medianMs: percentile(0.5),
+        p95Ms: percentile(0.95),
+      });
+    }
+  } finally {
+    renderer.setPixelRatio(pixelRatio);
+    shadowMap.autoUpdate = autoUpdate;
+    shadowMap.needsUpdate = true;
+  }
+  return results;
+}
+
+/** Hooks for automated browser verification and manual debugging. */
 interface DebugApi {
   ready: boolean;
   snapshot(): Snapshot | null;
@@ -80,6 +135,7 @@ interface DebugApi {
   worldToScreen(x: number, z: number): { x: number; y: number };
   /** Centre the strategy camera on a ground point. */
   focus(x: number, z: number): void;
+  profileRendering?: () => Promise<RenderProfile[]>;
   stats(): {
     fps: number; drawCalls: number; triangles: number; snapshots: number; renderer: string; assets: Record<string, string>;
     /** GPU objects alive, and how much scenery the region placed. */
@@ -220,6 +276,7 @@ async function start(): Promise<void> {
   let frames = 0;
   let fpsWindowStart = last;
   let initialFocusDone = false;
+  let profiling = false;
 
   renderer.setAnimationLoop(() => {
     const now = performance.now();
@@ -281,6 +338,17 @@ async function start(): Promise<void> {
       return { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight };
     },
     focus: (x, z) => rig.focusOn(new THREE.Vector3(x, 0, z)),
+    ...(params.get('profile') === '1' && !observerOnly ? {
+      profileRendering: async () => {
+        if (profiling) throw new Error('A rendering profile is already running.');
+        profiling = true;
+        try {
+          return await profileRendering(renderer);
+        } finally {
+          profiling = false;
+        }
+      },
+    } : {}),
     rig: (pose) => {
       if (pose.yaw !== undefined) rig.heroYaw = pose.yaw;
       if (pose.pitch !== undefined) rig.heroPitch = pose.pitch;
