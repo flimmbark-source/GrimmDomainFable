@@ -48,6 +48,10 @@ export class Match {
     return this.state.tick;
   }
 
+  get finished(): boolean {
+    return Boolean(this.state.operation?.result);
+  }
+
   addBot(slot: SlotId): boolean {
     if (!occupySlot(this.state, slot, 'bot')) return false;
     this.bots.set(slot, createBotMemory(this.state.seed + slot * 7919));
@@ -57,7 +61,7 @@ export class Match {
   /** Seat a connection. Returns its slot, or null when it joins as spectator. */
   join(sessionId: string, preferredTeam?: Team): SlotId | null {
     if (this.seats.has(sessionId)) return this.seats.get(sessionId) ?? null;
-    if (this.state.operation?.result) return null;
+    if (this.finished) return null;
     const slot = findFreeSlot(this.state, preferredTeam);
     if (slot === null || !occupySlot(this.state, slot, 'human')) return null;
     this.seats.set(sessionId, slot);
@@ -86,7 +90,7 @@ export class Match {
    * connection's seat. Returns false when the payload is rejected.
    */
   submit(sessionId: string, payload: unknown): boolean {
-    if (this.state.operation?.result) return false;
+    if (this.finished) return false;
     const slot = this.seats.get(sessionId);
     if (slot === undefined) return false; // spectators cannot act
     const command = parseCommand(payload);
@@ -100,7 +104,7 @@ export class Match {
 
   /** Run bots, then advance the simulation by one fixed tick. */
   advance(): void {
-    if (this.state.operation?.result) return;
+    if (this.finished) return;
     for (const [slot, memory] of this.bots) {
       const view = projectSnapshot(this.state, viewerForSlot(this.state, slot));
       const command: Command | null = botThink(memory, view, this.map);

@@ -62,6 +62,7 @@ export class MatchRoom extends Room {
 
     this.setFixedTimestep(() => {
       this.match.advance();
+      if (this.match.finished && !this.locked) void this.lock().catch((error: unknown) => console.error(error));
       for (const client of this.clients) {
         client.send(MSG.snapshot, this.match.snapshotFor(client.sessionId));
       }
