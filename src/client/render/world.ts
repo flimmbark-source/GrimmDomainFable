@@ -186,6 +186,7 @@ export interface World {
   root: THREE.Group;
   ground: THREE.Mesh;
   sun: THREE.DirectionalLight;
+  fastShadows?: { value: boolean };
   /** Height of the walking surface (ground or bridge deck) at a ground point. */
   heightAt(x: number, z: number): number;
   /** Per-frame cosmetic animation (wind, water, shadows following the view). */

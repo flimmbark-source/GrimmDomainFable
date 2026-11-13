@@ -8,6 +8,7 @@ import * as THREE from 'three';
 
 export interface SharedUniforms {
   uTime: { value: number };
+  uFastShadows: { value: boolean };
 }
 
 const NOISE_GLSL = /* glsl */ `
@@ -25,9 +26,32 @@ float vnoise(vec3 x) {
 }
 `;
 
+const REGION_SHADOW_GLSL = /* glsl */ `
+#if defined( USE_SHADOWMAP ) && defined( SHADOWMAP_TYPE_PCF )
+  uniform bool uFastShadows;
+  float getRegionShadow( sampler2DShadow map, vec2 size, float intensity, float bias, float radius, vec4 coord ) {
+    if ( !uFastShadows ) return getShadow( map, size, intensity, bias, radius, coord );
+
+    coord.xyz /= coord.w;
+    #ifdef USE_REVERSED_DEPTH_BUFFER
+      coord.z -= bias;
+    #else
+      coord.z += bias;
+    #endif
+    if ( coord.x < 0.0 || coord.x > 1.0 || coord.y < 0.0 || coord.y > 1.0 || coord.z > 1.0 ) return 1.0;
+
+    // Three configures PCF depth textures with linear filtering. One lookup
+    // blends four depth comparisons in hardware and keeps the map resolution.
+    return mix( 1.0, texture( map, coord.xyz ), intensity );
+  }
+  #define getShadow getRegionShadow
+#endif
+`;
+
 function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: boolean; mottle: number; grain: number; upNormals?: boolean }): void {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = shared.uTime;
+    shader.uniforms.uFastShadows = shared.uFastShadows;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\nattribute float sway;\nuniform float uTime;\nvarying vec3 vWorldP;`)
       // Flat cards (grass, reeds) are lit as if they were the ground they grow from.
@@ -49,6 +73,7 @@ function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: bool
       );
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\nvarying vec3 vWorldP;\n${NOISE_GLSL}`)
+      .replace('#include <shadowmap_pars_fragment>', `#include <shadowmap_pars_fragment>\n${REGION_SHADOW_GLSL}`)
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>

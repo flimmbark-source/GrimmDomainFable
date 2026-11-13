@@ -28,7 +28,7 @@ export async function buildRegionWorld(
   const region = map.region!;
   const root = new THREE.Group();
   root.name = `region:${map.id}`;
-  const shared: SharedUniforms = { uTime: { value: 0 } };
+  const shared: SharedUniforms = { uTime: { value: 0 }, uFastShadows: { value: false } };
 
   scene.fog = new THREE.Fog(C.fog, 95, 620);
   scene.background = new THREE.Color(C.fog);
@@ -66,6 +66,7 @@ export async function buildRegionWorld(
     root,
     ground: ground.group.children[0] as THREE.Mesh,
     sun: lights.sun,
+    fastShadows: shared.uFastShadows,
     heightAt: (x, z) => surfaceHeight(map, x, z),
     update: (dt, camera, lookAt, mode) => {
       shared.uTime.value += dt;

@@ -14,7 +14,7 @@ import { ActorLayer } from './render/actors.ts';
 import { AssetLibrary } from './render/assets.ts';
 import { MarkerLayer } from './render/markers.ts';
 import { buildRegionWorld } from './render/region/regionWorld.ts';
-import { buildCollisionDebug, buildWorld } from './render/world.ts';
+import { buildCollisionDebug, buildWorld, type World } from './render/world.ts';
 
 /**
  * How far the hero camera's sight line stays clear of tall solid things.
@@ -82,20 +82,23 @@ function frontToBack(a: RenderItem, b: RenderItem): number {
 
 /** Compare the same stationary view with different sources of rendering cost. */
 async function profileRendering(
-  renderer: THREE.WebGLRenderer, sun: THREE.DirectionalLight, compareDrawOrder: boolean,
+  renderer: THREE.WebGLRenderer, { sun, fastShadows }: World,
 ): Promise<RenderProfile[]> {
   const pixelRatio = renderer.getPixelRatio();
   const { shadowMap } = renderer;
   const autoUpdate = shadowMap.autoUpdate;
   const lightAutoUpdate = sun.shadow.autoUpdate;
   const castsShadow = sun.castShadow;
+  const originalFastShadows = fastShadows?.value ?? false;
   const results: RenderProfile[] = [];
   const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 
   try {
-    for (const { test, scale, updateShadows, updateLight, depthSort, skipShadows } of [
+    for (const { test, scale, updateShadows, updateLight, depthSort, skipShadows, fastFilter } of [
       { test: 'Full resolution, current settings', scale: 1, updateShadows: true, updateLight: lightAutoUpdate },
-      ...(compareDrawOrder ? [{
+      ...(fastShadows ? [{
+        test: 'Full resolution, single-lookup shadows', scale: 1, updateShadows: true, updateLight: lightAutoUpdate, fastFilter: true,
+      }, {
         test: 'Full resolution, near surfaces first', scale: 1, updateShadows: true, updateLight: lightAutoUpdate, depthSort: true,
       }] : []),
       { test: 'Full resolution, shadows every frame', scale: 1, updateShadows: true, updateLight: true },
@@ -106,6 +109,7 @@ async function profileRendering(
       // Near opaque surfaces can reject fragments behind them. Explicit
       // ordering still controls the sky and hero silhouette.
       renderer.setOpaqueSort(depthSort ? frontToBack : null);
+      if (fastShadows) fastShadows.value = fastFilter ?? originalFastShadows;
       renderer.setPixelRatio(pixelRatio * scale);
       sun.castShadow = castsShadow && !skipShadows;
       shadowMap.autoUpdate = updateShadows;
@@ -136,6 +140,7 @@ async function profileRendering(
     }
   } finally {
     renderer.setOpaqueSort(null);
+    if (fastShadows) fastShadows.value = originalFastShadows;
     renderer.setPixelRatio(pixelRatio);
     sun.castShadow = castsShadow;
     shadowMap.autoUpdate = autoUpdate;
@@ -221,11 +226,12 @@ async function start(): Promise<void> {
   // `?render=0`: an observer tab for automated checks. It joins, receives its
   // own snapshots and runs the HUD, but builds no scenery and draws nothing.
   const observerOnly = params.get('render') === '0';
-  const world = observerOnly
+  const world: World = observerOnly
     ? { root: new THREE.Group(), ground: new THREE.Mesh(), sun: new THREE.DirectionalLight(), heightAt: (x: number, z: number) => surfaceHeight(map, x, z) }
     : map.region
     ? await buildRegionWorld(scene, map, assets, renderer, (stage) => hud.setStatus(`Building the region: ${stage}…`))
     : buildWorld(scene, map, assets);
+  if (world.fastShadows) world.fastShadows.value = params.get('fastShadows') === '1';
   const debugOverlay = buildCollisionDebug(map, world.heightAt);
   scene.add(debugOverlay);
   const actors = new ActorLayer(assets, world.heightAt, Boolean(map.region));
@@ -368,7 +374,7 @@ async function start(): Promise<void> {
         if (profiling) throw new Error('A rendering profile is already running.');
         profiling = true;
         try {
-          return await profileRendering(renderer, world.sun, Boolean(map.region));
+          return await profileRendering(renderer, world);
         } finally {
           profiling = false;
         }
