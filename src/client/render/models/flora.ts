@@ -17,13 +17,13 @@ interface Crown {
   light: number;
 }
 
-/** A crown of overlapping soft clumps: dark underneath, sunlit on top. */
+/** A crown of overlapping faceted clumps: dark underneath, sunlit on top. */
 function crown(m: Model, r: Rand, centre: V3, radius: number, clumps: number, c: Crown, o: { flat?: number; detail?: number; sway?: number; fruit?: number[]; fruitCount?: number } = {}): void {
   const flat = o.flat ?? 0.72;
   const detail = o.detail ?? 1;
   const sway = o.sway ?? 0.1;
   // Core mass.
-  m.lump(radius * 0.78, c.dark, { p: centre, s: [1, flat, 1], soft: true, shade: 0.42, sway, tip: c.mid }, detail, Math.floor(r.next() * 99));
+  m.lump(radius * 0.78, c.dark, { p: centre, s: [1, flat, 1], soft: false, shade: 0.42, sway, tip: c.mid }, detail, Math.floor(r.next() * 99));
   for (let i = 0; i < clumps; i++) {
     const a = (i / clumps) * Math.PI * 2 + r.range(-0.4, 0.4);
     const ring = i % 3 === 0 ? 0.25 : 0.62;
@@ -33,7 +33,7 @@ function crown(m: Model, r: Rand, centre: V3, radius: number, clumps: number, c:
       p: [centre[0] + Math.cos(a) * radius * ring, centre[1] + up, centre[2] + Math.sin(a) * radius * ring],
       s: [r.range(0.95, 1.25), flat * r.range(0.8, 1.05), r.range(0.95, 1.25)],
       r: [r.range(-0.3, 0.3), r.range(0, 3), r.range(-0.3, 0.3)],
-      soft: true, shade: 0.36, sway: sway * 1.3, tip: i % 3 === 0 ? c.light : c.mid,
+      soft: false, shade: 0.36, sway: sway * 1.3, tip: i % 3 === 0 ? c.light : c.mid,
     }, clumps <= 5 ? 1 : 0, Math.floor(r.next() * 99), 0.16);
   }
   if (o.fruit) {
@@ -73,8 +73,8 @@ function apple(variant: number, lod: number): Part[] {
   const fork = 1.55 + r.range(-0.15, 0.2);
   if (lod > 0) {
     m.post(0.2, 0.38, fork + 0.8, C.bark, { r: [0, 0, lean], shade: 0.3 }, 5);
-    m.lump(1.9, C.apple, { p: [lean * -2, 3.3, 0], s: [1.15, 0.72, 1.15], soft: true, shade: 0.4, tip: C.appleLight, sway: 0.08 }, 1, variant);
-    m.lump(1.2, C.appleLight, { p: [0.5, 3.9, 0.3], s: [1.2, 0.6, 1.1], soft: true, shade: 0.3, sway: 0.08 }, 0, variant + 1);
+    m.lump(1.9, C.apple, { p: [lean * -2, 3.3, 0], s: [1.15, 0.72, 1.15], soft: false, shade: 0.4, tip: C.appleLight, sway: 0.08 }, 1, variant);
+    m.lump(1.2, C.appleLight, { p: [0.5, 3.9, 0.3], s: [1.2, 0.6, 1.1], soft: false, shade: 0.3, sway: 0.08 }, 0, variant + 1);
     return m.parts;
   }
   m.limb([[0, 0, 0], [lean * 0.4, fork * 0.5, r.range(-0.05, 0.05)], [lean, fork, 0]], 0.38, 0.27, C.bark, { mottle: C.barkDark, shade: 0.3 }, 7);
@@ -102,13 +102,13 @@ function appleOld(variant: number, lod: number): Part[] {
   const lean = r.range(0.12, 0.26) * (variant % 2 ? 1 : -1);
   if (lod > 0) {
     m.post(0.3, 0.52, 2.4, C.barkOld, { r: [0, 0, lean], shade: 0.3 }, 5);
-    m.lump(2.1, C.appleDark, { p: [-lean * 3, 3.6, 0], s: [1.25, 0.7, 1.1], soft: true, shade: 0.4, tip: C.apple, sway: 0.08 }, 1, variant);
+    m.lump(2.1, C.appleDark, { p: [-lean * 3, 3.6, 0], s: [1.25, 0.7, 1.1], soft: false, shade: 0.4, tip: C.apple, sway: 0.08 }, 1, variant);
     return m.parts;
   }
   m.limb([[0, 0, 0], [lean * 1.4, 0.8, 0.1], [lean * 0.6, 1.5, -0.1], [lean * 2.6, 2.1, 0]], 0.52, 0.34, C.barkOld, { mottle: C.barkGrey, shade: 0.32 }, 8);
   roots(m, r, 0.5, C.barkOld, 5, 1.9);
   m.lump(0.22, 0x241c16, { p: [lean * 1.1 + 0.2, 1.0, 0.36], s: [0.7, 1.3, 0.4], shade: 0 }, 0, 3); // hollow
-  m.lump(0.3, C.moss, { p: [lean * 0.4 - 0.3, 0.5, -0.3], s: [1, 0.6, 0.6], soft: true }, 0, 4);
+  m.lump(0.3, C.moss, { p: [lean * 0.4 - 0.3, 0.5, -0.3], s: [1, 0.6, 0.6], soft: false }, 0, 4);
   const top: V3 = [lean * 2.6, 2.1, 0];
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + r.range(-0.4, 0.4);
@@ -132,7 +132,7 @@ function appleYoung(variant: number): Part[] {
   m.box(0.26, 0.05, 0.05, C.rope, { p: [0.1, 1.2, 0.03] });
   for (let i = 0; i < 3; i++) {
     const a = i * 2.1 + r.range(0, 1);
-    m.lump(0.5, i ? C.appleLight : C.apple, { p: [Math.cos(a) * 0.3, 2.1 + i * 0.25, Math.sin(a) * 0.3], s: [1, 0.8, 1], soft: true, shade: 0.3, sway: 0.16 }, 0, variant + i);
+    m.lump(0.5, i ? C.appleLight : C.apple, { p: [Math.cos(a) * 0.3, 2.1 + i * 0.25, Math.sin(a) * 0.3], s: [1, 0.8, 1], soft: false, shade: 0.3, sway: 0.16 }, 0, variant + i);
   }
   // Woven guard against deer.
   m.cyl(0.24, 0.28, 0.7, C.basket, { p: [0, 0.35, 0], shade: 0.3 }, 7);
@@ -145,7 +145,7 @@ function appleFeral(variant: number, lod: number): Part[] {
   const r = new Rand(variant * 19 + 9);
   if (lod > 0) {
     m.post(0.25, 0.45, 2.6, C.barkGrey, { shade: 0.3 }, 5);
-    m.lump(1.9, C.oldwood, { p: [0.3, 3.8, 0], s: [1, 0.95, 1], soft: true, shade: 0.45, tip: C.appleDark, sway: 0.08 }, 1, variant);
+    m.lump(1.9, C.oldwood, { p: [0.3, 3.8, 0], s: [1, 0.95, 1], soft: false, shade: 0.45, tip: C.appleDark, sway: 0.08 }, 1, variant);
     return m.parts;
   }
   m.limb([[0, 0, 0], [0.15, 1.2, 0.1], [-0.1, 2.3, 0]], 0.45, 0.28, C.barkGrey, { mottle: C.moss, shade: 0.35 }, 7);
@@ -155,7 +155,7 @@ function appleFeral(variant: number, lod: number): Part[] {
     m.limb([[Math.cos(a) * 0.3, 0.1, Math.sin(a) * 0.3], [Math.cos(a) * 0.5, 1.2, Math.sin(a) * 0.5], [Math.cos(a) * 0.75, 2.3 + r.range(0, 0.8), Math.sin(a) * 0.75]], 0.05, 0.02, C.barkGrey, { shade: 0.1, sway: 0.03 }, 4);
   }
   crown(m, r, [-0.1, 3.9, 0], 1.9, 6, { dark: C.oldwoodDark, mid: C.appleDark, light: C.apple }, { flat: 0.95, fruit: [C.appleFruitGold], fruitCount: 5 });
-  m.lump(0.5, C.ivy, { p: [0.1, 1.5, 0.25], s: [1.1, 2.2, 1.0], soft: true, shade: 0.4 }, 0, 6);
+  m.lump(0.5, C.ivy, { p: [0.1, 1.5, 0.25], s: [1.1, 2.2, 1.0], soft: false, shade: 0.4 }, 0, 6);
   return m.parts;
 }
 
@@ -170,8 +170,8 @@ function witness(variant: number, lod: number): Part[] {
   const R = 1.55;
   if (lod > 0) {
     m.post(R * 0.62, R, 6.4, C.barkOld, { shade: 0.35 }, 7);
-    m.lump(5.4, C.witness, { p: [0, 10.2, 0], s: [1.2, 0.68, 1.2], soft: true, shade: 0.45, tip: C.witnessLight, sway: 0.05 }, 1, variant);
-    m.lump(3.4, C.witnessLight, { p: [1.6, 12.3, 0.8], s: [1.2, 0.6, 1.2], soft: true, shade: 0.3, sway: 0.05 }, 1, variant + 1);
+    m.lump(5.4, C.witness, { p: [0, 10.2, 0], s: [1.2, 0.68, 1.2], soft: false, shade: 0.45, tip: C.witnessLight, sway: 0.05 }, 1, variant);
+    m.lump(3.4, C.witnessLight, { p: [1.6, 12.3, 0.8], s: [1.2, 0.6, 1.2], soft: false, shade: 0.3, sway: 0.05 }, 1, variant + 1);
     return m.parts;
   }
   // Fluted trunk: a core plus buttress ribs twisting up it.
@@ -227,12 +227,12 @@ function oldwood(variant: number, lod: number): Part[] {
   const c = variant % 4 === 2 ? { dark: C.oldwoodDark, mid: C.witness, light: C.oldwoodLight } : { dark: C.oldwoodDark, mid: C.oldwood, light: C.oldwoodLight };
   if (lod > 0) {
     m.post(0.45, 0.82, h, C.barkDark, { r: [0, 0, lean], shade: 0.35 }, 6);
-    m.lump(3.5, c.mid, { p: [lean * -h, h + 1.8, 0], s: [1.1, 0.8, 1.1], soft: true, shade: 0.45, tip: c.light, sway: 0.05 }, 1, variant);
+    m.lump(3.5, c.mid, { p: [lean * -h, h + 1.8, 0], s: [1.1, 0.8, 1.1], soft: false, shade: 0.45, tip: c.light, sway: 0.05 }, 1, variant);
     return m.parts;
   }
   m.limb([[0, -0.1, 0], [lean * h * 0.3, h * 0.35, r.range(-0.15, 0.15)], [lean * h * 0.7, h * 0.7, 0], [lean * h, h, 0]], 0.82, 0.42, C.barkDark, { mottle: C.barkOld, shade: 0.38 }, 8);
   roots(m, r, 0.8, C.barkDark, 6, 1.5);
-  m.lump(0.5, C.moss, { p: [0.5, 0.5, 0.45], s: [1.2, 0.9, 0.7], soft: true, shade: 0.2 }, 0, 2);
+  m.lump(0.5, C.moss, { p: [0.5, 0.5, 0.45], s: [1.2, 0.9, 0.7], soft: false, shade: 0.2 }, 0, 2);
   const top: V3 = [lean * h, h, 0];
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + r.range(-0.4, 0.4);
@@ -253,7 +253,7 @@ function fieldOak(variant: number, lod: number): Part[] {
   const c = { dark: C.oldwood, mid: C.witnessLight, light: C.appleLight };
   if (lod > 0) {
     m.post(0.45, 0.72, 3.4, C.bark, { shade: 0.35 }, 6);
-    m.lump(3.3, c.mid, { p: [0, 5.6, 0], s: [1.2, 0.72, 1.2], soft: true, shade: 0.42, tip: c.light, sway: 0.06 }, 1, variant);
+    m.lump(3.3, c.mid, { p: [0, 5.6, 0], s: [1.2, 0.72, 1.2], soft: false, shade: 0.42, tip: c.light, sway: 0.06 }, 1, variant);
     return m.parts;
   }
   m.limb([[0, -0.1, 0], [0.1, 1.6, 0.05], [-0.05, 3.2, 0]], 0.74, 0.5, C.bark, { mottle: C.barkDark, shade: 0.35 }, 8);
@@ -275,7 +275,7 @@ function birch(variant: number, lod: number): Part[] {
   const gold = variant % 3 === 1;
   if (lod > 0) {
     m.post(0.1, 0.24, 5.4, C.barkBirch, { r: [0, 0, lean], shade: 0.2 }, 5);
-    m.lump(1.6, gold ? C.birchGold : C.birch, { p: [-lean * 5, 5.9, 0], s: [1, 1.3, 1], soft: true, shade: 0.35, sway: 0.14 }, 1, variant);
+    m.lump(1.6, gold ? C.birchGold : C.birch, { p: [-lean * 5, 5.9, 0], s: [1, 1.3, 1], soft: false, shade: 0.35, sway: 0.14 }, 1, variant);
     return m.parts;
   }
   m.limb([[0, 0, 0], [lean * 2, 2.4, 0.1], [lean * 4.5, 4.8, 0], [lean * 6.5, 6.6, 0]], 0.26, 0.07, C.barkBirch, { mottle: 0x4a4640, shade: 0.2, sway: 0.01 }, 6);
@@ -292,7 +292,7 @@ function willow(variant: number, lod: number): Part[] {
   const r = new Rand(variant * 41 + 8);
   if (lod > 0) {
     m.post(0.55, 0.68, 2.6, C.barkGrey, { shade: 0.35 }, 6);
-    m.lump(2.8, C.willow, { p: [0, 4.0, 0], s: [1.2, 0.85, 1.2], soft: true, shade: 0.4, tip: C.willowLight, sway: 0.14 }, 1, variant);
+    m.lump(2.8, C.willow, { p: [0, 4.0, 0], s: [1.2, 0.85, 1.2], soft: false, shade: 0.4, tip: C.willowLight, sway: 0.14 }, 1, variant);
     return m.parts;
   }
   m.limb([[0, -0.1, 0], [r.range(-0.15, 0.15), 1.3, 0.05], [0, 2.5, 0]], 0.7, 0.6, C.barkGrey, { mottle: C.barkOld, shade: 0.35 }, 8);
@@ -308,9 +308,9 @@ function willow(variant: number, lod: number): Part[] {
       0.09, 0.02, C.barkOld, { shade: 0.1, sway: 0.1 }, 4,
     );
     // Hanging leaf curtains, ending above head height at the trunk and lower at the tips.
-    m.lump(0.7, i % 2 ? C.willow : C.willowLight, { p: [Math.cos(a) * out * 1.0, 3.9 - droop * 0.35, Math.sin(a) * out * 1.0], s: [0.7, 1.9, 0.7], soft: true, shade: 0.4, sway: 0.3, tip: C.willowLight }, 0, i);
+    m.lump(0.7, i % 2 ? C.willow : C.willowLight, { p: [Math.cos(a) * out * 1.0, 3.9 - droop * 0.35, Math.sin(a) * out * 1.0], s: [0.7, 1.9, 0.7], soft: false, shade: 0.4, sway: 0.3, tip: C.willowLight }, 0, i);
   }
-  m.lump(2.3, C.willow, { p: [0, 4.6, 0], s: [1.2, 0.55, 1.2], soft: true, shade: 0.35, sway: 0.16, tip: C.willowLight }, 1, variant + 3);
+  m.lump(2.3, C.willow, { p: [0, 4.6, 0], s: [1.2, 0.55, 1.2], soft: false, shade: 0.35, sway: 0.16, tip: C.willowLight }, 1, variant + 3);
   return m.parts;
 }
 
@@ -330,7 +330,7 @@ function coppice(variant: number, lod: number): Part[] {
   for (let i = 0; i < leaves; i++) {
     const a = r.range(0, 6.28);
     const y = 1.0 + (i / leaves) * 3.4;
-    m.lump(0.85, i % 3 === 0 ? C.hedgeLight : i % 2 ? C.birch : C.hedge, { p: [Math.cos(a) * 0.3, y, Math.sin(a) * 0.3], s: [1.15, 1.0, 1.15], soft: true, shade: 0.4, sway: 0.14, tip: C.birch }, lod > 0 ? 0 : 1, variant + i);
+    m.lump(0.85, i % 3 === 0 ? C.hedgeLight : i % 2 ? C.birch : C.hedge, { p: [Math.cos(a) * 0.3, y, Math.sin(a) * 0.3], s: [1.15, 1.0, 1.15], soft: false, shade: 0.4, sway: 0.14, tip: C.birch }, lod > 0 ? 0 : 1, variant + i);
   }
   return m.parts;
 }
@@ -343,7 +343,7 @@ function sapling(variant: number): Part[] {
   m.limb([[0, 0, 0], [lean, 1.4, 0.05], [lean * 1.8, 2.8, 0]], 0.09, 0.025, C.bark, { shade: 0.2, sway: 0.05 }, 4);
   for (let i = 0; i < 4; i++) {
     const a = i * 1.7;
-    m.lump(0.3, i % 2 ? C.birch : C.oldwoodLight, { p: [lean * (1 + i * 0.3) + Math.cos(a) * 0.3, 2.0 + i * 0.33, Math.sin(a) * 0.3], s: [1, 0.7, 1], soft: true, shade: 0.3, sway: 0.25 }, 0, i);
+    m.lump(0.3, i % 2 ? C.birch : C.oldwoodLight, { p: [lean * (1 + i * 0.3) + Math.cos(a) * 0.3, 2.0 + i * 0.33, Math.sin(a) * 0.3], s: [1, 0.7, 1], soft: false, shade: 0.3, sway: 0.25 }, 0, i);
   }
   return m.parts;
 }

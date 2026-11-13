@@ -104,7 +104,7 @@ function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: bool
       .replace('#include <aomap_fragment>', '#include <aomap_fragment>\nreflectedLight.directDiffuse *= regionStaticVisibility();')
       .replace(
         '#include <color_fragment>',
-        `#include <color_fragment>
+        o.mottle === 0 && o.grain === 0 ? '#include <color_fragment>' : `#include <color_fragment>
         float mA = vnoise(vWorldP * 0.8);
         float mB = vnoise(vWorldP * 3.3 + 9.0);
         diffuseColor.rgb *= ${(1 - o.mottle * 0.6).toFixed(3)} + ${o.mottle.toFixed(3)} * mA + ${o.grain.toFixed(3)} * (mB - 0.5);
@@ -116,7 +116,9 @@ function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: bool
 
 export function painterlyMaterial(shared: SharedUniforms): THREE.MeshLambertMaterial {
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
-  patch(material, shared, { sway: true, mottle: 0.2, grain: 0.1 });
+  // Model colours already contain baked underside shade and crown highlights.
+  // Keep the large planes clean and avoid two 3D noise evaluations per pixel.
+  patch(material, shared, { sway: true, mottle: 0, grain: 0 });
   return material;
 }
 
@@ -125,7 +127,7 @@ export function cardMaterial(shared: SharedUniforms): THREE.MeshLambertMaterial 
   // Cards are modelled with both windings, so single-sided drawing shows both faces
   // without the renderer flipping the (upward) normal on the far one.
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
-  patch(material, shared, { sway: true, mottle: 0.14, grain: 0.0, upNormals: true });
+  patch(material, shared, { sway: true, mottle: 0, grain: 0, upNormals: true });
   return material;
 }
 

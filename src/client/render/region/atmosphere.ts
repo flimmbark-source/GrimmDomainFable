@@ -83,8 +83,8 @@ export interface Lights {
 const SHADOW_INTERVAL_MS = 1000 / 15;
 
 export function buildLights(): Lights {
-  const hemisphere = new THREE.HemisphereLight(C.ambientSky, C.ambientGround, 2.1);
-  const sun = new THREE.DirectionalLight(C.sun, 2.35);
+  const hemisphere = new THREE.HemisphereLight(C.ambientSky, C.ambientGround, 1.25);
+  const sun = new THREE.DirectionalLight(C.sun, 2.65);
   const direction = new THREE.Vector3(-0.62, 0.62, 0.48).normalize();
   sun.position.copy(direction).multiplyScalar(120);
   sun.castShadow = true;
@@ -222,13 +222,13 @@ function farTreeParts(kind: 'wood' | 'orchard' | 'field'): Model {
   const m = new Model();
   if (kind === 'wood') {
     m.post(0.4, 0.7, 6, C.barkDark, { shade: 0.3 }, 5);
-    m.lump(3.8, C.oldwood, { p: [0, 8.4, 0], s: [1.1, 1.15, 1.1], soft: true, shade: 0.5, tip: C.oldwoodLight }, 0, 1, 0.3);
+    m.lump(3.8, C.oldwood, { p: [0, 8.4, 0], s: [1.1, 1.15, 1.1], soft: false, shade: 0.5, tip: C.oldwoodLight }, 0, 1, 0.3);
   } else if (kind === 'orchard') {
     m.post(0.2, 0.3, 2, C.bark, { shade: 0.3 }, 4);
-    m.lump(2.0, C.apple, { p: [0, 3.1, 0], s: [1.15, 0.7, 1.15], soft: true, shade: 0.45, tip: C.appleLight }, 0, 3);
+    m.lump(2.0, C.apple, { p: [0, 3.1, 0], s: [1.15, 0.7, 1.15], soft: false, shade: 0.45, tip: C.appleLight }, 0, 3);
   } else {
     m.post(0.35, 0.6, 3.4, C.bark, { shade: 0.3 }, 5);
-    m.lump(3.2, C.witnessLight, { p: [0, 5.6, 0], s: [1.2, 0.75, 1.2], soft: true, shade: 0.45, tip: C.appleLight }, 0, 4);
+    m.lump(3.2, C.witnessLight, { p: [0, 5.6, 0], s: [1.2, 0.75, 1.2], soft: false, shade: 0.45, tip: C.appleLight }, 0, 4);
   }
   return m;
 }

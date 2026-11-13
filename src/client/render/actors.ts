@@ -62,9 +62,9 @@ function signTexture(mood: MonsterMood): THREE.Texture | null {
   return texture;
 }
 
-function assetFor(actor: ActorView): AssetId {
+function assetFor(actor: ActorView, orchardOutlaw: boolean): AssetId {
   if (actor.kind === 'monster') return 'monster_beast';
-  return actor.team === 'dark' ? 'hero_dark' : 'hero_light';
+  return actor.team === 'dark' ? 'hero_dark' : orchardOutlaw ? 'hero_goblin' : 'hero_light';
 }
 
 export class ActorLayer {
@@ -86,6 +86,7 @@ export class ActorLayer {
     private readonly assets: AssetLibrary,
     private readonly heightAt: (x: number, z: number) => number = () => 0,
     private readonly silhouette = false,
+    private readonly orchardOutlaw = false,
   ) {
     this.group.name = 'actors';
     const ring = new THREE.RingGeometry(0.75, 0.92, 28);
@@ -250,7 +251,7 @@ export class ActorLayer {
   private createVisual(actor: ActorView): ActorVisual {
     const root = new THREE.Group();
     root.name = `actor:${actor.id}:${actor.kind}`;
-    const model = this.assets.instantiate(assetFor(actor));
+    const model = this.assets.instantiate(assetFor(actor, this.orchardOutlaw));
     root.add(model);
 
     // Team-coloured base disc: readable ownership from the RTS camera.

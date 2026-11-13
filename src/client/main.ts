@@ -254,7 +254,7 @@ async function start(): Promise<void> {
   visionFog?.attach(world.root);
   const debugOverlay = buildCollisionDebug(map, world.heightAt);
   scene.add(debugOverlay);
-  const actors = new ActorLayer(assets, world.heightAt, Boolean(map.region));
+  const actors = new ActorLayer(assets, world.heightAt, Boolean(map.region), Boolean(map.region) && params.get('region') === 'orchard_operation');
   scene.add(actors.group);
   const markers = new MarkerLayer(assets, world.heightAt);
   scene.add(markers.group);

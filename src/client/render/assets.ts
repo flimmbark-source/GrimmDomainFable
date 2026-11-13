@@ -11,13 +11,14 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { PropKind } from '../../shared/sim/map.ts';
 import type { BuildingKind } from '../../shared/world/kit.ts';
+import { goblinParts } from './models/goblin.ts';
 import { bake, type Part } from './bake.ts';
 import { BUILDING_BUILDERS } from './models/buildings.ts';
 import { FLORA_BUILDERS, type FloraKind } from './models/flora.ts';
 import { PROP_BUILDERS } from './models/props.ts';
 import { PALETTE as P } from './palette.ts';
 
-export type AssetId = PropKind | 'hero_light' | 'hero_dark' | 'monster_beast' | 'castle' | 'cache';
+export type AssetId = PropKind | 'hero_light' | 'hero_goblin' | 'hero_dark' | 'monster_beast' | 'castle' | 'cache';
 
 /** Ids served from /public/models instead of a procedural builder. */
 export const GLB_MODELS: Partial<Record<AssetId, string>> = {
@@ -245,6 +246,7 @@ const BUILDERS: Partial<Record<AssetId, () => Part[]>> = {
   crooked_house: crookedHouseParts,
   castle: castleParts,
   hero_light: lightHeroParts,
+  hero_goblin: goblinParts,
   hero_dark: darkHeroParts,
   monster_beast: monsterParts,
 };

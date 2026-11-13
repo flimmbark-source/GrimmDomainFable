@@ -159,7 +159,7 @@ function paint(map: MapDef, region: RegionDef, area: Bounds, heightAt: (x: numbe
     if (wet(x, z)) continue;
     const inWood = region.patches.some((p) => (p.kind === 'oldwood_floor' || p.kind === 'coppice_floor') && patchWeight(p, x, z) > 0.4);
     const c = inWood ? [C.oldwoodFloor, C.leafLitter, C.oldwoodDark, C.moss, 0x8a6a34][Math.floor(rnd() * 5)]! : greens[Math.floor(rnd() * greens.length)]!;
-    g.fillStyle = css(c, 0.22 + rnd() * 0.3);
+    g.fillStyle = css(c, 0.12 + rnd() * 0.18);
     g.beginPath();
     g.ellipse(X(x), Z(z), (0.12 + rnd() * 0.3) * S, (0.3 + rnd() * 0.6) * S, 0.5 + (rnd() - 0.5) * 0.9, 0, Math.PI * 2);
     g.fill();
