@@ -14,6 +14,7 @@ import { ActorLayer } from './render/actors.ts';
 import { AssetLibrary } from './render/assets.ts';
 import { MarkerLayer } from './render/markers.ts';
 import { buildRegionWorld } from './render/region/regionWorld.ts';
+import { VisionFog } from './render/region/visionFog.ts';
 import { buildCollisionDebug, buildWorld, type World } from './render/world.ts';
 
 /**
@@ -238,6 +239,8 @@ async function start(): Promise<void> {
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     world.bakedShadows.set(true);
   }
+  const visionFog = !observerOnly && map.region && connection.welcome.slot !== null ? new VisionFog(map) : null;
+  visionFog?.attach(world.root);
   const debugOverlay = buildCollisionDebug(map, world.heightAt);
   scene.add(debugOverlay);
   const actors = new ActorLayer(assets, world.heightAt, Boolean(map.region));
@@ -298,6 +301,7 @@ async function start(): Promise<void> {
     },
     onModeChanged: (mode) => hud.setMode(mode),
     ownedMonster: () => actors.latest?.actors.find((a) => a.kind === 'monster' && a.mode !== undefined)?.id ?? null,
+    workOperation: () => Boolean(actors.latest?.operation?.interaction),
     ...(map.region ? { heightAt: world.heightAt } : {}),
   });
   hud.setMode(rig.mode);
@@ -336,6 +340,7 @@ async function start(): Promise<void> {
     }
     rig.update(dt, window.innerWidth / window.innerHeight, hero);
     if (observerOnly) return;
+    if (actors.latest) visionFog?.update(actors.latest, now);
     world.update?.(dt, rig.camera, rig.lookTarget, rig.mode);
     renderer.render(scene, rig.camera);
 

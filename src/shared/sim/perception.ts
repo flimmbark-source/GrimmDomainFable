@@ -14,17 +14,17 @@ import { rngNext } from './rng.ts';
 import type { ActorState, MonsterBrain, Noise, SimState, TargetMemory } from './state.ts';
 import { TUNING } from './tuning.ts';
 
+/** Range and facing test shared by detection and the rendered vision field. */
+export function inSightArc(dx: number, dz: number, dirX: number, dirZ: number, range: number, proximity: number, halfArcCos: number): boolean {
+  const d = Math.sqrt(dx * dx + dz * dz);
+  return d <= range && (d <= proximity || dirX * dx + dirZ * dz >= halfArcCos * d);
+}
+
 /** Fraction (0, 1/3, 2/3, 1) of `target` this monster can see right now. */
 export function monsterExposure(map: MapDef, monster: ActorState, type: MonsterType, target: ActorState): number {
   const profile = TUNING.monsters[type];
-  const dx = target.x - monster.x;
-  const dz = target.z - monster.z;
-  const d = Math.sqrt(dx * dx + dz * dz);
-  if (d > profile.viewRange) return 0;
-  if (d > profile.proximityRadius) {
-    // Inside the view arc?  cos(angle) = facing . direction
-    if (monster.dirX * dx + monster.dirZ * dz < profile.viewHalfArcCos * d) return 0;
-  }
+  if (!inSightArc(target.x - monster.x, target.z - monster.z, monster.dirX, monster.dirZ,
+    profile.viewRange, profile.proximityRadius, profile.viewHalfArcCos)) return 0;
   return exposure(map, monster.x, monster.z, target.x, target.z, target.radius);
 }
 

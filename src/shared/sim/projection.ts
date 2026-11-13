@@ -33,6 +33,7 @@ import type { ActorView, EvidenceView, SiteView, SlotId, Snapshot, SoundView, Te
 import { distance } from './geometry.ts';
 import { getMap, type MapDef } from './map.ts';
 import { moodOf } from './monster.ts';
+import { projectOperation } from './operation.ts';
 import { heroSees, heroSeesPoint, memoryOf } from './perception.ts';
 import type { ActorState, SimState } from './state.ts';
 
@@ -196,8 +197,9 @@ export function projectSnapshot(state: SimState, viewer: Viewer): Snapshot {
     you,
     slots: state.slots.map((s) => ({ id: s.id, team: s.team, occupant: s.occupant })),
     actors: actors.map((a) => projectActor(viewer, a)),
-    sites: projectSites(state, map, viewer, hero),
+    sites: state.operation ? [] : projectSites(state, map, viewer, hero),
     evidence: projectEvidence(state, viewer),
     sounds: projectSounds(state, visible, hero),
+    ...(state.operation ? { operation: projectOperation(state.operation, map, hero) } : {}),
   };
 }

@@ -31,6 +31,9 @@ const server = defineServer({
     [REGION_ROOMS.orchard_vale]: defineRoom(MatchRoom, {
       config: new MatchConfig({ debug, mapId: ORCHARD_VALE.id, seed: Number.isFinite(seed) ? seed : undefined, botSlots }),
     }),
+    [REGION_ROOMS.orchard_operation]: defineRoom(MatchRoom, {
+      config: new MatchConfig({ debug, mapId: ORCHARD_VALE.id, operation: true, seed: Number.isFinite(seed) ? seed : undefined, botSlots: botSlots ?? [1, 2, 3, 5, 6, 7] }),
+    }),
   },
   greet: false,
   // Forwarded to the default WebSocket transport. Colyseus 0.18 drops a client

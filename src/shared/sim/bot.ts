@@ -11,6 +11,7 @@
  */
 import type { Command, Snapshot } from '../protocol.ts';
 import { boundsOf, type MapDef } from './map.ts';
+import { OPERATION } from './operation.ts';
 import { isBlocked } from './simulation.ts';
 
 export interface BotMemory {
@@ -42,6 +43,34 @@ export function botThink(memory: BotMemory, view: Snapshot, map: MapDef): Comman
   if (!view.you || view.tick < memory.nextDecisionTick) return null;
   const me = view.actors.find((a) => a.id === view.you?.actorId);
   if (!me) return null;
+
+  const operation = view.operation;
+  if (operation) {
+    if (operation.result || operation.progress > 0) return null;
+    memory.nextDecisionTick = view.tick + 20 + Math.floor(nextRandom(memory) * 25);
+    // When a Light player is present, reserve the opening sabotage for them.
+    // Light bots take the approaches and stay available to screen the site.
+    if (view.you.team === 'light' && view.slots.some((slot) => slot.team === 'light' && slot.occupant === 'human')) {
+      const approach = [{ x: -9, z: -28 }, { x: -7, z: -28 }, { x: -5, z: -24 }, { x: 3, z: -24 }][view.you.slot % 4]!;
+      if (!me.order && Math.hypot(me.x - approach.x, me.z - approach.z) > 1) return { type: 'moveTo', ...approach };
+      return null;
+    }
+    if (operation.interaction) return { type: 'workOperation' };
+    const needsWork = view.you.team === (operation.active ? 'light' : 'dark');
+    if (needsWork && !me.order && Math.hypot(me.x - operation.x, me.z - operation.z) > OPERATION.range) {
+      // Approach on the open lane from separate points so friendly bodies
+      // cannot all try to occupy the same spot.
+      const offset = [-1.2, -0.4, 0.4, 1.2][view.you.slot % 4]!;
+      return { type: 'moveTo', x: operation.x + offset, z: operation.z + (view.you.team === 'light' ? 1 : -1) };
+    }
+    if (view.you.team === 'dark' && operation.active) {
+      const guard = view.actors.find((actor) => actor.monster === 'brute' && actor.mode === 'patrol' && !actor.order);
+      if (guard && Math.hypot(guard.x - operation.x, guard.z - operation.z) > OPERATION.threatRange) {
+        return { type: 'monsterOrder', actorId: guard.id, order: 'guard', x: operation.x + 4, z: operation.z };
+      }
+    }
+    return null;
+  }
 
   // Dark: a fresh confirmed sighting (D-012 alert) is worth walking to.
   const alert = view.evidence.filter((e) => e.kind === 'sighting' && e.id > memory.lastAlertId).at(-1);

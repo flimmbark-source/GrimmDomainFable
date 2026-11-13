@@ -150,4 +150,16 @@ export interface SimState {
   evidence: Evidence[];
   noises: Noise[];
   events: SimEvent[];
+  operation?: OperationState;
+}
+
+export interface OperationState {
+  active: boolean;
+  energy: number;
+  production: number;
+  offlineTicks: number;
+  worker: number | null;
+  progress: number;
+  interrupted: number | null;
+  result: Team | null;
 }

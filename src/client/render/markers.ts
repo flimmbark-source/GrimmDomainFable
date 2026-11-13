@@ -47,6 +47,7 @@ export class MarkerLayer {
   private readonly evidence = new Map<number, EvidenceVisual>();
   private readonly glyphs = new Map<EvidenceKind, THREE.Texture>();
   private readonly sites = new Map<number, { chest: THREE.Object3D; ring: THREE.Mesh; progress: THREE.Mesh }>();
+  private operation: { crystal: THREE.Mesh<THREE.OctahedronGeometry, THREE.MeshLambertMaterial>; ring: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial> } | null = null;
 
   constructor(private readonly assets: AssetLibrary, private readonly heightAt: (x: number, z: number) => number = () => 0) {
     this.group.name = 'markers';
@@ -58,6 +59,31 @@ export class MarkerLayer {
   update(snapshot: Snapshot, now: number): void {
     this.updateSites(snapshot, now);
     this.updateEvidence(snapshot, now);
+    if (snapshot.operation) this.updateOperation(snapshot.operation, now);
+  }
+
+  private updateOperation(operation: NonNullable<Snapshot['operation']>, now: number): void {
+    if (!this.operation) {
+      const y = this.heightAt(operation.x, operation.z);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.85, 0.85, 6), new THREE.MeshLambertMaterial({ color: 0x392d43 }));
+      base.position.set(operation.x, y + 0.42, operation.z);
+      base.castShadow = true;
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.7), new THREE.MeshLambertMaterial());
+      crystal.position.set(operation.x, y + 1.45, operation.z);
+      crystal.scale.y = 1.5;
+      crystal.castShadow = true;
+      const ringGeo = new THREE.RingGeometry(2.25, 2.38, 40);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.64, depthWrite: false }));
+      ring.position.set(operation.x, y + 0.08, operation.z);
+      this.group.add(base, crystal, ring);
+      this.operation = { crystal, ring };
+    }
+    const { crystal, ring } = this.operation;
+    crystal.rotation.y = operation.active ? now * 0.0006 : 0;
+    crystal.material.color.setHex(operation.active ? 0xbf76ed : 0x6f6574);
+    crystal.material.emissive.setHex(operation.active ? 0x602b85 : 0x000000);
+    ring.material.color.setHex(operation.active ? 0xbe71e9 : 0x98b2be);
   }
 
   private updateSites(snapshot: Snapshot, now: number): void {

@@ -18,6 +18,7 @@ export interface InputHost {
   ownedMonster(): number | null;
   /** Height of the walking surface; omitted on flat maps. */
   heightAt?(x: number, z: number): number;
+  workOperation?(): boolean;
 }
 
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -75,6 +76,7 @@ export class InputController {
     }
     if (e.code === 'KeyX' && !e.repeat) this.host.send({ type: 'stop' });
     if (e.code === 'KeyF' && !e.repeat) this.host.send({ type: 'whistle' });
+    if (e.code === 'KeyR' && !e.repeat && this.host.workOperation?.()) this.host.send({ type: 'workOperation' });
     if (e.code === 'KeyP' && !e.repeat) {
       const monster = this.host.ownedMonster();
       if (monster !== null) this.host.send({ type: 'monsterOrder', actorId: monster, order: 'patrol' });
