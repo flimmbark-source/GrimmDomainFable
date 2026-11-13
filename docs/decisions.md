@@ -1,6 +1,6 @@
 # Grimm Dominion: Decision register
 
-**Last reviewed:** 2026-11-12
+**Last reviewed:** 2026-11-13
 **Authority:** latest explicit creator decisions > approved production specifications > existing implementation > exploratory GDD.
 
 ## Confirmed decisions (creator approval, 2026-11-11)
@@ -140,6 +140,7 @@ Orchard Vale itself is **candidate** regional direction (region prototype 01, fo
 | P-17 | Witness trees (1.7 m trunks) and hedges are full sight cover; marker stones, drystone and terrace walls, fences and young trees block feet only | Cover classes for these new prop kinds are proposals |
 | P-18 | The M1 caches are placed in the ruin and the mill yard so the hunt has destinations | Placeholder objective only, not an M2 economy or a ruin treasure |
 | P-19 | Server WebSocket heartbeat grace raised from about 6 s to about 20 s (4 s pings, 5 retries) so a slow region load does not drop the client | Engineering tolerance; real reconnect and bot-takeover policy is still unresolved rule 6 |
+| P-20 | Orchard Vale fog of war is drawn as dark billowing smoke over never-seen ground, desaturated dimming over remembered ground and clear current sight, with feathered, billowing edges. Presentation only: the sight mask, ranges and server projection are unchanged | Interprets the 13 November reference image. How much of the remembered state to show, smoke opacity and edge softness are art-direction calls for the creator |
 
 ## Unresolved rules (do NOT silently decide these as canon)
 1. **Core rule decided by D-015 to D-018:** Dark Lord starts dormant; Light can breach sanctum and kill him before awakening; Dark Energy accrues naturally over time, receives small one-time gains from evil deeds by Dark Heroes and minions, and accrues faster through corruption sources; awakening triggers Dark Lord + Dark Heroes vs Light Heroes final battle. **D-019/D-020 confirm** Light Heroes can slow awakening by sabotaging corruption sources, without directly reversing accumulated Dark Energy. **Unresolved:** meter formula/tiers, qualifying evil deeds, corruption/constructible source types, placement rules, source stacking and maintenance, boss abilities, pre-awakening sanctum vulnerability, post-awakening terminal rules, and whether sleeping influence exists.

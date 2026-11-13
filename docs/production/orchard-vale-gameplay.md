@@ -21,7 +21,7 @@ Append `&hud=preview` to the Orchard operation URL to try the sample kit. Select
 
 ## Fog of war
 
-Unseen terrain is dark grey. Terrain visited or seen before is dimmed when it leaves current sight. Current sight is clear. The mask updates from the local hero and the viewer's own monsters, using the same sight blockers, ranges, and monster arcs as the simulation. A teammate sees confirmed reports and retains the existing visibility of allied actors. Their Scout's sight cone stays private. Enemy actors still come exclusively from server projections.
+Unseen terrain lies under dark, billowing smoke. Terrain visited or seen before is muted and dimmed when it leaves current sight. Current sight is clear, with a soft, billowing edge (presentation only, P-20). The mask updates from the local hero and the viewer's own monsters, using the same sight blockers, ranges, and monster arcs as the simulation. A teammate sees confirmed reports and retains the existing visibility of allied actors. Their Scout's sight cone stays private. Enemy actors still come exclusively from server projections.
 
 Explored terrain is currently remembered in the client session for each seat. The faction chart, shared geography discoveries, and persistent map knowledge belong to D-088 through D-090 and are future work.
 
