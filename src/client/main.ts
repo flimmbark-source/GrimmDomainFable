@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { RenderItem } from 'three/src/renderers/webgl/WebGLRenderLists.js';
 import type { Command, Snapshot, Team } from '../shared/protocol.ts';
 import { roomForRegion } from '../shared/protocol.ts';
 import { propsNearBox, sightBlocked } from '../shared/sim/geometry.ts';
@@ -74,23 +75,39 @@ interface RenderProfile {
   p95Ms: number;
 }
 
-/** Compare the same stationary view with less pixel work or a cached shadow map. */
-async function profileRendering(renderer: THREE.WebGLRenderer, sun: THREE.DirectionalLight): Promise<RenderProfile[]> {
+function frontToBack(a: RenderItem, b: RenderItem): number {
+  return a.groupOrder - b.groupOrder || a.renderOrder - b.renderOrder ||
+    a.z - b.z || a.material.id - b.material.id || a.id - b.id;
+}
+
+/** Compare the same stationary view with different sources of rendering cost. */
+async function profileRendering(
+  renderer: THREE.WebGLRenderer, sun: THREE.DirectionalLight, compareDrawOrder: boolean,
+): Promise<RenderProfile[]> {
   const pixelRatio = renderer.getPixelRatio();
   const { shadowMap } = renderer;
   const autoUpdate = shadowMap.autoUpdate;
   const lightAutoUpdate = sun.shadow.autoUpdate;
+  const castsShadow = sun.castShadow;
   const results: RenderProfile[] = [];
   const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 
   try {
-    for (const { test, scale, updateShadows, updateLight } of [
+    for (const { test, scale, updateShadows, updateLight, depthSort, skipShadows } of [
       { test: 'Full resolution, current settings', scale: 1, updateShadows: true, updateLight: lightAutoUpdate },
+      ...(compareDrawOrder ? [{
+        test: 'Full resolution, near surfaces first', scale: 1, updateShadows: true, updateLight: lightAutoUpdate, depthSort: true,
+      }] : []),
       { test: 'Full resolution, shadows every frame', scale: 1, updateShadows: true, updateLight: true },
       { test: 'Half pixel count, shadows every frame', scale: Math.SQRT1_2, updateShadows: true, updateLight: true },
       { test: 'Full resolution, reuse shadows', scale: 1, updateShadows: false, updateLight: true },
+      { test: 'Full resolution, shadows off', scale: 1, updateShadows: false, updateLight: true, skipShadows: true },
     ]) {
+      // Near opaque surfaces can reject fragments behind them. Explicit
+      // ordering still controls the sky and hero silhouette.
+      renderer.setOpaqueSort(depthSort ? frontToBack : null);
       renderer.setPixelRatio(pixelRatio * scale);
+      sun.castShadow = castsShadow && !skipShadows;
       shadowMap.autoUpdate = updateShadows;
       sun.shadow.autoUpdate = updateLight;
       shadowMap.needsUpdate = true;
@@ -118,7 +135,9 @@ async function profileRendering(renderer: THREE.WebGLRenderer, sun: THREE.Direct
       });
     }
   } finally {
+    renderer.setOpaqueSort(null);
     renderer.setPixelRatio(pixelRatio);
+    sun.castShadow = castsShadow;
     shadowMap.autoUpdate = autoUpdate;
     sun.shadow.autoUpdate = lightAutoUpdate;
     shadowMap.needsUpdate = true;
@@ -349,7 +368,7 @@ async function start(): Promise<void> {
         if (profiling) throw new Error('A rendering profile is already running.');
         profiling = true;
         try {
-          return await profileRendering(renderer, world.sun);
+          return await profileRendering(renderer, world.sun, Boolean(map.region));
         } finally {
           profiling = false;
         }
