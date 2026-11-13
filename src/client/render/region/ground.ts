@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { boundsOf, type Bounds, type MapDef, type Point } from '../../../shared/sim/map.ts';
 import type { RegionDef } from '../../../shared/sim/region.ts';
 import { groundHeight, polylineNearest, smoothstep, valueNoise, type ChannelFeature } from '../../../shared/sim/terrain.ts';
+import { CROWN_EXTENTS } from '../models/flora.ts';
 import { VALE as C } from '../palette.ts';
 import { groundMaterial, skirtMaterial, type SharedUniforms } from './materials.ts';
 
@@ -159,7 +160,7 @@ function paint(map: MapDef, region: RegionDef, area: Bounds, heightAt: (x: numbe
     if (wet(x, z)) continue;
     const inWood = region.patches.some((p) => (p.kind === 'oldwood_floor' || p.kind === 'coppice_floor') && patchWeight(p, x, z) > 0.4);
     const c = inWood ? [C.oldwoodFloor, C.leafLitter, C.oldwoodDark, C.moss, 0x8a6a34][Math.floor(rnd() * 5)]! : greens[Math.floor(rnd() * greens.length)]!;
-    g.fillStyle = css(c, 0.22 + rnd() * 0.3);
+    g.fillStyle = css(c, 0.12 + rnd() * 0.18);
     g.beginPath();
     g.ellipse(X(x), Z(z), (0.12 + rnd() * 0.3) * S, (0.3 + rnd() * 0.6) * S, 0.5 + (rnd() - 0.5) * 0.9, 0, Math.PI * 2);
     g.fill();
@@ -297,6 +298,21 @@ function paint(map: MapDef, region: RegionDef, area: Bounds, heightAt: (x: numbe
   }
 
   // 6. Soft dark under everything that stands on the ground (grounding, not a shadow map).
+  // First the sky each canopy hides: a broad, cool green shade the size of the
+  // crown, then the tight contact shade at the foot of every prop.
+  for (const prop of map.props) {
+    const crown = CROWN_EXTENTS[prop.kind];
+    if (!crown) continue;
+    const r = crown[1] * prop.scale * 1.08 * S;
+    const cx = X(prop.x);
+    const cz = Z(prop.z);
+    const grad = g.createRadialGradient(cx, cz, r * 0.15, cx, cz, r);
+    grad.addColorStop(0, 'rgba(14,34,10,0.34)');
+    grad.addColorStop(0.65, 'rgba(14,34,10,0.2)');
+    grad.addColorStop(1, 'rgba(14,34,10,0)');
+    g.fillStyle = grad;
+    g.fillRect(cx - r, cz - r, r * 2, r * 2);
+  }
   for (const prop of map.props) {
     if (prop.kind === 'water') continue;
     const c = prop.collider;

@@ -40,14 +40,14 @@ function hedge(m: Model, prop: PropDef, h: Height, r: Rand): void {
     const cols = [C.hedge, C.hedgeDark, C.hedgeLight, C.bramble];
     m.at([x, y, z], yaw + r.range(-0.08, 0.08), () => {
       // Dense body from the ground up: this is solid cover.
-      m.lump(0.62, cols[i % 2]!, { p: [0, 0.55, 0], s: [len * 0.98, 1.05, w * 1.42], soft: true, shade: 0.5, sway: 0.015, tip: C.hedge }, 0, i * 7 + 1, 0.22);
-      m.lump(0.6, cols[(i + 1) % 4]!, { p: [r.range(-0.1, 0.1), 1.45, r.range(-0.08, 0.08)], s: [len * 0.95, 1.05, w * 1.3], soft: true, shade: 0.35, sway: 0.03, tip: C.hedgeLight }, 1, i * 7 + 2, 0.2);
-      m.lump(0.45, i % 3 ? C.hedgeLight : C.hedge, { p: [r.range(-0.2, 0.2), tall - 0.3, r.range(-0.1, 0.1)], s: [len * 1.1, 0.75, w * 1.15], soft: true, shade: 0.2, sway: 0.06, tip: C.appleLight }, 0, i * 7 + 3, 0.25);
+      m.lump(0.62, cols[i % 2]!, { p: [0, 0.55, 0], s: [len * 0.98, 1.05, w * 1.42], soft: false, shade: 0.5, sway: 0.015, tip: C.hedge }, 0, i * 7 + 1, 0.22);
+      m.lump(0.6, cols[(i + 1) % 4]!, { p: [r.range(-0.1, 0.1), 1.45, r.range(-0.08, 0.08)], s: [len * 0.95, 1.05, w * 1.3], soft: false, shade: 0.35, sway: 0.03, tip: C.hedgeLight }, 1, i * 7 + 2, 0.2);
+      m.lump(0.45, i % 3 ? C.hedgeLight : C.hedge, { p: [r.range(-0.2, 0.2), tall - 0.3, r.range(-0.1, 0.1)], s: [len * 1.1, 0.75, w * 1.15], soft: false, shade: 0.2, sway: 0.06, tip: C.appleLight }, 0, i * 7 + 3, 0.25);
       // Now and then a hazel rod, a dog rose, a blackberry.
       if (r.chance(0.2)) m.post(0.03, 0.045, tall + 0.7, C.bark, { p: [r.range(-0.3, 0.3), 0, 0], r: [r.range(-0.2, 0.2), 0, r.range(-0.2, 0.2)], sway: 0.04 }, 4);
       if (r.chance(0.35)) {
         for (let k = 0; k < 3; k++) {
-          m.lump(0.07, r.chance(0.5) ? C.flowerWhite : C.flowerRed, { p: [r.range(-0.4, 0.4), r.range(0.7, 2.0), (r.chance(0.5) ? 1 : -1) * w * 0.86], soft: true, shade: 0 }, 0, k);
+          m.lump(0.07, r.chance(0.5) ? C.flowerWhite : C.flowerRed, { p: [r.range(-0.4, 0.4), r.range(0.7, 2.0), (r.chance(0.5) ? 1 : -1) * w * 0.86], soft: false, shade: 0 }, 0, k);
         }
       }
     });
