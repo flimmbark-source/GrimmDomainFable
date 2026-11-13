@@ -86,6 +86,7 @@ export function buildLights(): Lights {
   const hemisphere = new THREE.HemisphereLight(C.ambientSky, C.ambientGround, 2.1);
   const sun = new THREE.DirectionalLight(C.sun, 2.35);
   const direction = new THREE.Vector3(-0.62, 0.62, 0.48).normalize();
+  sun.position.copy(direction).multiplyScalar(120);
   sun.castShadow = true;
   sun.shadow.autoUpdate = false;
   sun.shadow.mapSize.set(2048, 2048);
@@ -180,6 +181,7 @@ export function buildSmoke(region: RegionDef, heightAt: Height, shared: SharedUn
 
 export interface Wheels {
   group: THREE.Group;
+  spinning: readonly THREE.Mesh[];
   update(dt: number): void;
 }
 
@@ -187,7 +189,7 @@ export function buildWheels(map: MapDef, region: RegionDef, assets: AssetLibrary
   const group = new THREE.Group();
   group.name = 'wheels';
   const channel = map.terrain?.features.find((f): f is ChannelFeature => f.type === 'channel');
-  const spinning: THREE.Object3D[] = [];
+  const spinning: THREE.Mesh[] = [];
   for (const w of region.wheels) {
     const geo = assets.geometryFor(`wheel:${w.radius}:${w.width}`, () => wheelParts(w.radius, w.width));
     const mesh = new THREE.Mesh(geo, material);
@@ -212,7 +214,7 @@ export function buildWheels(map: MapDef, region: RegionDef, assets: AssetLibrary
     pierMesh.receiveShadow = true;
     holder.add(pierMesh);
   }
-  return { group, update: (dt) => spinning.forEach((m) => (m.rotation.z -= dt * 0.55)) };
+  return { group, spinning, update: (dt) => spinning.forEach((m) => (m.rotation.z -= dt * 0.55)) };
 }
 
 /** A far tree: a trunk and one or two soft masses. Never closer than the region's edge. */

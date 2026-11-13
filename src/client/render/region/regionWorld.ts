@@ -14,6 +14,7 @@ import { buildBarriers } from './barriers.ts';
 import { buildGround } from './ground.ts';
 import { buildInstances } from './instances.ts';
 import { cardMaterial, painterlyMaterial, type SharedUniforms } from './materials.ts';
+import { bakeStaticShadows, type StaticShadows } from './staticShadows.ts';
 import { buildWater } from './water.ts';
 
 const CHUNK = 62;
@@ -28,7 +29,11 @@ export async function buildRegionWorld(
   const region = map.region!;
   const root = new THREE.Group();
   root.name = `region:${map.id}`;
-  const shared: SharedUniforms = { uTime: { value: 0 }, uFastShadows: { value: false } };
+  const shared: SharedUniforms = {
+    uTime: { value: 0 }, uFastShadows: { value: false }, uBakedShadows: { value: false },
+    uGroundShadow: { value: null }, uStaticDepth: { value: null },
+    uStaticMatrix: { value: new THREE.Matrix4() }, uStaticArea: { value: new THREE.Vector4() },
+  };
 
   scene.fog = new THREE.Fog(C.fog, 95, 620);
   scene.background = new THREE.Color(C.fog);
@@ -61,12 +66,48 @@ export async function buildRegionWorld(
   await breathe();
 
   scene.add(root);
+  const groundMesh = ground.group.children[0] as THREE.Mesh;
+  const staticCasters: THREE.Mesh[] = [];
+  root.traverse((node) => {
+    if (node instanceof THREE.Mesh && node.castShadow && !wheels.spinning.includes(node)) staticCasters.push(node);
+  });
+  const bakeCasters = staticCasters.filter((mesh) => mesh.visible);
+  let baked: StaticShadows | undefined;
+  const bakedShadows: NonNullable<World['bakedShadows']> = {
+    get enabled() { return shared.uBakedShadows.value; },
+    set(enabled) {
+      if (enabled && !baked) {
+        root.updateMatrixWorld(true);
+        baked = bakeStaticShadows(renderer, groundMesh, bakeCasters, lights.sun);
+        shared.uGroundShadow.value = baked.ground;
+        shared.uStaticDepth.value = baked.depth;
+        shared.uStaticMatrix.value.copy(baked.matrix);
+        shared.uStaticArea.value.copy(baked.area);
+      }
+      if (enabled === shared.uBakedShadows.value) return;
+      shared.uBakedShadows.value = enabled;
+      for (const mesh of staticCasters) mesh.castShadow = !enabled;
+      lights.sun.shadow.mapSize.setScalar(enabled ? 1024 : 2048);
+      lights.sun.shadow.needsUpdate = true;
+    },
+  };
+  const restoreBakedShadows = () => {
+    const enabled = bakedShadows.enabled;
+    bakedShadows.set(false);
+    baked?.dispose();
+    baked = undefined;
+    shared.uGroundShadow.value = null;
+    shared.uStaticDepth.value = null;
+    if (enabled) bakedShadows.set(true);
+  };
+  renderer.domElement.addEventListener('webglcontextrestored', restoreBakedShadows);
   const focus = new THREE.Vector3();
   return {
     root,
-    ground: ground.group.children[0] as THREE.Mesh,
+    ground: groundMesh,
     sun: lights.sun,
     fastShadows: shared.uFastShadows,
+    bakedShadows,
     heightAt: (x, z) => surfaceHeight(map, x, z),
     update: (dt, camera, lookAt, mode) => {
       shared.uTime.value += dt;
@@ -89,6 +130,7 @@ export async function buildRegionWorld(
       return out;
     },
     dispose: () => {
+      renderer.domElement.removeEventListener('webglcontextrestored', restoreBakedShadows);
       scene.remove(root);
       ground.dispose();
       water?.dispose();
@@ -96,6 +138,7 @@ export async function buildRegionWorld(
       smoke?.dispose();
       solid.dispose();
       card.dispose();
+      baked?.dispose();
     },
   };
 }

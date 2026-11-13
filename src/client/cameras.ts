@@ -105,6 +105,18 @@ export class CameraRig {
     this.rtsFocus.set(point.x, 0, point.z);
   }
 
+  /** Restore the strategy camera after a temporary scripted camera move. */
+  preserveStrategyView(): () => void {
+    const focus = this.rtsFocus.clone();
+    const distance = this.rtsDistance;
+    const follow = this.followRtsHero;
+    return () => {
+      this.rtsFocus.copy(focus);
+      this.rtsDistance = distance;
+      this.followRtsHero = follow;
+    };
+  }
+
   turnHero(direction: number, dt: number): void {
     this.heroYaw += direction * HERO.turnSpeed * dt;
   }

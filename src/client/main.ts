@@ -166,6 +166,7 @@ interface DebugApi {
   /** Centre the strategy camera on a ground point. */
   focus(x: number, z: number): void;
   profileRendering?: () => Promise<RenderProfile[]>;
+  profileVillagePan?: () => Promise<RenderProfile[]>;
   stats(): {
     fps: number; drawCalls: number; triangles: number; snapshots: number; renderer: string; assets: Record<string, string>;
     /** GPU objects alive, and how much scenery the region placed. */
@@ -232,6 +233,11 @@ async function start(): Promise<void> {
     ? await buildRegionWorld(scene, map, assets, renderer, (stage) => hud.setStatus(`Building the region: ${stage}…`))
     : buildWorld(scene, map, assets);
   if (world.fastShadows) world.fastShadows.value = params.get('fastShadows') === '1';
+  if (params.get('bakedShadows') === '1' && world.bakedShadows) {
+    hud.setStatus('Baking terrain shadows…');
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    world.bakedShadows.set(true);
+  }
   const debugOverlay = buildCollisionDebug(map, world.heightAt);
   scene.add(debugOverlay);
   const actors = new ActorLayer(assets, world.heightAt, Boolean(map.region));
@@ -379,6 +385,58 @@ async function start(): Promise<void> {
           profiling = false;
         }
       },
+      ...(world.bakedShadows ? {
+        profileVillagePan: async () => {
+          if (profiling) throw new Error('A rendering profile is already running.');
+          profiling = true;
+          const baked = world.bakedShadows!;
+          const previous = baked.enabled;
+          const mode = rig.mode;
+          const restoreStrategyView = rig.preserveStrategyView();
+          const fastFilter = world.fastShadows?.value ?? false;
+          const results: RenderProfile[] = [];
+          const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
+          try {
+            input.setMode('rts');
+            rig.rtsDistance = 52;
+            if (world.fastShadows) world.fastShadows.value = false;
+            // Use identical passes in reverse order to reduce warm-up bias.
+            for (const enabled of [false, true, true, false]) {
+              baked.set(enabled);
+              rig.focusOn(new THREE.Vector3(-20, 0, 11));
+              const settle = performance.now() + 1100;
+              while (await nextFrame() < settle) { /* allow shaders and camera to settle */ }
+              const frameTimes: number[] = [];
+              const start = await nextFrame();
+              let lastFrame = start;
+              const target = new THREE.Vector3(0, 0, 11);
+              do {
+                const frame = await nextFrame();
+                if (document.hidden) throw new Error('Keep the game tab visible while profiling.');
+                frameTimes.push(frame - lastFrame);
+                lastFrame = frame;
+                target.x = -20 + Math.min(1, (frame - start) / 3500) * 40;
+                rig.focusOn(target);
+              } while (lastFrame - start < 3500);
+              frameTimes.sort((a, b) => a - b);
+              results.push({
+                test: enabled ? 'Baked terrain + live actors' : 'Original live shadows',
+                buffer: `${canvas.width}×${canvas.height}`,
+                fps: Math.round(frameTimes.length * 1000 / (lastFrame - start)),
+                medianMs: Number(frameTimes[Math.ceil(frameTimes.length * 0.5) - 1]!.toFixed(1)),
+                p95Ms: Number(frameTimes[Math.ceil(frameTimes.length * 0.95) - 1]!.toFixed(1)),
+              });
+            }
+          } finally {
+            baked.set(previous);
+            if (world.fastShadows) world.fastShadows.value = fastFilter;
+            input.setMode(mode);
+            restoreStrategyView();
+            profiling = false;
+          }
+          return results;
+        },
+      } : {}),
     } : {}),
     rig: (pose) => {
       if (pose.yaw !== undefined) rig.heroYaw = pose.yaw;

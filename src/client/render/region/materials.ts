@@ -9,6 +9,11 @@ import * as THREE from 'three';
 export interface SharedUniforms {
   uTime: { value: number };
   uFastShadows: { value: boolean };
+  uBakedShadows: { value: boolean };
+  uGroundShadow: { value: THREE.Texture | null };
+  uStaticDepth: { value: THREE.DepthTexture | null };
+  uStaticMatrix: { value: THREE.Matrix4 };
+  uStaticArea: { value: THREE.Vector4 };
 }
 
 const NOISE_GLSL = /* glsl */ `
@@ -30,7 +35,7 @@ const REGION_SHADOW_GLSL = /* glsl */ `
 #if defined( USE_SHADOWMAP ) && defined( SHADOWMAP_TYPE_PCF )
   uniform bool uFastShadows;
   float getRegionShadow( sampler2DShadow map, vec2 size, float intensity, float bias, float radius, vec4 coord ) {
-    if ( !uFastShadows ) return getShadow( map, size, intensity, bias, radius, coord );
+    if ( !uFastShadows && !uBakedShadows ) return getShadow( map, size, intensity, bias, radius, coord );
 
     coord.xyz /= coord.w;
     #ifdef USE_REVERSED_DEPTH_BUFFER
@@ -48,10 +53,16 @@ const REGION_SHADOW_GLSL = /* glsl */ `
 #endif
 `;
 
-function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: boolean; mottle: number; grain: number; upNormals?: boolean }): void {
+function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: boolean; mottle: number; grain: number; upNormals?: boolean; ground?: boolean }): void {
+  material.customProgramCacheKey = () => `region:${o.sway}:${o.mottle}:${o.grain}:${o.upNormals}:${o.ground}`;
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = shared.uTime;
     shader.uniforms.uFastShadows = shared.uFastShadows;
+    shader.uniforms.uBakedShadows = shared.uBakedShadows;
+    shader.uniforms.uGroundShadow = shared.uGroundShadow;
+    shader.uniforms.uStaticDepth = shared.uStaticDepth;
+    shader.uniforms.uStaticMatrix = shared.uStaticMatrix;
+    shader.uniforms.uStaticArea = shared.uStaticArea;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\nattribute float sway;\nuniform float uTime;\nvarying vec3 vWorldP;`)
       // Flat cards (grass, reeds) are lit as if they were the ground they grow from.
@@ -73,7 +84,24 @@ function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: bool
       );
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\nvarying vec3 vWorldP;\n${NOISE_GLSL}`)
-      .replace('#include <shadowmap_pars_fragment>', `#include <shadowmap_pars_fragment>\n${REGION_SHADOW_GLSL}`)
+      .replace('#include <shadowmap_pars_fragment>', `#include <shadowmap_pars_fragment>
+        uniform bool uBakedShadows;
+        ${REGION_SHADOW_GLSL}
+        uniform sampler2D uGroundShadow;
+        uniform highp sampler2DShadow uStaticDepth;
+        uniform mat4 uStaticMatrix;
+        uniform vec4 uStaticArea;
+        float regionStaticVisibility() {
+          if (!uBakedShadows || !receiveShadow) return 1.0;
+          vec2 uv = (vWorldP.xz - uStaticArea.xy) / uStaticArea.zw;
+          if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 1.0;
+          ${o.ground ? 'return texture2D(uGroundShadow, uv).r;' : `
+          vec3 worldNormal = transformNormalByInverseViewMatrix(normalize(vNormal), viewMatrix);
+          vec3 p = (uStaticMatrix * vec4(vWorldP + worldNormal * 0.3, 1.0)).xyz;
+          p.z -= 0.0005;
+          return texture(uStaticDepth, p);`}
+        }`)
+      .replace('#include <aomap_fragment>', '#include <aomap_fragment>\nreflectedLight.directDiffuse *= regionStaticVisibility();')
       .replace(
         '#include <color_fragment>',
         `#include <color_fragment>
@@ -104,7 +132,7 @@ export function cardMaterial(shared: SharedUniforms): THREE.MeshLambertMaterial 
 /** Ground: the painted texture, plus fine grain so it never looks blurred up close. */
 export function groundMaterial(shared: SharedUniforms, map: THREE.Texture): THREE.MeshLambertMaterial {
   const material = new THREE.MeshLambertMaterial({ map });
-  patch(material, shared, { sway: false, mottle: 0.1, grain: 0.14 });
+  patch(material, shared, { sway: false, mottle: 0.1, grain: 0.14, ground: true });
   return material;
 }
 
