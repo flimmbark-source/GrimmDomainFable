@@ -52,8 +52,10 @@ export function makeHeight(map: MapDef): (x: number, z: number) => number {
   };
 }
 
-function hex(c: number): [number, number, number] {
-  return [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+function blendColour(out: [number, number, number], colour: number, weight: number): void {
+  out[0] += (((colour >> 16) & 255) - out[0]) * weight;
+  out[1] += (((colour >> 8) & 255) - out[1]) * weight;
+  out[2] += ((colour & 255) - out[2]) * weight;
 }
 
 function distSeg(px: number, pz: number, a: Point, b: Point): number {
@@ -66,46 +68,47 @@ function distSeg(px: number, pz: number, a: Point, b: Point): number {
 
 /** 0..1 membership of a point in a patch (soft edge). */
 function patchWeight(p: RegionDef['patches'][number], x: number, z: number): number {
-  const d = p.x2 === undefined || p.z2 === undefined ? Math.hypot(x - p.x, z - p.z) : distSeg(x, z, p, { x: p.x2, z: p.z2 });
+  const x2 = p.x2 ?? p.x;
+  const z2 = p.z2 ?? p.z;
+  // The vast majority of underpainting samples are outside any one patch.
+  if (x < Math.min(p.x, x2) - p.radius || x > Math.max(p.x, x2) + p.radius ||
+      z < Math.min(p.z, z2) - p.radius || z > Math.max(p.z, z2) + p.radius) return 0;
+  const d = p.x2 === undefined || p.z2 === undefined ? Math.hypot(x - p.x, z - p.z) : distSeg(x, z, p, { x: x2, z: z2 });
   return 1 - smoothstep(p.radius * 0.6, p.radius, d);
 }
 
 /** Underlying colour of the land before any detail: shared by the canvas and the backdrop. */
-function baseColour(map: MapDef, region: RegionDef, x: number, z: number, h: number, out: [number, number, number]): void {
+function baseColour(region: RegionDef, river: ChannelFeature | undefined, x: number, z: number, h: number, out: [number, number, number]): void {
   const n1 = valueNoise(x / 17, z / 17, 21);
   const n2 = valueNoise(x / 5.5, z / 5.5, 22);
   const n3 = valueNoise(x / 2.1, z / 2.1, 23);
   const t = n1 * 0.55 + n2 * 0.3 + n3 * 0.15;
-  const a = hex(C.grassDark);
-  const b = hex(C.grass);
-  const c = hex(C.grassLight);
   const k = Math.min(1, Math.max(0, (t - 0.25) / 0.5));
-  for (let i = 0; i < 3; i++) out[i] = k < 0.5 ? a[i]! + (b[i]! - a[i]!) * (k * 2) : b[i]! + (c[i]! - b[i]!) * ((k - 0.5) * 2);
-  const blend = (col: number, w: number) => {
-    const q = hex(col);
-    for (let i = 0; i < 3; i++) out[i] = out[i]! + (q[i]! - out[i]!) * w;
-  };
+  const base = k < 0.5 ? C.grassDark : C.grass;
+  out[0] = (base >> 16) & 255;
+  out[1] = (base >> 8) & 255;
+  out[2] = base & 255;
+  blendColour(out, k < 0.5 ? C.grass : C.grassLight, k < 0.5 ? k * 2 : (k - 0.5) * 2);
   // Dry patches on the sunny terraces.
-  blend(C.grassDry, Math.max(0, n2 - 0.62) * 1.1);
+  blendColour(out, C.grassDry, Math.max(0, n2 - 0.62) * 1.1);
   for (const p of region.patches) {
     const w = patchWeight(p, x, z);
     if (w <= 0) continue;
     if (p.kind === 'oldwood_floor') {
-      blend(C.oldwoodFloor, w * 0.85);
-      blend(C.leafLitter, w * Math.max(0, n3 - 0.45) * 1.2);
+      blendColour(out, C.oldwoodFloor, w * 0.85);
+      blendColour(out, C.leafLitter, w * Math.max(0, n3 - 0.45) * 1.2);
     } else if (p.kind === 'coppice_floor') {
-      blend(C.oldwoodFloor, w * 0.5);
-      blend(C.leafLitter, w * Math.max(0, n2 - 0.4) * 0.9);
-    } else if (p.kind === 'meadow') blend(C.meadow, w * 0.7);
-    else if (p.kind === 'hay_field') blend(C.hay, w * (0.55 + n3 * 0.25));
-    else if (p.kind === 'village_yard') blend(C.lane, w * 0.75);
+      blendColour(out, C.oldwoodFloor, w * 0.5);
+      blendColour(out, C.leafLitter, w * Math.max(0, n2 - 0.4) * 0.9);
+    } else if (p.kind === 'meadow') blendColour(out, C.meadow, w * 0.7);
+    else if (p.kind === 'hay_field') blendColour(out, C.hay, w * (0.55 + n3 * 0.25));
+    else if (p.kind === 'village_yard') blendColour(out, C.lane, w * 0.75);
   }
   // River bed and banks, straight from the height.
-  const river = channelOf(map);
   if (river && h < river.waterY + 0.9) {
-    blend(C.mud, smoothstep(river.waterY + 0.9, river.waterY + 0.25, h) * 0.8);
-    blend(C.gravel, smoothstep(river.waterY + 0.3, river.waterY - 0.15, h) * (0.5 + n3 * 0.5));
-    blend(C.riverBed, smoothstep(river.waterY - 0.2, river.bedY + 0.2, h));
+    blendColour(out, C.mud, smoothstep(river.waterY + 0.9, river.waterY + 0.25, h) * 0.8);
+    blendColour(out, C.gravel, smoothstep(river.waterY + 0.3, river.waterY - 0.15, h) * (0.5 + n3 * 0.5));
+    blendColour(out, C.riverBed, smoothstep(river.waterY - 0.2, river.bedY + 0.2, h));
   }
 }
 
@@ -119,6 +122,7 @@ function paint(map: MapDef, region: RegionDef, area: Bounds, heightAt: (x: numbe
   const X = (x: number) => (x - area.minX) * PX_PER_M;
   const Z = (z: number) => (z - area.minZ) * PX_PER_M;
   const S = PX_PER_M;
+  const river = channelOf(map);
   const css = (c: number, a = 1) => `rgba(${(c >> 16) & 255},${(c >> 8) & 255},${c & 255},${a})`;
   let seed = 1234567;
   const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
@@ -130,7 +134,7 @@ function paint(map: MapDef, region: RegionDef, area: Bounds, heightAt: (x: numbe
     for (let px = 0; px < W; px += 2) {
       const x = area.minX + (px + 1) / S;
       const z = area.minZ + (py + 1) / S;
-      baseColour(map, region, x, z, heightAt(x, z), col);
+      baseColour(region, river, x, z, heightAt(x, z), col);
       for (let dy = 0; dy < 2 && py + dy < H; dy++) {
         for (let dx = 0; dx < 2 && px + dx < W; dx++) {
           const i = ((py + dy) * W + px + dx) * 4;
@@ -144,7 +148,6 @@ function paint(map: MapDef, region: RegionDef, area: Bounds, heightAt: (x: numbe
   }
   g.putImageData(image, 0, 0);
 
-  const river = channelOf(map);
   const wet = (x: number, z: number) => river !== undefined && polylineNearest(river.points, x, z).dist < river.halfWidth + 0.6;
 
   // 2. Brush dabs: short strokes of neighbouring greens, leaning with the wind.
@@ -350,6 +353,7 @@ function paint(map: MapDef, region: RegionDef, area: Bounds, heightAt: (x: numbe
 
 export function buildGround(map: MapDef, region: RegionDef, shared: SharedUniforms, maxAnisotropy: number): GroundResult {
   const b = boundsOf(map);
+  const river = channelOf(map);
   const area: Bounds = { minX: b.minX - APRON, maxX: b.maxX + APRON, minZ: b.minZ - APRON, maxZ: b.maxZ + APRON };
   const heightAt = makeHeight(map);
   const group = new THREE.Group();
@@ -395,7 +399,7 @@ export function buildGround(map: MapDef, region: RegionDef, shared: SharedUnifor
       const insideZ = z > area.minZ + 2 && z < area.maxZ - 2;
       const h = heightAt(x, z);
       positions.push(x, insideX && insideZ ? h - 3 : h - 0.3, z);
-      baseColour(map, region, x, z, h, col);
+      baseColour(region, river, x, z, h, col);
       // Far hills: darker woods to the north, hazier with distance.
       const far = Math.max(Math.abs(x) - b.maxX, Math.abs(z) - b.maxZ, 0);
       const wood = z < b.minZ ? Math.min(1, (b.minZ - z) / 60) * 0.5 : 0;

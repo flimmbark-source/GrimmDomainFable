@@ -29,6 +29,7 @@ const VARIANTS: Partial<Record<PropKind, number>> = {
 /** In this region the M0 oak placeholder is replaced by the richer field oak. */
 const ALIAS: Partial<Record<PropKind, PropKind | 'field_oak'>> = { tree_oak: 'field_oak' };
 const HAS_LOD = (kind: string): boolean => kind in FLORA_BUILDERS && kind !== 'sapling' && kind !== 'tree_apple_young';
+const COVER_CHUNK = 48;
 
 interface LodPair {
   near: THREE.InstancedMesh;
@@ -44,7 +45,7 @@ export interface InstanceLayer {
   counts: { props: number; dressing: number; cover: number };
 }
 
-function instanced(geo: THREE.BufferGeometry, material: THREE.Material, matrices: THREE.Matrix4[], name: string, shadow: boolean): THREE.InstancedMesh {
+export function instanced(geo: THREE.BufferGeometry, material: THREE.Material, matrices: THREE.Matrix4[], name: string, shadow: boolean): THREE.InstancedMesh {
   const mesh = new THREE.InstancedMesh(geo, material, matrices.length);
   matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
   mesh.instanceMatrix.needsUpdate = true;
@@ -127,11 +128,15 @@ export function buildInstances(
   // --- Ground cover ----------------------------------------------------------------
   const b = boundsOf(map);
   const channel = map.terrain?.features.find((f): f is ChannelFeature => f.type === 'channel');
-  const cover = new Map<CoverKind, THREE.Matrix4[]>();
+  // Small details used to share map-wide bounds, so a blade visible at one
+  // corner submitted every blade in the Vale. Keep the original placements
+  // but give each patch of detail its own frustum bounds.
+  const cover = new Map<string, { kind: CoverKind; matrices: THREE.Matrix4[] }>();
   const put = (kind: CoverKind, x: number, z: number, scale: number, yaw: number) => {
-    let list = cover.get(kind);
-    if (!list) cover.set(kind, (list = []));
-    list.push(compose(x, heightAt(x, z) - 0.02, z, yaw, scale, scale * (0.8 + ((x * 7 + z * 3) % 1 + 1) % 1 * 0.5), scale));
+    const key = `${kind}:${Math.floor(x / COVER_CHUNK)}:${Math.floor(z / COVER_CHUNK)}`;
+    let bucket = cover.get(key);
+    if (!bucket) cover.set(key, (bucket = { kind, matrices: [] }));
+    bucket.matrices.push(compose(x, heightAt(x, z) - 0.02, z, yaw, scale, scale * (0.8 + ((x * 7 + z * 3) % 1 + 1) % 1 * 0.5), scale));
   };
   let seed = 424242;
   const rnd = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
@@ -219,11 +224,13 @@ export function buildInstances(
     }
   }
   let coverCount = 0;
-  for (const [kind, list] of cover) {
-    coverCount += list.length;
+  for (const [key, { kind, matrices }] of cover) {
+    coverCount += matrices.length;
     const geo = assets.geometryFor(`cover:${kind}`, () => coverParts(kind));
     const flat = kind === 'grass_tuft' || kind === 'reed' || kind === 'fern' || kind.startsWith('flower');
-    const mesh = instanced(geo, flat ? materials.card : materials.solid, list, `cover:${kind}`, false);
+    const mesh = instanced(geo, flat ? materials.card : materials.solid, matrices, `cover:${key}`, false);
+    // Leave room for the wind displacement in the vertex shader.
+    mesh.boundingSphere!.radius += 0.25;
     group.add(mesh);
   }
 

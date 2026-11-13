@@ -13,6 +13,7 @@ import type { AssetLibrary } from '../assets.ts';
 import { Model } from '../modelkit.ts';
 import { wheelParts } from '../models/props.ts';
 import { VALE as C } from '../palette.ts';
+import { instanced } from './instances.ts';
 import { NOISE_GLSL, type SharedUniforms } from './materials.ts';
 
 type Height = (x: number, z: number) => number;
@@ -64,7 +65,9 @@ export function buildSky(shared: SharedUniforms): THREE.Mesh {
   });
   const sky = new THREE.Mesh(new THREE.SphereGeometry(1100, 32, 16), material);
   sky.name = 'sky';
-  sky.renderOrder = -10;
+  // Draw after the regular opaque scenery so depth rejection limits the sky
+  // shader to visible pixels. Debug overlays and transparent effects follow.
+  sky.renderOrder = 1;
   return sky;
 }
 
@@ -224,7 +227,9 @@ export function buildBackdrop(map: MapDef, assets: AssetLibrary, heightAt: Heigh
   group.name = 'backdrop';
   const b = boundsOf(map);
   const channel = map.terrain?.features.find((f): f is ChannelFeature => f.type === 'channel');
-  const lists: Record<'wood' | 'orchard' | 'field', THREE.Matrix4[]> = { wood: [], orchard: [], field: [] };
+  type BackdropKind = 'wood' | 'orchard' | 'field';
+  const chunks = new Map<string, { kind: BackdropKind; matrices: THREE.Matrix4[] }>();
+  const chunkSize = 96;
   const q = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   let seed = 9001;
@@ -244,7 +249,7 @@ export function buildBackdrop(map: MapDef, assets: AssetLibrary, heightAt: Heigh
       if (channel && polylineNearest(channel.points, x, z).dist < channel.halfWidth + 6) continue;
       // The roads leave through gaps.
       if (map.region?.connectors.some((c) => Math.hypot(x - (c.x + c.outX * out), z - (c.z + c.outZ * out)) < 7)) continue;
-      let kind: 'wood' | 'orchard' | 'field';
+      let kind: BackdropKind;
       if (z < b.minZ) {
         // North: the oldwood thickens into forest, thinning far off.
         if (roll > 0.8 - Math.min(0.3, out / 500)) continue;
@@ -264,18 +269,17 @@ export function buildBackdrop(map: MapDef, assets: AssetLibrary, heightAt: Heigh
         kind = roll < 0.12 ? 'wood' : copse > 0.62 ? 'orchard' : 'field';
       }
       q.setFromAxisAngle(up, rnd() * Math.PI * 2);
-      lists[kind].push(new THREE.Matrix4().compose(new THREE.Vector3(x, heightAt(x, z) - 0.2, z), q, new THREE.Vector3(size, size * (0.9 + rnd() * 0.35), size)));
+      const key = `${kind}:${Math.floor(x / chunkSize)}:${Math.floor(z / chunkSize)}`;
+      let bucket = chunks.get(key);
+      if (!bucket) chunks.set(key, (bucket = { kind, matrices: [] }));
+      bucket.matrices.push(new THREE.Matrix4().compose(new THREE.Vector3(x, heightAt(x, z) - 0.2, z), q, new THREE.Vector3(size, size * (0.9 + rnd() * 0.35), size)));
     }
   }
-  for (const kind of ['wood', 'orchard', 'field'] as const) {
-    const list = lists[kind];
-    if (list.length === 0) continue;
+  for (const [key, { kind, matrices }] of chunks) {
     const geo = assets.geometryFor(`far:${kind}`, () => farTreeParts(kind).parts);
-    const mesh = new THREE.InstancedMesh(geo, material, list.length);
-    list.forEach((m, i) => mesh.setMatrixAt(i, m));
-    mesh.instanceMatrix.needsUpdate = true;
-    mesh.name = `backdrop:${kind}`;
-    mesh.computeBoundingSphere();
+    const mesh = instanced(geo, material, matrices, `backdrop:${key}`, false);
+    mesh.receiveShadow = false;
+    mesh.boundingSphere!.radius += 0.25;
     group.add(mesh);
   }
   // The castle on the northern skyline: a distant shape in the haze, not a local objective.
