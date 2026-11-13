@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import type { MapDef } from '../../../shared/sim/map.ts';
 import type { ChannelFeature } from '../../../shared/sim/terrain.ts';
 import { VALE as C } from '../palette.ts';
-import { NOISE_GLSL, type SharedUniforms } from './materials.ts';
+import type { SharedUniforms } from './materials.ts';
 
 export interface WaterResult {
   mesh: THREE.Mesh;
@@ -115,8 +115,8 @@ export function buildWater(map: MapDef, shared: SharedUniforms): WaterResult | n
       uniform vec3 uShallow;
       uniform vec3 uFoam;
       uniform vec3 uSky;
+      uniform sampler2D uDetail;
       varying vec3 vWorldP;
-      ${NOISE_GLSL}
       void main() {
         vec2 uv = (vWorldP.xz - uOrigin) / uSize;
         vec4 f = texture2D(uField, uv);
@@ -126,17 +126,22 @@ export function buildWater(map: MapDef, shared: SharedUniforms): WaterResult | n
         vec2 p = vWorldP.xz;
         // Faster in the middle, slack at the banks.
         float speed = mix(1.5, 0.35, clamp(edge, 0.0, 1.0)) * (1.0 + ford * 0.8);
-        float n1 = vnoise(vec3(p * 0.42 - flow * uTime * speed * 0.9, uTime * 0.11));
-        float n2 = vnoise(vec3(p * 1.25 - flow * uTime * speed * 1.7 + 13.0, uTime * 0.23));
-        float n3 = vnoise(vec3(p * 3.1 - flow * uTime * speed * 2.4, 4.0));
-        float ripple = n1 * 0.5 + n2 * 0.35 + n3 * 0.15;
-        vec3 col = mix(uDeep, uMid, smoothstep(0.0, 0.85, edge) * 0.8 + ripple * 0.3);
-        col = mix(col, uShallow, clamp(smoothstep(0.7, 1.25, edge) + ford * 0.75, 0.0, 1.0) * 0.85);
-        // Sky caught on the ripples: long streaks drawn out along the flow.
-        float streak = smoothstep(0.6, 0.66, ripple) - smoothstep(0.7, 0.8, ripple);
-        col += uSky * streak * 0.28;
+        // Two layers of the shared tiling noise scrolled downstream at different
+        // rates (G: broad swell, R: fine chop) read as moving water.
+        vec2 q = p * 0.055;
+        vec2 slow = texture2D(uDetail, q - flow * uTime * speed * 0.035).rg;
+        vec2 fast = texture2D(uDetail, q * 2.3 + vec2(0.37, 0.61) - flow * uTime * speed * 0.08).rg;
+        float n1 = slow.g;
+        float n2 = fast.g;
+        float n3 = slow.r * 0.5 + fast.r * 0.5;
+        float ripple = n1 * 0.55 + n2 * 0.45;
+        vec3 col = mix(uDeep, uMid, smoothstep(0.0, 0.85, edge) * 0.75 + (ripple - 0.5) * 0.35);
+        col = mix(col, uShallow, clamp(smoothstep(0.75, 1.25, edge) + ford * 0.75, 0.0, 1.0) * 0.8);
+        // Sky caught on the chop: small sparse flecks, more of them on the swell.
+        float fleck = smoothstep(0.85, 0.9, n3 + (n1 - 0.5) * 0.2);
+        col = mix(col, uSky, fleck * 0.45);
         // Foam where the water meets the bank, and broken water over the ford.
-        float foam = smoothstep(0.92, 1.12, edge + (n2 - 0.5) * 0.3) * (1.0 - smoothstep(1.3, 1.6, edge));
+        float foam = smoothstep(0.95, 1.12, edge + (n2 - 0.5) * 0.3) * (1.0 - smoothstep(1.3, 1.6, edge));
         foam = max(foam, ford * smoothstep(0.55, 0.75, n2 * 0.6 + n3 * 0.5));
         col = mix(col, uFoam, foam * 0.6);
         float alpha = mix(0.93, 0.6, clamp(smoothstep(0.75, 1.3, edge) + ford * 0.5, 0.0, 1.0));
@@ -147,6 +152,7 @@ export function buildWater(map: MapDef, shared: SharedUniforms): WaterResult | n
       }`,
   });
   material.uniforms.uTime = shared.uTime;
+  material.uniforms.uDetail = shared.uDetail;
   // Set after the merge: merging clones textures, and a clone is never uploaded.
   material.uniforms.uField!.value = field;
   const mesh = new THREE.Mesh(geo, material);

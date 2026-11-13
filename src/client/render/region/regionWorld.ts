@@ -14,6 +14,7 @@ import { buildBarriers } from './barriers.ts';
 import { buildGround } from './ground.ts';
 import { buildInstances } from './instances.ts';
 import { cardMaterial, painterlyMaterial, type SharedUniforms } from './materials.ts';
+import { tilingNoiseTexture } from './noiseTexture.ts';
 import { bakeStaticShadows, type StaticShadows } from './staticShadows.ts';
 import { buildWater } from './water.ts';
 
@@ -33,6 +34,7 @@ export async function buildRegionWorld(
     uTime: { value: 0 }, uFastShadows: { value: false }, uBakedShadows: { value: false },
     uGroundShadow: { value: null }, uStaticDepth: { value: null },
     uStaticMatrix: { value: new THREE.Matrix4() }, uStaticArea: { value: new THREE.Vector4() },
+    uDetail: { value: tilingNoiseTexture() },
   };
 
   scene.fog = new THREE.Fog(C.fog, 95, 620);
@@ -138,6 +140,7 @@ export async function buildRegionWorld(
       smoke?.dispose();
       solid.dispose();
       card.dispose();
+      shared.uDetail.value?.dispose();
       baked?.dispose();
     },
   };

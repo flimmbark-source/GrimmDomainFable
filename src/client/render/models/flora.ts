@@ -348,6 +348,17 @@ function sapling(variant: number): Part[] {
   return m.parts;
 }
 
+/**
+ * Crown of each tree kind at scale 1: centre height, horizontal and vertical
+ * radius. Render-side figures, used to keep the hero camera out of leaves and
+ * to paint the shade each canopy casts on the ground beneath it.
+ */
+export const CROWN_EXTENTS: Partial<Record<string, [number, number, number]>> = {
+  tree_apple: [3.4, 2.3, 1.5], tree_apple_old: [3.9, 2.6, 1.6], tree_apple_feral: [3.9, 2.0, 1.8], tree_apple_young: [2.3, 0.7, 0.6],
+  tree_witness: [10.5, 6.2, 4.0], tree_oldwood: [9.6, 3.9, 3.2], tree_oak: [5.9, 3.6, 2.4], tree_willow: [4.0, 3.2, 2.2],
+  tree_birch: [6.2, 1.7, 2.0], coppice_stool: [2.6, 1.2, 2.0], tree_pine: [4.0, 1.9, 2.6], tree_dead: [3.8, 1.2, 1.2],
+};
+
 export type FloraKind = 'tree_apple' | 'tree_apple_old' | 'tree_apple_young' | 'tree_apple_feral' | 'tree_witness' | 'tree_oldwood' | 'tree_birch' | 'tree_willow' | 'coppice_stool' | 'sapling' | 'field_oak';
 
 export const FLORA_BUILDERS: Record<FloraKind, (variant: number, lod: number) => Part[]> = {

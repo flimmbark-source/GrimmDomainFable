@@ -14,6 +14,7 @@ import { PlayerHud } from './player-hud.ts';
 import { ActorLayer } from './render/actors.ts';
 import { AssetLibrary } from './render/assets.ts';
 import { MarkerLayer } from './render/markers.ts';
+import { CROWN_EXTENTS } from './render/models/flora.ts';
 import { buildRegionWorld } from './render/region/regionWorld.ts';
 import { VisionFog } from './render/region/visionFog.ts';
 import { buildCollisionDebug, buildWorld, type World } from './render/world.ts';
@@ -23,13 +24,6 @@ import { buildCollisionDebug, buildWorld, type World } from './render/world.ts';
  * Uses the map's own sight-blocking colliders, minus ordinary tree trunks
  * (a camera that jumped at every orchard tree would be unusable).
  */
-/** Crown of each tree kind at scale 1: centre height, horizontal and vertical radius (render-side figures). */
-const CROWNS: Partial<Record<string, [number, number, number]>> = {
-  tree_apple: [3.4, 2.3, 1.5], tree_apple_old: [3.9, 2.6, 1.6], tree_apple_feral: [3.9, 2.0, 1.8], tree_apple_young: [2.3, 0.7, 0.6],
-  tree_witness: [10.5, 6.2, 4.0], tree_oldwood: [9.6, 3.9, 3.2], tree_oak: [5.9, 3.6, 2.4], tree_willow: [4.0, 3.2, 2.2],
-  tree_birch: [6.2, 1.7, 2.0], coppice_stool: [2.6, 1.2, 2.0], tree_pine: [4.0, 1.9, 2.6], tree_dead: [3.8, 1.2, 1.2],
-};
-
 /** Is a point inside some tree's crown (an ellipsoid round its centre)? */
 function foliageTest(map: MapDef, heightAt: (x: number, z: number) => number): (x: number, y: number, z: number) => boolean {
   return (x, y, z) => {
@@ -37,7 +31,7 @@ function foliageTest(map: MapDef, heightAt: (x: number, z: number) => number): (
     const list = near ?? map.props.map((_, i) => i);
     for (const i of list) {
       const p = map.props[i]!;
-      const crown = CROWNS[p.kind];
+      const crown = CROWN_EXTENTS[p.kind];
       if (!crown) continue;
       const [cy, rh, rv] = crown;
       // Lumps and fruit poke out past the nominal crown, and the lens has a

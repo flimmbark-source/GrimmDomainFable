@@ -1,8 +1,9 @@
 /**
  * Materials for the region renderer. One "painterly" material is shared by
- * every baked model: vertex colours, soft hand-mixed blotches in world space
- * (so no two walls or crowns are the same flat tone), and wind sway driven by
- * a per-vertex weight. Purely cosmetic.
+ * every baked model: vertex colours (with baked shade and crown highlights)
+ * and wind sway driven by a per-vertex weight. The ground and backdrop add
+ * soft blotches and grain from one fetch of a shared tiling noise texture.
+ * Purely cosmetic.
  */
 import * as THREE from 'three';
 
@@ -14,22 +15,9 @@ export interface SharedUniforms {
   uStaticDepth: { value: THREE.DepthTexture | null };
   uStaticMatrix: { value: THREE.Matrix4 };
   uStaticArea: { value: THREE.Vector4 };
+  /** Tiling noise: R fine grain, G soft billows (see noiseTexture.ts). */
+  uDetail: { value: THREE.Texture | null };
 }
-
-const NOISE_GLSL = /* glsl */ `
-float vhash(vec3 p) {
-  p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
-  p *= 17.0;
-  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
-}
-float vnoise(vec3 x) {
-  vec3 i = floor(x);
-  vec3 f = fract(x);
-  f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(mix(vhash(i), vhash(i + vec3(1, 0, 0)), f.x), mix(vhash(i + vec3(0, 1, 0)), vhash(i + vec3(1, 1, 0)), f.x), f.y),
-             mix(mix(vhash(i + vec3(0, 0, 1)), vhash(i + vec3(1, 0, 1)), f.x), mix(vhash(i + vec3(0, 1, 1)), vhash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
-}
-`;
 
 const REGION_SHADOW_GLSL = /* glsl */ `
 #if defined( USE_SHADOWMAP ) && defined( SHADOWMAP_TYPE_PCF )
@@ -53,8 +41,11 @@ const REGION_SHADOW_GLSL = /* glsl */ `
 #endif
 `;
 
-function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: boolean; mottle: number; grain: number; upNormals?: boolean; ground?: boolean }): void {
-  material.customProgramCacheKey = () => `region:${o.sway}:${o.mottle}:${o.grain}:${o.upNormals}:${o.ground}`;
+function patch(
+  material: THREE.Material, shared: SharedUniforms,
+  o: { sway: boolean; mottle: number; grain: number; tile: number; upNormals?: boolean; ground?: boolean },
+): void {
+  material.customProgramCacheKey = () => `region:${o.sway}:${o.mottle}:${o.grain}:${o.tile}:${o.upNormals}:${o.ground}`;
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = shared.uTime;
     shader.uniforms.uFastShadows = shared.uFastShadows;
@@ -63,6 +54,7 @@ function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: bool
     shader.uniforms.uStaticDepth = shared.uStaticDepth;
     shader.uniforms.uStaticMatrix = shared.uStaticMatrix;
     shader.uniforms.uStaticArea = shared.uStaticArea;
+    shader.uniforms.uDetail = shared.uDetail;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\nattribute float sway;\nuniform float uTime;\nvarying vec3 vWorldP;`)
       // Flat cards (grass, reeds) are lit as if they were the ground they grow from.
@@ -83,7 +75,7 @@ function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: bool
         vWorldP = wposP.xyz;`,
       );
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vWorldP;\n${NOISE_GLSL}`)
+      .replace('#include <common>', `#include <common>\nvarying vec3 vWorldP;\nuniform sampler2D uDetail;`)
       .replace('#include <shadowmap_pars_fragment>', `#include <shadowmap_pars_fragment>
         uniform bool uBakedShadows;
         ${REGION_SHADOW_GLSL}
@@ -105,8 +97,11 @@ function patch(material: THREE.Material, shared: SharedUniforms, o: { sway: bool
       .replace(
         '#include <color_fragment>',
         o.mottle === 0 && o.grain === 0 ? '#include <color_fragment>' : `#include <color_fragment>
-        float mA = vnoise(vWorldP * 0.8);
-        float mB = vnoise(vWorldP * 3.3 + 9.0);
+        // One fetch: G is a soft blotch a few metres across, R a fine grain.
+        // The tile is turned off the world axes so its repeat never lines up with a road.
+        vec2 detail = texture2D(uDetail, mat2(0.8, -0.6, 0.6, 0.8) * vWorldP.xz * ${(1 / o.tile).toFixed(4)}).rg;
+        float mA = detail.g;
+        float mB = detail.r;
         diffuseColor.rgb *= ${(1 - o.mottle * 0.6).toFixed(3)} + ${o.mottle.toFixed(3)} * mA + ${o.grain.toFixed(3)} * (mB - 0.5);
         // Warm the lights and cool the darks a touch: a painter's mix, not a flat multiply.
         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.06, 1.0, 0.9), mA);`,
@@ -118,7 +113,7 @@ export function painterlyMaterial(shared: SharedUniforms): THREE.MeshLambertMate
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
   // Model colours already contain baked underside shade and crown highlights.
   // Keep the large planes clean and avoid two 3D noise evaluations per pixel.
-  patch(material, shared, { sway: true, mottle: 0, grain: 0 });
+  patch(material, shared, { sway: true, mottle: 0, grain: 0, tile: 1 });
   return material;
 }
 
@@ -127,21 +122,21 @@ export function cardMaterial(shared: SharedUniforms): THREE.MeshLambertMaterial 
   // Cards are modelled with both windings, so single-sided drawing shows both faces
   // without the renderer flipping the (upward) normal on the far one.
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
-  patch(material, shared, { sway: true, mottle: 0, grain: 0, upNormals: true });
+  patch(material, shared, { sway: true, mottle: 0, grain: 0, tile: 1, upNormals: true });
   return material;
 }
 
 /** Ground: the painted texture, plus fine grain so it never looks blurred up close. */
 export function groundMaterial(shared: SharedUniforms, map: THREE.Texture): THREE.MeshLambertMaterial {
   const material = new THREE.MeshLambertMaterial({ map });
-  patch(material, shared, { sway: false, mottle: 0.1, grain: 0.14, ground: true });
+  // A 24 m tile: grain of 0.2 to 0.8 m, blotches of 1 to 6 m.
+  patch(material, shared, { sway: false, mottle: 0.08, grain: 0.12, tile: 24, ground: true });
   return material;
 }
 
 export function skirtMaterial(shared: SharedUniforms): THREE.MeshLambertMaterial {
   const material = new THREE.MeshLambertMaterial({ vertexColors: true });
-  patch(material, shared, { sway: false, mottle: 0.14, grain: 0.06 });
+  patch(material, shared, { sway: false, mottle: 0.14, grain: 0.06, tile: 60 });
   return material;
 }
 
-export { NOISE_GLSL };

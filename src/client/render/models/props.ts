@@ -352,12 +352,12 @@ export function dressingParts(kind: DressingKind, variant: number): Part[] {
 
 export type CoverKind = 'grass_tuft' | 'flower_red' | 'flower_yellow' | 'flower_white' | 'flower_violet' | 'reed' | 'fern' | 'mushroom' | 'pebble' | 'windfall';
 
-function blade(m: Model, x: number, z: number, h: number, w: number, lean: number, yaw: number, color: number, tipColor: number, sway: number): void {
+function blade(m: Model, x: number, z: number, h: number, w: number, lean: number, yaw: number, color: number, tipColor: number, sway: number, shade = 0.45): void {
   const geo = new THREE.BufferGeometry();
   // A single tapering triangle pair, double sided through winding duplication.
   const v = [-w, 0, 0, w, 0, 0, lean, h, 0, w, 0, 0, -w, 0, 0, lean, h, 0];
   geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
-  m.at([x, 0, z], yaw, () => m.add(geo, color, { shade: 0.45, tip: tipColor, sway }));
+  m.at([x, 0, z], yaw, () => m.add(geo, color, { shade, tip: tipColor, sway }));
 }
 
 function flower(color: number): () => Part[] {
@@ -378,7 +378,7 @@ const COVER: Record<CoverKind, () => Part[]> = {
     const m = new Model();
     for (let i = 0; i < 5; i++) {
       const a = i * 1.3;
-      blade(m, Math.cos(a) * 0.12, Math.sin(a) * 0.12, 0.24 + (i % 3) * 0.09, 0.04, ((i % 3) - 1) * 0.12, a, C.grass, C.grassLight, 0.55);
+      blade(m, Math.cos(a) * 0.12, Math.sin(a) * 0.12, 0.24 + (i % 3) * 0.09, 0.04, ((i % 3) - 1) * 0.12, a, C.grassLight, C.willowLight, 0.55, 0.2);
     }
     return m.parts;
   },

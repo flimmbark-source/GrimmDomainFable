@@ -14,7 +14,7 @@ import { Model } from '../modelkit.ts';
 import { wheelParts } from '../models/props.ts';
 import { VALE as C } from '../palette.ts';
 import { instanced } from './instances.ts';
-import { NOISE_GLSL, type SharedUniforms } from './materials.ts';
+import type { SharedUniforms } from './materials.ts';
 
 type Height = (x: number, z: number) => number;
 
@@ -25,6 +25,7 @@ export function buildSky(shared: SharedUniforms): THREE.Mesh {
     fog: false,
     uniforms: {
       uTime: shared.uTime,
+      uDetail: shared.uDetail,
       uTop: { value: new THREE.Color(C.skyTop) },
       uMid: { value: new THREE.Color(C.skyMid) },
       uHorizon: { value: new THREE.Color(C.skyHorizon) },
@@ -42,8 +43,8 @@ export function buildSky(shared: SharedUniforms): THREE.Mesh {
       uniform vec3 uMid;
       uniform vec3 uHorizon;
       uniform vec3 uSun;
+      uniform sampler2D uDetail;
       varying vec3 vDir;
-      ${NOISE_GLSL}
       void main() {
         vec3 d = normalize(vDir);
         float h = max(d.y, 0.0);
@@ -54,8 +55,10 @@ export function buildSky(shared: SharedUniforms): THREE.Mesh {
         col += vec3(1.0, 0.78, 0.5) * (pow(s, 6.0) * 0.28 + pow(s, 90.0) * 0.6);
         // Broad painted cloud banks, drifting slowly.
         vec2 p = d.xz / (d.y + 0.22) * 1.6 + vec2(uTime * 0.004, 0.0);
-        float c = vnoise(vec3(p, 1.0)) * 0.55 + vnoise(vec3(p * 2.3, 4.0)) * 0.3 + vnoise(vec3(p * 5.1, 7.0)) * 0.15;
-        float cloud = smoothstep(0.5, 0.74, c) * smoothstep(0.02, 0.2, d.y);
+        // The shared texture's billow channel is already several octaves: one
+        // fetch, un-stretched back to the spread the thresholds were set for.
+        float c = 0.5 + (texture2D(uDetail, p * 0.25).g - 0.5) / 2.2;
+        float cloud = smoothstep(0.5, 0.72, c) * smoothstep(0.02, 0.2, d.y);
         vec3 lit = mix(vec3(0.82, 0.8, 0.86), vec3(1.0, 0.95, 0.84), smoothstep(0.55, 0.8, c) * 0.6 + s * 0.4);
         col = mix(col, lit, cloud * 0.85);
         gl_FragColor = vec4(col, 1.0);
@@ -83,8 +86,10 @@ export interface Lights {
 const SHADOW_INTERVAL_MS = 1000 / 15;
 
 export function buildLights(): Lights {
-  const hemisphere = new THREE.HemisphereLight(C.ambientSky, C.ambientGround, 1.25);
-  const sun = new THREE.DirectionalLight(C.sun, 2.65);
+  // A strong key over a modest fill: faceted crowns and hedges show clear
+  // sunlit and shaded planes, and shade stays a deep, cool green.
+  const hemisphere = new THREE.HemisphereLight(C.ambientSky, C.ambientGround, 1.0);
+  const sun = new THREE.DirectionalLight(C.sun, 3.1);
   const direction = new THREE.Vector3(-0.62, 0.62, 0.48).normalize();
   sun.position.copy(direction).multiplyScalar(120);
   sun.castShadow = true;
