@@ -23,14 +23,16 @@ export class MatchConfig {
   /** Slots to fill with bots at creation. */
   readonly botSlots: number[];
   readonly mapId: string;
+  readonly operation: boolean;
   /** Send development-only perception data to every client. NEVER enable for real play. */
   readonly debug: boolean;
 
-  constructor(init: { seed?: number; botSlots?: number[]; mapId?: string; debug?: boolean } = {}) {
+  constructor(init: { seed?: number; botSlots?: number[]; mapId?: string; debug?: boolean; operation?: boolean } = {}) {
     this.seed = init.seed;
     this.botSlots = init.botSlots ?? [1, 5];
     this.mapId = init.mapId ?? FOREST_CROSSING.id;
     this.debug = init.debug === true;
+    this.operation = init.operation === true;
   }
 }
 
@@ -48,7 +50,7 @@ export class MatchRoom extends Room {
   override onCreate(options: MatchRoomOptions = {}): void {
     const config = options.config instanceof MatchConfig ? options.config : new MatchConfig();
     const seed = config.seed ?? Date.now() >>> 0;
-    this.match = new Match({ seed, mapId: config.mapId, botSlots: config.botSlots });
+    this.match = new Match({ seed, mapId: config.mapId, botSlots: config.botSlots, operation: config.operation });
 
     // No schema state is set, so Colyseus' patch broadcast is a no-op. Do NOT
     // disable it with `patchRate = null`: measured on colyseus 0.18.12, that
@@ -60,6 +62,7 @@ export class MatchRoom extends Room {
 
     this.setFixedTimestep(() => {
       this.match.advance();
+      if (this.match.finished && !this.locked) void this.lock().catch((error: unknown) => console.error(error));
       for (const client of this.clients) {
         client.send(MSG.snapshot, this.match.snapshotFor(client.sessionId));
       }

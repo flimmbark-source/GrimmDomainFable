@@ -10,7 +10,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { PropKind } from '../../shared/sim/map.ts';
+import type { BuildingKind } from '../../shared/world/kit.ts';
 import { bake, type Part } from './bake.ts';
+import { BUILDING_BUILDERS } from './models/buildings.ts';
+import { FLORA_BUILDERS, type FloraKind } from './models/flora.ts';
+import { PROP_BUILDERS } from './models/props.ts';
 import { PALETTE as P } from './palette.ts';
 
 export type AssetId = PropKind | 'hero_light' | 'hero_dark' | 'monster_beast' | 'castle' | 'cache';
@@ -228,7 +232,7 @@ function monsterParts(): Part[] {
   ];
 }
 
-const BUILDERS: Record<AssetId, () => Part[]> = {
+const BUILDERS: Partial<Record<AssetId, () => Part[]>> = {
   tree_pine: pineParts,
   tree_oak: oakParts,
   tree_dead: deadTreeParts,
@@ -244,6 +248,19 @@ const BUILDERS: Record<AssetId, () => Part[]> = {
   hero_dark: darkHeroParts,
   monster_beast: monsterParts,
 };
+
+/**
+ * Parts for one look-alike variant and level of detail of a prop kind, from
+ * the richer settled-valley kit. Returns null for kinds that have no single
+ * model (hedges, walls and fences are built to length by the region renderer).
+ */
+export function variantParts(kind: PropKind | 'field_oak', variant: number, lod: number): Part[] | null {
+  if (kind in BUILDING_BUILDERS) return BUILDING_BUILDERS[kind as BuildingKind](variant);
+  if (kind in FLORA_BUILDERS) return FLORA_BUILDERS[kind as FloraKind](variant, lod);
+  if (kind in PROP_BUILDERS) return PROP_BUILDERS[kind as keyof typeof PROP_BUILDERS](variant);
+  const legacy = BUILDERS[kind as AssetId];
+  return legacy ? legacy() : null;
+}
 
 export class AssetLibrary {
   /** One material for every baked placeholder: vertex colours, faceted. */
@@ -280,10 +297,33 @@ export class AssetLibrary {
   geometry(id: AssetId): THREE.BufferGeometry {
     let geo = this.geometries.get(id);
     if (!geo) {
-      geo = bake(BUILDERS[id]());
+      const parts = BUILDERS[id]?.() ?? variantParts(id as PropKind, 0, 0);
+      if (!parts) throw new Error(`[assets] ${id} has no model: it is drawn by the region renderer`);
+      geo = bake(parts);
       this.geometries.set(id, geo);
     }
     return geo;
+  }
+
+  private readonly cached = new Map<string, THREE.BufferGeometry>();
+
+  /** Baked geometry built on first use under a caller-chosen key (variants, levels of detail). */
+  geometryFor(key: string, build: () => Part[]): THREE.BufferGeometry {
+    let geo = this.cached.get(key);
+    if (!geo) {
+      geo = bake(build());
+      this.cached.set(key, geo);
+    }
+    return geo;
+  }
+
+  /** Free every GPU buffer this library created (call when leaving a match). */
+  dispose(): void {
+    for (const geo of this.geometries.values()) geo.dispose();
+    for (const geo of this.cached.values()) geo.dispose();
+    this.geometries.clear();
+    this.cached.clear();
+    this.stylized.dispose();
   }
 
   /** A new scene object for the asset. */

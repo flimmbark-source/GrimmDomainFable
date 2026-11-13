@@ -13,7 +13,7 @@
 import type { MonsterMood } from '../protocol.ts';
 import { clamp, distance } from './geometry.ts';
 import type { MapDef, Point } from './map.ts';
-import { orderGoto, rotateBy, rotateToward, stopActor } from './movement.ts';
+import { clampToMap, orderGoto, rotateBy, rotateToward, stopActor } from './movement.ts';
 import { nearestWalkable } from './nav.ts';
 import { rngNext } from './rng.ts';
 import type { ActorState, Assignment, Evidence, MonsterBrain, SimState } from './state.ts';
@@ -102,14 +102,14 @@ function startSearch(state: SimState, actor: ActorState, brain: MonsterBrain, ma
   if (lost) lost.confirmed = false;
   clearLeads(actor, brain);
   brain.mode = 'search';
-  const limit = map.halfSize - actor.radius;
   const points: Point[] = [];
   for (let k = 0; k < B.searchPoints; k++) {
     // First guess: onward the way the target was last seen heading.
     const ahead = k === 0 ? B.searchRadius * 0.6 : 0;
     const x = seen.x + seen.dirX * ahead + (roll(state) * 2 - 1) * B.searchRadius * 0.6;
     const z = seen.z + seen.dirZ * ahead + (roll(state) * 2 - 1) * B.searchRadius * 0.6;
-    const p = nearestWalkable(map, actor.radius, clamp(x, -limit, limit), clamp(z, -limit, limit));
+    const inside = clampToMap(map, x, z, actor.radius);
+    const p = nearestWalkable(map, actor.radius, inside.x, inside.z);
     if (p) points.push(p);
   }
   brain.search = { points, index: 0, ticks: 0, looking: false };
@@ -120,8 +120,8 @@ function startSearch(state: SimState, actor: ActorState, brain: MonsterBrain, ma
 /** A Dark player's order (already validated as coming from the owner). */
 export function applyOrder(actor: ActorState, brain: MonsterBrain, map: MapDef, order: { order: 'patrol' } | { order: 'guard'; x: number; z: number }): void {
   if (order.order === 'guard') {
-    const limit = map.halfSize - actor.radius;
-    const post = nearestWalkable(map, actor.radius, clamp(order.x, -limit, limit), clamp(order.z, -limit, limit));
+    const inside = clampToMap(map, order.x, order.z, actor.radius);
+    const post = nearestWalkable(map, actor.radius, inside.x, inside.z);
     if (!post) return;
     brain.assignment = { type: 'guard', x: post.x, z: post.z };
   } else {

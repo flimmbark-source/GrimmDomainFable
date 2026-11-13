@@ -128,6 +128,19 @@ Engineering had to pick something to make M1 run. Each is the most restrictive r
 | P-11 | Spectators receive only actors the opposing team can currently see | Spectator policy was never specified; this cannot leak |
 | P-12 | A commander order overrides whatever the Scout is doing, but does not blind it: it will chase again if it still sees a confirmed hero | "Subject to unit behavior rules" in the spec |
 
+## Provisional choices made while building the Orchard Vale test region (need creator review)
+Orchard Vale itself is **candidate** regional direction (region prototype 01, folklore revision 3), not canon. These are engineering choices made to make it playable; none is an approved rule. Report: [orchard-vale-implementation-report.md](production/orchard-vale-implementation-report.md).
+
+| ID | Choice in the build | Why it needs a decision |
+| --- | --- | --- |
+| P-13 | The region is a separate server room joined with `?region=orchard_vale`; the default match stays the M1 crossing | How test regions are selected is an engineering convenience, not the shape of the seamless kingdom (D-084) |
+| P-14 | Terrain height is shared and visual only: movement, nav and sight remain 2D, with tests guaranteeing every standable cell has a gentle grade and every steep face is a collider | Whether elevation should ever affect speed, sight or cover is undecided |
+| P-15 | One stone bridge for carts plus one ford upstream as the alternative crossing | D-086 asks for alternative approaches; the exact crossing count per valley is generator policy, not fixed here |
+| P-16 | The Scout patrols the square and bridge; a Brute (Dark slot 1) guards the castle road | Unit placement for a region is a stand-in for commander choices and future logistics |
+| P-17 | Witness trees (1.7 m trunks) and hedges are full sight cover; marker stones, drystone and terrace walls, fences and young trees block feet only | Cover classes for these new prop kinds are proposals |
+| P-18 | The M1 caches are placed in the ruin and the mill yard so the hunt has destinations | Placeholder objective only, not an M2 economy or a ruin treasure |
+| P-19 | Server WebSocket heartbeat grace raised from about 6 s to about 20 s (4 s pings, 5 retries) so a slow region load does not drop the client | Engineering tolerance; real reconnect and bot-takeover policy is still unresolved rule 6 |
+
 ## Unresolved rules (do NOT silently decide these as canon)
 1. **Core rule decided by D-015 to D-018:** Dark Lord starts dormant; Light can breach sanctum and kill him before awakening; Dark Energy accrues naturally over time, receives small one-time gains from evil deeds by Dark Heroes and minions, and accrues faster through corruption sources; awakening triggers Dark Lord + Dark Heroes vs Light Heroes final battle. **D-019/D-020 confirm** Light Heroes can slow awakening by sabotaging corruption sources, without directly reversing accumulated Dark Energy. **Unresolved:** meter formula/tiers, qualifying evil deeds, corruption/constructible source types, placement rules, source stacking and maintenance, boss abilities, pre-awakening sanctum vulnerability, post-awakening terminal rules, and whether sleeping influence exists.
 2. What camera(s) and controls does each Light Hero have? What triggers switching? How is aiming balanced against high-level RTS control?

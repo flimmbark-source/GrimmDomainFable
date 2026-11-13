@@ -76,12 +76,16 @@ export class Hud {
 
   private setControls(snapshot: Snapshot): void {
     const team = snapshot.you?.team ?? 'spectator';
-    const owns = snapshot.actors.some((a) => a.kind === 'monster' && a.mode !== undefined);
+    const owns = snapshot.actors.find((a) => a.kind === 'monster' && a.mode !== undefined)?.monster;
     const key = `${this.mode}|${team}|${owns}`;
     if (key === this.controlsKey) return;
     this.controlsKey = key;
     let extra = ' &middot; Shift: sneak (slow, silent) &middot; F: whistle';
-    if (owns) extra += this.mode === 'rts' ? ' &middot; <b>Right-click: post your Scout</b> &middot; P: Scout resumes patrol' : ' &middot; P: Scout resumes patrol';
+    if (owns) {
+      const name = owns === 'brute' ? 'Brute' : 'Scout';
+      extra += this.mode === 'rts' ? ` &middot; <b>Right-click: post your ${name}</b> &middot; P: return to assignment` :
+        ' &middot; P: return to assignment';
+    }
     this.controls.innerHTML = `${CONTROLS[this.mode]}${extra} &middot; Tab: switch view &middot; G: debug`;
   }
 
@@ -107,6 +111,25 @@ export class Hud {
 
   private setObjective(snapshot: Snapshot): void {
     const you = snapshot.you;
+    const operation = snapshot.operation;
+    if (operation) {
+      let html: string;
+      if (operation.result) {
+        html = operation.result === 'light' ? '<b>Light secured Orchard Vale</b> · The source stayed offline' :
+          '<b>Dark held Orchard Vale</b> · The source met its production goal';
+      } else {
+        const state = operation.active ? 'Active' : `Offline ${operation.offlineSeconds}/${operation.offlineGoal}s`;
+        html = `<b>Dark relay · ${state}</b> · Output ${operation.production}/${operation.productionGoal} · Dark Energy ${operation.energy} (+${operation.energyPerSecond}/s)`;
+        if (you) {
+          const action = operation.progress ? `${operation.interaction === 'repair' ? 'Repairing' : 'Sabotaging'} ${Math.floor(operation.progress * 100)}% · X to cancel` :
+            operation.interaction ? `R to ${operation.interaction}` :
+            you.team === 'light' ? 'Sabotage the relay north of the bridge' : 'Defend the relay north of the bridge';
+          html += `<br>${operation.interrupted ? 'Interrupted by a nearby threat · ' : ''}${action}`;
+        }
+      }
+      if (this.objective.innerHTML !== html) this.objective.innerHTML = html;
+      return;
+    }
     let html = '';
     if (!you) html = 'Spectating: you see only what both teams can see.';
     else if (you.team === 'light') {

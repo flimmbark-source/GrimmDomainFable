@@ -15,9 +15,25 @@ export interface Part {
   scale?: [number, number, number] | number;
   /** 0..1: how much to darken the lowest vertices (hand-painted depth cue). */
   shade?: number;
+  /** How much this part moves in the wind (0 = rigid). Scaled by height within the part. */
+  sway?: number;
+  /** Rounded shading (foliage, thatch) instead of hard facets. */
+  soft?: boolean;
+  /** Second colour: vertices are tinted towards it by a blotchy pattern. */
+  mottle?: number;
+  /** Lighten the top of the part towards this colour (sun-bleached crowns). */
+  tip?: number;
 }
 
 const tmpColor = new THREE.Color();
+const tmpColor2 = new THREE.Color();
+
+/** Cheap 3D hash in [0, 1): blotches that are identical for coincident vertices. */
+function hash3(x: number, y: number, z: number): number {
+  let h = Math.imul(Math.round(x * 3.1) | 0, 374761393) ^ Math.imul(Math.round(y * 3.7) | 0, 668265263) ^ Math.imul(Math.round(z * 2.9) | 0, 1274126177);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
 
 export function bake(parts: Part[]): THREE.BufferGeometry {
   const baked: THREE.BufferGeometry[] = [];
@@ -37,14 +53,39 @@ export function bake(parts: Part[]): THREE.BufferGeometry {
     const height = Math.max(box.max.y - box.min.y, 1e-6);
     const pos = geo.getAttribute('position');
     const colors = new Float32Array(pos.count * 3);
+    const sway = new Float32Array(pos.count);
     const shade = part.shade ?? 0.28;
     for (let i = 0; i < pos.count; i++) {
       const t = (pos.getY(i) - box.min.y) / height;
-      tmpColor.setHex(part.color).multiplyScalar(1 - shade * (1 - t));
+      tmpColor.setHex(part.color);
+      if (part.mottle !== undefined) {
+        const m = hash3(pos.getX(i), pos.getY(i), pos.getZ(i));
+        if (m > 0.45) tmpColor.lerp(tmpColor2.setHex(part.mottle), (m - 0.45) * 1.5);
+      }
+      if (part.tip !== undefined) tmpColor.lerp(tmpColor2.setHex(part.tip), t * t * 0.75);
+      tmpColor.multiplyScalar(1 - shade * (1 - t));
       colors.set([tmpColor.r, tmpColor.g, tmpColor.b], i * 3);
+      if (part.sway) sway[i] = part.sway * (0.35 + 0.65 * t);
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.computeVertexNormals(); // non-indexed => faceted, low-poly look
+    geo.setAttribute('sway', new THREE.BufferAttribute(sway, 1));
+    if (part.soft) {
+      // Rounded: normals radiate from the part's centre, biased upward so crowns catch the light.
+      const cx = (box.min.x + box.max.x) / 2;
+      const cy = box.min.y + height * 0.3;
+      const cz = (box.min.z + box.max.z) / 2;
+      const normals = new Float32Array(pos.count * 3);
+      for (let i = 0; i < pos.count; i++) {
+        const nx = pos.getX(i) - cx;
+        const ny = pos.getY(i) - cy;
+        const nz = pos.getZ(i) - cz;
+        const len = Math.hypot(nx, ny, nz) || 1;
+        normals.set([nx / len, ny / len, nz / len], i * 3);
+      }
+      geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    } else {
+      geo.computeVertexNormals(); // non-indexed => faceted, low-poly look
+    }
     baked.push(geo);
   }
   const merged = mergeGeometries(baked, false);

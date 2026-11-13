@@ -3,73 +3,138 @@
  * the same colliders the simulation collides with, A* over that grid, and
  * path straightening. Used for every `moveTo`, by bots and by monsters.
  *
- * The grid is a pure function of (map, radius) and is cached outside the
- * simulation state. Costs are integers and ties are broken by insertion
+ * The grid is a pure function of (map, radius), is built lazily in tiles and
+ * is cached outside the simulation state. Costs are integers and ties are broken by insertion
  * order, so the same query always returns the same path on any engine.
  */
 import { isBlocked, segmentWalkable } from './geometry.ts';
-import type { MapDef, Point } from './map.ts';
+import { boundsOf, type MapDef, type Point } from './map.ts';
 import { TUNING } from './tuning.ts';
 
+/** Cells per side of one lazily built tile. */
+const TILE = 32;
+
+/**
+ * The walkable grid of one (map, radius). It covers the map's rectangle but
+ * is built a tile at a time, the first time a query looks at that tile, so
+ * the work done is proportional to the ground actually travelled rather than
+ * to the size of the region. Search scratch space is allocated once and
+ * reused (stamped per query), so a path request allocates nothing large.
+ */
 interface NavGrid {
-  /** Cells per side. */
-  n: number;
+  /** Cells along x and z. */
+  nx: number;
+  nz: number;
   cell: number;
-  /** World coordinate of the grid's low corner. */
-  origin: number;
-  free: Uint8Array;
+  /** World coordinates of the grid's low corner. */
+  originX: number;
+  originZ: number;
+  map: MapDef;
+  /** Body radius plus the grid margin: what a free cell must have clear. */
+  clearance: number;
+  tilesX: number;
+  tiles: (Uint8Array | undefined)[];
+  // A* scratch, valid for a cell only when its stamp equals `query`.
+  g: Int32Array;
+  parent: Int32Array;
+  stamp: Uint32Array;
+  closed: Uint32Array;
+  query: number;
 }
 
-const grids = new Map<string, NavGrid>();
+const grids = new WeakMap<MapDef, Map<string, NavGrid>>();
 
 function gridFor(map: MapDef, radius: number): NavGrid {
   const cell = TUNING.nav.cell;
   const margin = TUNING.nav.gridMargin;
-  const key = `${map.id}|${radius}|${cell}|${margin}`;
-  let grid = grids.get(key);
+  const key = `${radius}|${cell}|${margin}`;
+  let perMap = grids.get(map);
+  if (!perMap) grids.set(map, (perMap = new Map()));
+  let grid = perMap.get(key);
   if (grid) return grid;
-  const n = Math.ceil((map.halfSize * 2) / cell);
-  const free = new Uint8Array(n * n);
-  for (let j = 0; j < n; j++) {
-    for (let i = 0; i < n; i++) {
-      const x = -map.halfSize + (i + 0.5) * cell;
-      const z = -map.halfSize + (j + 0.5) * cell;
-      free[j * n + i] = isBlocked(map, x, z, radius + margin) ? 0 : 1;
-    }
-  }
-  grid = { n, cell, origin: -map.halfSize, free };
-  grids.set(key, grid);
+  const b = boundsOf(map);
+  const nx = Math.ceil((b.maxX - b.minX) / cell);
+  const nz = Math.ceil((b.maxZ - b.minZ) / cell);
+  const tilesX = Math.ceil(nx / TILE);
+  grid = {
+    nx, nz, cell, originX: b.minX, originZ: b.minZ, map, clearance: radius + margin,
+    tilesX,
+    tiles: new Array<Uint8Array | undefined>(tilesX * Math.ceil(nz / TILE)),
+    g: new Int32Array(nx * nz),
+    parent: new Int32Array(nx * nz),
+    stamp: new Uint32Array(nx * nz),
+    closed: new Uint32Array(nx * nz),
+    query: 0,
+  };
+  perMap.set(key, grid);
   return grid;
 }
 
-function cellIndex(grid: NavGrid, v: number): number {
-  const i = Math.floor((v - grid.origin) / grid.cell);
-  return i < 0 ? 0 : i >= grid.n ? grid.n - 1 : i;
+function buildTile(grid: NavGrid, ti: number, tj: number): Uint8Array {
+  const tile = new Uint8Array(TILE * TILE);
+  for (let j = 0; j < TILE; j++) {
+    const gj = tj * TILE + j;
+    if (gj >= grid.nz) break;
+    for (let i = 0; i < TILE; i++) {
+      const gi = ti * TILE + i;
+      if (gi >= grid.nx) break;
+      const x = grid.originX + (gi + 0.5) * grid.cell;
+      const z = grid.originZ + (gj + 0.5) * grid.cell;
+      tile[j * TILE + i] = isBlocked(grid.map, x, z, grid.clearance) ? 0 : 1;
+    }
+  }
+  return tile;
 }
 
-function cellCentre(grid: NavGrid, i: number): number {
-  return grid.origin + (i + 0.5) * grid.cell;
+/** Is cell (i, j) free? Both indices must be inside the grid. */
+function isFree(grid: NavGrid, i: number, j: number): boolean {
+  const ti = (i / TILE) | 0;
+  const tj = (j / TILE) | 0;
+  const slot = tj * grid.tilesX + ti;
+  let tile = grid.tiles[slot];
+  if (!tile) grid.tiles[slot] = tile = buildTile(grid, ti, tj);
+  return tile[(j - tj * TILE) * TILE + (i - ti * TILE)] === 1;
+}
+
+/** How many tiles of a map's walkable grid have been built so far (tests, tools). */
+export function navTilesBuilt(map: MapDef, radius: number): { built: number; total: number } {
+  const grid = gridFor(map, radius);
+  return { built: grid.tiles.reduce((n, t) => n + (t ? 1 : 0), 0), total: grid.tiles.length };
+}
+
+function cellIndex(v: number, origin: number, cell: number, n: number): number {
+  const i = Math.floor((v - origin) / cell);
+  return i < 0 ? 0 : i >= n ? n - 1 : i;
+}
+
+function centreX(grid: NavGrid, i: number): number {
+  return grid.originX + (i + 0.5) * grid.cell;
+}
+
+function centreZ(grid: NavGrid, j: number): number {
+  return grid.originZ + (j + 0.5) * grid.cell;
 }
 
 /** Nearest free cell to a world point (the point's own cell when it is free). */
 function nearestFreeCell(grid: NavGrid, x: number, z: number): number {
-  const ci = cellIndex(grid, x);
-  const cj = cellIndex(grid, z);
-  if (grid.free[cj * grid.n + ci]) return cj * grid.n + ci;
+  const ci = cellIndex(x, grid.originX, grid.cell, grid.nx);
+  const cj = cellIndex(z, grid.originZ, grid.cell, grid.nz);
+  if (isFree(grid, ci, cj)) return cj * grid.nx + ci;
   let best = -1;
   let bestD = Infinity;
-  for (let ring = 1; ring < grid.n; ring++) {
+  const rings = grid.nx > grid.nz ? grid.nx : grid.nz;
+  for (let ring = 1; ring < rings; ring++) {
     for (let j = cj - ring; j <= cj + ring; j++) {
-      if (j < 0 || j >= grid.n) continue;
+      if (j < 0 || j >= grid.nz) continue;
       const edgeRow = j === cj - ring || j === cj + ring;
       for (let i = ci - ring; i <= ci + ring; i += edgeRow ? 1 : ring * 2) {
-        if (i < 0 || i >= grid.n || !grid.free[j * grid.n + i]) continue;
-        const dx = cellCentre(grid, i) - x;
-        const dz = cellCentre(grid, j) - z;
+        if (i < 0 || i >= grid.nx || !isFree(grid, i, j)) continue;
+        const dx = centreX(grid, i) - x;
+        const dz = centreZ(grid, j) - z;
         const d = dx * dx + dz * dz;
         if (d < bestD) {
           bestD = d;
-          best = j * grid.n + i;
+          best = j * grid.nx + i;
         }
       }
     }
@@ -86,7 +151,7 @@ export function nearestWalkable(map: MapDef, radius: number, x: number, z: numbe
   const grid = gridFor(map, radius);
   const cell = nearestFreeCell(grid, x, z);
   if (cell < 0) return null;
-  return { x: cellCentre(grid, cell % grid.n), z: cellCentre(grid, Math.floor(cell / grid.n)) };
+  return { x: centreX(grid, cell % grid.nx), z: centreZ(grid, Math.floor(cell / grid.nx)) };
 }
 
 // Neighbour offsets and integer step costs (10 straight, 14 diagonal).
@@ -96,10 +161,17 @@ const NEIGHBOURS: readonly [number, number, number][] = [
 ];
 
 function astar(grid: NavGrid, start: number, goal: number): number[] | null {
-  const n = grid.n;
-  const g = new Int32Array(n * n).fill(-1);
-  const parent = new Int32Array(n * n).fill(-1);
-  const closed = new Uint8Array(n * n);
+  const n = grid.nx;
+  const nz = grid.nz;
+  const { g, parent, stamp, closed } = grid;
+  const query = ++grid.query;
+  /** First touch of a cell in this query: reset its scratch entries. */
+  const touch = (cell: number): void => {
+    if (stamp[cell] === query) return;
+    stamp[cell] = query;
+    g[cell] = -1;
+    parent[cell] = -1;
+  };
   // Binary heap ordered by (f, insertion sequence).
   const heapF: number[] = [];
   const heapSeq: number[] = [];
@@ -147,27 +219,29 @@ function astar(grid: NavGrid, start: number, goal: number): number[] | null {
     return top;
   };
 
+  touch(start);
   g[start] = 0;
   push(start, h(start));
   while (heapF.length > 0) {
     const cell = pop();
-    if (closed[cell]) continue;
+    if (closed[cell] === query) continue;
     if (cell === goal) {
       const path: number[] = [];
       for (let c = goal; c !== -1; c = parent[c]!) path.push(c);
       return path.reverse();
     }
-    closed[cell] = 1;
+    closed[cell] = query;
     const ci = cell % n;
     const cj = Math.floor(cell / n);
     for (const [di, dj, cost] of NEIGHBOURS) {
       const ni = ci + di;
       const nj = cj + dj;
-      if (ni < 0 || nj < 0 || ni >= n || nj >= n) continue;
+      if (ni < 0 || nj < 0 || ni >= n || nj >= nz) continue;
       const next = nj * n + ni;
-      if (!grid.free[next] || closed[next]) continue;
+      if (closed[next] === query || !isFree(grid, ni, nj)) continue;
       // No corner cutting: a diagonal needs both of its straight neighbours.
-      if (di !== 0 && dj !== 0 && (!grid.free[cj * n + ni] || !grid.free[nj * n + ci])) continue;
+      if (di !== 0 && dj !== 0 && (!isFree(grid, ni, cj) || !isFree(grid, ci, nj))) continue;
+      touch(next);
       const cand = g[cell]! + cost;
       if (g[next] !== -1 && cand >= g[next]!) continue;
       g[next] = cand;
@@ -197,7 +271,7 @@ export function findPath(map: MapDef, radius: number, from: Point, to: Point): P
   if (!cells) return null;
 
   const points: Point[] = [from];
-  for (const cell of cells) points.push({ x: cellCentre(grid, cell % grid.n), z: cellCentre(grid, Math.floor(cell / grid.n)) });
+  for (const cell of cells) points.push({ x: centreX(grid, cell % grid.nx), z: centreZ(grid, Math.floor(cell / grid.nx)) });
   points.push(goal);
 
   // String pulling: from each kept point, jump to the farthest later point

@@ -47,8 +47,9 @@ export class MarkerLayer {
   private readonly evidence = new Map<number, EvidenceVisual>();
   private readonly glyphs = new Map<EvidenceKind, THREE.Texture>();
   private readonly sites = new Map<number, { chest: THREE.Object3D; ring: THREE.Mesh; progress: THREE.Mesh }>();
+  private operation: { crystal: THREE.Mesh<THREE.OctahedronGeometry, THREE.MeshLambertMaterial>; ring: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial> } | null = null;
 
-  constructor(private readonly assets: AssetLibrary) {
+  constructor(private readonly assets: AssetLibrary, private readonly heightAt: (x: number, z: number) => number = () => 0) {
     this.group.name = 'markers';
     this.debug.name = 'debug-senses';
     this.debug.visible = false;
@@ -58,6 +59,31 @@ export class MarkerLayer {
   update(snapshot: Snapshot, now: number): void {
     this.updateSites(snapshot, now);
     this.updateEvidence(snapshot, now);
+    if (snapshot.operation) this.updateOperation(snapshot.operation, now);
+  }
+
+  private updateOperation(operation: NonNullable<Snapshot['operation']>, now: number): void {
+    if (!this.operation) {
+      const y = this.heightAt(operation.x, operation.z);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.85, 0.85, 6), new THREE.MeshLambertMaterial({ color: 0x392d43 }));
+      base.position.set(operation.x, y + 0.42, operation.z);
+      base.castShadow = true;
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.7), new THREE.MeshLambertMaterial());
+      crystal.position.set(operation.x, y + 1.45, operation.z);
+      crystal.scale.y = 1.5;
+      crystal.castShadow = true;
+      const ringGeo = new THREE.RingGeometry(2.25, 2.38, 40);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.64, depthWrite: false }));
+      ring.position.set(operation.x, y + 0.08, operation.z);
+      this.group.add(base, crystal, ring);
+      this.operation = { crystal, ring };
+    }
+    const { crystal, ring } = this.operation;
+    crystal.rotation.y = operation.active ? now * 0.0006 : 0;
+    crystal.material.color.setHex(operation.active ? 0xbf76ed : 0x6f6574);
+    crystal.material.emissive.setHex(operation.active ? 0x602b85 : 0x000000);
+    ring.material.color.setHex(operation.active ? 0xbe71e9 : 0x98b2be);
   }
 
   private updateSites(snapshot: Snapshot, now: number): void {
@@ -65,16 +91,17 @@ export class MarkerLayer {
       let visual = this.sites.get(site.id);
       if (!visual) {
         const chest = this.assets.instantiate('cache');
-        chest.position.set(site.x, 0, site.z);
+        const ground = this.heightAt(site.x, site.z);
+        chest.position.set(site.x, ground, site.z);
         chest.rotation.y = site.id * 1.3 + 0.4;
         const ringGeo = new THREE.RingGeometry(1.55, 1.8, 40);
         ringGeo.rotateX(-Math.PI / 2);
         const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xf3d27a, transparent: true, opacity: 0.8, depthWrite: false }));
-        ring.position.set(site.x, 0.05, site.z);
+        ring.position.set(site.x, ground + 0.05, site.z);
         const fillGeo = new THREE.CircleGeometry(1.5, 40);
         fillGeo.rotateX(-Math.PI / 2);
         const progress = new THREE.Mesh(fillGeo, new THREE.MeshBasicMaterial({ color: 0xf3d27a, transparent: true, opacity: 0.35, depthWrite: false }));
-        progress.position.set(site.x, 0.045, site.z);
+        progress.position.set(site.x, ground + 0.045, site.z);
         progress.visible = false;
         this.group.add(chest, ring, progress);
         visual = { chest, ring, progress };
@@ -105,7 +132,7 @@ export class MarkerLayer {
       let visual = this.evidence.get(item.id);
       if (!visual) visual = this.createEvidence(item);
       // Evidence can be refined while its source still perceives it.
-      visual.group.position.set(item.x, 0, item.z);
+      visual.group.position.set(item.x, this.heightAt(item.x, item.z), item.z);
       const age = Math.max(0, snapshot.tick - item.tick);
       const fresh = Math.max(0, 1 - age / FADE_TICKS);
       const pulse = age < 60 ? 1 + (1 - age / 60) * Math.abs(Math.sin(now / 90)) * 0.6 : 1;
@@ -154,10 +181,11 @@ export class MarkerLayer {
     for (const m of message.monsters) {
       const half = Math.acos(m.viewHalfArcCos);
       const facing = Math.atan2(m.dirX, m.dirZ);
-      const points = [new THREE.Vector3(m.x, 0.12, m.z)];
+      const gy = this.heightAt(m.x, m.z);
+      const points = [new THREE.Vector3(m.x, gy + 0.12, m.z)];
       for (let i = 0; i <= 16; i++) {
         const a = facing - half + (i / 16) * half * 2;
-        points.push(new THREE.Vector3(m.x + Math.sin(a) * m.viewRange, 0.12, m.z + Math.cos(a) * m.viewRange));
+        points.push(new THREE.Vector3(m.x + Math.sin(a) * m.viewRange, gy + 0.12, m.z + Math.cos(a) * m.viewRange));
       }
       const hot = m.targets.some((t) => t.visible);
       const cone = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: hot ? 0xff4b2e : 0x4ad8ff, depthTest: false }));
@@ -166,11 +194,11 @@ export class MarkerLayer {
       const dots = [...m.searchPoints, ...(m.lastSeen ? [m.lastSeen] : [])];
       for (const p of dots) {
         const dot = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 6), new THREE.MeshBasicMaterial({ color: p === m.lastSeen ? 0xff4b2e : 0xff9d3c, depthTest: false }));
-        dot.position.set(p.x, 0.3, p.z);
+        dot.position.set(p.x, this.heightAt(p.x, p.z) + 0.3, p.z);
         this.debug.add(dot);
       }
       if (m.path.length) {
-        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(m.x, 0.15, m.z), ...m.path.map((p) => new THREE.Vector3(p.x, 0.15, p.z))]), new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false }));
+        const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(m.x, gy + 0.15, m.z), ...m.path.map((p) => new THREE.Vector3(p.x, this.heightAt(p.x, p.z) + 0.15, p.z))]), new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false }));
         line.renderOrder = 12;
         this.debug.add(line);
       }

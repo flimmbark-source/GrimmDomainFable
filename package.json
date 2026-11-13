@@ -19,7 +19,9 @@
     "test": "vitest run",
     "assets:placeholder": "node scripts/make-placeholder-glb.mjs",
     "verify:browser": "node scripts/browser-check.mjs",
-    "verify:m1": "node scripts/browser-check-m1.mjs"
+    "verify:m1": "node scripts/browser-check-m1.mjs",
+    "verify:orchard": "node scripts/browser-check-orchard-vale.mjs",
+    "plot:region": "tsx scripts/plot-region.ts"
   },
   "dependencies": {
     "@colyseus/sdk": "0.18.10",

@@ -4,7 +4,7 @@
  * distant castle, sky). Nothing here affects gameplay.
  */
 import * as THREE from 'three';
-import type { MapDef, Point } from '../../shared/sim/map.ts';
+import { boundsOf, type MapDef, type Point } from '../../shared/sim/map.ts';
 import type { AssetId, AssetLibrary } from './assets.ts';
 import { hash2, smoothNoise } from './bake.ts';
 import { PALETTE as P } from './palette.ts';
@@ -186,6 +186,17 @@ export interface World {
   root: THREE.Group;
   ground: THREE.Mesh;
   sun: THREE.DirectionalLight;
+  fastShadows?: { value: boolean };
+  bakedShadows?: {
+    enabled: boolean;
+    set(enabled: boolean): void;
+  };
+  /** Height of the walking surface (ground or bridge deck) at a ground point. */
+  heightAt(x: number, z: number): number;
+  /** Per-frame cosmetic animation (wind, water, shadows following the view). */
+  update?(dt: number, camera: THREE.Camera, lookAt: THREE.Vector3, mode: 'rts' | 'hero'): void;
+  stats?(): Record<string, number>;
+  dispose?(): void;
 }
 
 export function buildWorld(scene: THREE.Scene, map: MapDef, assets: AssetLibrary): World {
@@ -229,12 +240,12 @@ export function buildWorld(scene: THREE.Scene, map: MapDef, assets: AssetLibrary
   root.add(props, buildBackdropForest(map, assets), buildCastle(map, assets));
 
   scene.add(root);
-  return { root, ground, sun };
+  return { root, ground, sun, heightAt: () => 0 };
 }
 
 /** Debug overlay: the simulation's actual colliders and patrol routes.
  *  Magenta = blocks movement AND sight (cover); grey = blocks movement only. */
-export function buildCollisionDebug(map: MapDef): THREE.Group {
+export function buildCollisionDebug(map: MapDef, heightAt: (x: number, z: number) => number = () => 0): THREE.Group {
   const group = new THREE.Group();
   group.name = 'debug-colliders';
   const cover = new THREE.LineBasicMaterial({ color: 0xff3df0, depthTest: false });
@@ -245,23 +256,28 @@ export function buildCollisionDebug(map: MapDef): THREE.Group {
     mesh.renderOrder = 10;
     group.add(mesh);
   };
+  const water = new THREE.LineBasicMaterial({ color: 0x4ab8ff, depthTest: false });
+  const at = (x: number, z: number, lift = 0.08) => new THREE.Vector3(x, heightAt(x, z) + lift, z);
   for (const prop of map.props) {
     const c = prop.collider;
-    line = prop.blocksSight ? cover : low;
+    line = prop.kind === 'water' ? water : prop.blocksSight ? cover : low;
     if (c.shape === 'circle') {
       loop(Array.from({ length: 24 }, (_, i) => {
         const a = (i / 24) * Math.PI * 2;
-        return new THREE.Vector3(prop.x + Math.cos(a) * c.radius, 0.08, prop.z + Math.sin(a) * c.radius);
+        return at(prop.x + Math.cos(a) * c.radius, prop.z + Math.sin(a) * c.radius);
       }));
     } else {
-      loop([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => new THREE.Vector3(prop.x + sx! * c.hx, 0.08, prop.z + sz! * c.hz)));
+      // Axis-aligned boxes have the unit x axis; turned boxes carry their own.
+      const ux = c.shape === 'obox' ? c.ux : 1;
+      const uz = c.shape === 'obox' ? c.uz : 0;
+      loop([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => at(prop.x + sx! * c.hx * ux - sz! * c.hz * uz, prop.z + sx! * c.hx * uz + sz! * c.hz * ux)));
     }
   }
   line = cover;
-  const h = map.halfSize;
-  loop([new THREE.Vector3(-h, 0.08, -h), new THREE.Vector3(h, 0.08, -h), new THREE.Vector3(h, 0.08, h), new THREE.Vector3(-h, 0.08, h)]);
+  const b = boundsOf(map);
+  loop([at(b.minX, b.minZ), at(b.maxX, b.minZ), at(b.maxX, b.maxZ), at(b.minX, b.maxZ)]);
   const routeMat = new THREE.LineBasicMaterial({ color: 0xffe14a, depthTest: false });
-  for (const route of map.patrolRoutes) loop(route.map((p) => new THREE.Vector3(p.x, 0.1, p.z)), routeMat);
+  for (const route of map.patrolRoutes) loop(route.map((p) => at(p.x, p.z, 0.1)), routeMat);
   group.visible = false;
   return group;
 }

@@ -14,6 +14,7 @@ import { distance } from './geometry.ts';
 import { getMap, type MapDef, type Point } from './map.ts';
 import { applyOrder, thinkMonster } from './monster.ts';
 import { moveActor, orderGoto, stopActor } from './movement.ts';
+import { createOperation, updateOperation, workOperation } from './operation.ts';
 import { updatePerception } from './perception.ts';
 import { seedToState } from './rng.ts';
 import type { ActorState, Assignment, SimState } from './state.ts';
@@ -31,6 +32,7 @@ export const MONSTER_RADIUS = TUNING.monsters.scout.radius;
 export interface CreateOptions {
   seed: number;
   mapId: string;
+  operation?: boolean;
 }
 
 export function createSim(options: CreateOptions): SimState {
@@ -44,10 +46,11 @@ export function createSim(options: CreateOptions): SimState {
     nextEvidenceId: 1,
     slots: [],
     actors: [],
-    sites: map.sites.map((s) => ({ id: s.id, available: true, respawnTick: 0, progress: 0, gathererId: null })),
+    sites: options.operation ? [] : map.sites.map((s) => ({ id: s.id, available: true, respawnTick: 0, progress: 0, gathererId: null })),
     evidence: [],
     noises: [],
     events: [],
+    ...(options.operation ? { operation: createOperation() } : {}),
   };
   for (let id = 0; id < SLOT_COUNT; id++) {
     state.slots.push({ id, team: teamOfSlot(id), occupant: 'empty', actorId: null });
@@ -181,6 +184,7 @@ export function actorOfSlot(state: SimState, slotId: SlotId): ActorState | null 
  * the new positions and of this tick's noises.
  */
 export function step(state: SimState, commands: readonly SlotCommand[]): SimState {
+  if (state.operation?.result) return state;
   const map = getMap(state.mapId);
   state.events = [];
 
@@ -193,6 +197,7 @@ export function step(state: SimState, commands: readonly SlotCommand[]): SimStat
   }
   updateSites(state, map);
   updatePerception(state, map);
+  updateOperation(state, map);
 
   state.tick++;
   return state;
@@ -214,6 +219,13 @@ function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapD
       break;
     case 'stop':
       stopActor(actor);
+      if (state.operation?.worker === actor.id) {
+        state.operation.worker = null;
+        state.operation.progress = 0;
+      }
+      break;
+    case 'workOperation':
+      workOperation(state, map, actor);
       break;
     case 'setGait':
       actor.sneaking = command.sneak;

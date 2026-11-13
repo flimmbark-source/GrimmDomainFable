@@ -16,6 +16,9 @@ export interface InputHost {
   onModeChanged(mode: CameraMode): void;
   /** Id of a monster this player owns (Dark side), or null. */
   ownedMonster(): number | null;
+  /** Height of the walking surface; omitted on flat maps. */
+  heightAt?(x: number, z: number): number;
+  workOperation?(): boolean;
 }
 
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -73,6 +76,7 @@ export class InputController {
     }
     if (e.code === 'KeyX' && !e.repeat) this.host.send({ type: 'stop' });
     if (e.code === 'KeyF' && !e.repeat) this.host.send({ type: 'whistle' });
+    if (e.code === 'KeyR' && !e.repeat && this.host.workOperation?.()) this.host.send({ type: 'workOperation' });
     if (e.code === 'KeyP' && !e.repeat) {
       const monster = this.host.ownedMonster();
       if (monster !== null) this.host.send({ type: 'monsterOrder', actorId: monster, order: 'patrol' });
@@ -93,6 +97,15 @@ export class InputController {
     this.raycaster.setFromCamera(ndc, rig.camera);
     const hit = this.raycaster.ray.intersectPlane(GROUND, new THREE.Vector3());
     if (!hit) return;
+    const heightAt = this.host.heightAt;
+    if (heightAt) {
+      // The ground has relief: slide the hit along the ray until it lies on the surface.
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      for (let i = 0; i < 6; i++) {
+        plane.constant = -heightAt(hit.x, hit.z);
+        if (!this.raycaster.ray.intersectPlane(plane, hit)) return;
+      }
+    }
     const monster = e.button === 2 ? this.host.ownedMonster() : null;
     if (monster !== null) this.host.send({ type: 'monsterOrder', actorId: monster, order: 'guard', x: hit.x, z: hit.z });
     else this.host.send({ type: 'moveTo', x: hit.x, z: hit.z });

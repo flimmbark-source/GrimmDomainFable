@@ -11,6 +11,10 @@ This file reports what the code does and what was actually run. Behaviour descri
 - **Verification environment:** creator's Codespace reported `MODULE_NOT_FOUND` for Playwright; this was a missing optional local/global browser-test package, **not a failed hunt/escape behavior test**. Browser-check scripts now give actionable installation instructions and the M0 browser test expects camera-follow instead of the old fixed-screen click destination. From repo root run `npm install --no-save playwright` and `npx playwright install chromium` before `npm run verify:m1`. **Codespaces Linux system dependencies:** if Chromium itself fails with `error while loading shared libraries: libatk-1.0.so.0` (or another missing `.so`), run `npx playwright install-deps chromium` (Playwright can request sudo for apt packages), then rerun the check. This is an OS dependency failure, not failed gameplay verification. If `sudo npx` cannot find the NVM-managed Node binary, run the command *without* a `sudo` prefix. See https://playwright.dev/docs/browsers.
 - **Pending:** rerun typecheck, build, and both browser suites on the modified integration branch. No new passing test result is claimed by this code review, and the chase observation is not approval of every provisional M1 choice (P-1 through P-12).
 
+## Orchard Vale test region (2026-11-12, branch `claude/sleepy-brown-5xa89k`)
+
+A richly built, playable authored region joined with **`?region=orchard_vale`** (the default match is still the M1 crossing). River with a stone bridge and a ford, terraced orchards, a 14-building village with press house and turning watermill, witness trees and marker stones along a boundary walk, an overgrown old road to a ruin, oldwood and coppice. Real collisions, navigation, cover and the unchanged M1 Scout hunt; shared terrain height (visual only, contract-tested). Original procedural art only. Full details, measurements, screenshots and gaps: [Orchard Vale implementation report](production/orchard-vale-implementation-report.md). Provisional choices P-13 to P-19 in [decisions.md](decisions.md). Region lore remains **candidate**, not canon.
+
 ## Run it
 
 Requires Node.js 22 or newer and a desktop browser with WebGL2.
@@ -35,10 +39,12 @@ npm start
 | Command | What it does |
 | --- | --- |
 | `npm run typecheck` | `tsc --noEmit` over client, server, shared, tests |
-| `npm test` | Vitest: 86 tests in 7 files |
+| `npm test` | Vitest: 114 tests in 8 files (28 for Orchard Vale) |
 | `npm run build` | client to `dist/client`, server to `dist/server` |
 | `npm run verify:browser [url]` | M0 regression in real Chromium (16 checks) |
 | `npm run verify:m1 [url]` | M1 hunt scenario in three real Chromium tabs (36 checks). Start the server with `GRIMM_BOTS=none GRIMM_SEED=7` |
+| `npm run verify:orchard [url]` | Orchard Vale in three real Chromium tabs (21 checks) and evidence screenshots. Default url http://localhost:2567 |
+| `npm run plot:region [mapId] [out.svg]` | Top-down plan of a map's colliders, paths and reachable ground |
 
 Server switches (environment variables, never client options): `GRIMM_BOTS=none` or `1,5`; `GRIMM_SEED=7`; `GRIMM_MAP=forest_crossing_v1_brute` (adds a Brute); `GRIMM_DEBUG=1` streams every monster's senses to all clients for the `G` overlay and **switches information hiding off**.
 

@@ -22,6 +22,7 @@ import { TUNING } from '../shared/sim/tuning.ts';
 export interface MatchOptions {
   seed: number;
   mapId: string;
+  operation?: boolean;
   /** Slots to fill with bots when the match is created. */
   botSlots?: SlotId[];
 }
@@ -39,12 +40,16 @@ export class Match {
 
   constructor(options: MatchOptions) {
     this.map = getMap(options.mapId);
-    this.state = createSim({ seed: options.seed, mapId: options.mapId });
+    this.state = createSim(options);
     for (const slot of options.botSlots ?? []) this.addBot(slot);
   }
 
   get tick(): number {
     return this.state.tick;
+  }
+
+  get finished(): boolean {
+    return Boolean(this.state.operation?.result);
   }
 
   addBot(slot: SlotId): boolean {
@@ -56,6 +61,7 @@ export class Match {
   /** Seat a connection. Returns its slot, or null when it joins as spectator. */
   join(sessionId: string, preferredTeam?: Team): SlotId | null {
     if (this.seats.has(sessionId)) return this.seats.get(sessionId) ?? null;
+    if (this.finished) return null;
     const slot = findFreeSlot(this.state, preferredTeam);
     if (slot === null || !occupySlot(this.state, slot, 'human')) return null;
     this.seats.set(sessionId, slot);
@@ -84,6 +90,7 @@ export class Match {
    * connection's seat. Returns false when the payload is rejected.
    */
   submit(sessionId: string, payload: unknown): boolean {
+    if (this.finished) return false;
     const slot = this.seats.get(sessionId);
     if (slot === undefined) return false; // spectators cannot act
     const command = parseCommand(payload);
@@ -97,6 +104,7 @@ export class Match {
 
   /** Run bots, then advance the simulation by one fixed tick. */
   advance(): void {
+    if (this.finished) return;
     for (const [slot, memory] of this.bots) {
       const view = projectSnapshot(this.state, viewerForSlot(this.state, slot));
       const command: Command | null = botThink(memory, view, this.map);

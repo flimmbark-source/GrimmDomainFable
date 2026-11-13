@@ -68,7 +68,8 @@ export type MonsterOrderCommand =
   | { type: 'monsterOrder'; actorId: number; order: 'guard'; x: number; z: number }
   | { type: 'monsterOrder'; actorId: number; order: 'patrol' };
 
-export type Command = MoveDirCommand | MoveToCommand | StopCommand | SetGaitCommand | WhistleCommand | MonsterOrderCommand;
+export type Command = MoveDirCommand | MoveToCommand | StopCommand | SetGaitCommand | WhistleCommand | MonsterOrderCommand |
+  { type: 'workOperation' };
 
 /** A command bound to the slot that issued it. The slot is assigned by the
  *  server from the connection; it is never read from the client payload. */
@@ -110,6 +111,8 @@ export function parseCommand(raw: unknown): Command | null {
       return typeof r.sneak === 'boolean' ? { type: 'setGait', sneak: r.sneak } : null;
     case 'whistle':
       return { type: 'whistle' };
+    case 'workOperation':
+      return { type: 'workOperation' };
     case 'monsterOrder': {
       if (typeof r.actorId !== 'number' || !Number.isInteger(r.actorId) || r.actorId < 0) return null;
       if (r.order === 'patrol') return { type: 'monsterOrder', actorId: r.actorId, order: 'patrol' };
@@ -238,6 +241,24 @@ export interface Snapshot {
   /** Dark viewers only; always empty for Light and public viewers. */
   evidence: EvidenceView[];
   sounds: SoundView[];
+  /** Public playtest score and local interaction, never attacker locations. */
+  operation?: OperationView;
+}
+
+export interface OperationView {
+  x: number;
+  z: number;
+  active: boolean;
+  energy: number;
+  energyPerSecond: number;
+  production: number;
+  productionGoal: number;
+  offlineSeconds: number;
+  offlineGoal: number;
+  result: Team | null;
+  interaction: 'sabotage' | 'repair' | null;
+  progress: number;
+  interrupted: boolean;
 }
 
 /** Message names used on the room connection. */
@@ -285,4 +306,21 @@ export interface JoinOptions {
 }
 
 export const ROOM_NAME = 'match';
+
+/**
+ * Development / playtest regions other than the default match. A client may
+ * ASK for one by name (`?region=orchard_vale`); that only chooses which
+ * server-defined room it joins. Which map a room runs is decided by server
+ * code alone and reported in the welcome message; a client can never supply a
+ * map id.
+ */
+export const REGION_ROOMS = {
+  orchard_vale: 'match_orchard_vale',
+  orchard_operation: 'match_orchard_operation',
+} as const;
+export type RegionName = keyof typeof REGION_ROOMS;
+
+export function roomForRegion(region: string | null | undefined): string {
+  return region && Object.hasOwn(REGION_ROOMS, region) ? REGION_ROOMS[region as RegionName] : ROOM_NAME;
+}
 export const DEFAULT_SERVER_PORT = 2567;
