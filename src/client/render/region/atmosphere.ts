@@ -78,21 +78,30 @@ export interface Lights {
   follow(focus: THREE.Vector3, extent: number): void;
 }
 
+// Shadow casters still move. Refresh their depth map independently of the
+// visible scene, so a stationary view and a moving chase both reuse it.
+const SHADOW_INTERVAL_MS = 1000 / 15;
+
 export function buildLights(): Lights {
   const hemisphere = new THREE.HemisphereLight(C.ambientSky, C.ambientGround, 2.1);
   const sun = new THREE.DirectionalLight(C.sun, 2.35);
   const direction = new THREE.Vector3(-0.62, 0.62, 0.48).normalize();
   sun.castShadow = true;
+  sun.shadow.autoUpdate = false;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.bias = -0.0005;
   // Generous: crowns and hedges are coarse meshes with smooth normals, and a
   // small bias draws their facets as shadow along the terminator.
   sun.shadow.normalBias = 0.3;
   let current = 0;
+  let lastRefresh = -Infinity;
   return {
     sun,
     hemisphere,
     follow: (focus, extent) => {
+      const now = performance.now();
+      if (now - lastRefresh < SHADOW_INTERVAL_MS) return;
+      lastRefresh = now;
       // Snap to whole shadow texels so shadows do not crawl as the camera moves.
       const texel = (extent * 2) / sun.shadow.mapSize.x;
       const fx = Math.round(focus.x / texel) * texel;
@@ -105,6 +114,7 @@ export function buildLights(): Lights {
         Object.assign(sun.shadow.camera, { left: -extent, right: extent, top: extent, bottom: -extent, near: 10, far: 260 });
         sun.shadow.camera.updateProjectionMatrix();
       }
+      sun.shadow.needsUpdate = true;
     },
   };
 }

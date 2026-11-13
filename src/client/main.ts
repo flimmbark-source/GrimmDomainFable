@@ -75,22 +75,26 @@ interface RenderProfile {
 }
 
 /** Compare the same stationary view with less pixel work or a cached shadow map. */
-async function profileRendering(renderer: THREE.WebGLRenderer): Promise<RenderProfile[]> {
+async function profileRendering(renderer: THREE.WebGLRenderer, sun: THREE.DirectionalLight): Promise<RenderProfile[]> {
   const pixelRatio = renderer.getPixelRatio();
   const { shadowMap } = renderer;
   const autoUpdate = shadowMap.autoUpdate;
+  const lightAutoUpdate = sun.shadow.autoUpdate;
   const results: RenderProfile[] = [];
   const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
 
   try {
-    for (const { test, scale, updateShadows } of [
-      { test: 'Full resolution', scale: 1, updateShadows: true },
-      { test: 'Half pixel count', scale: Math.SQRT1_2, updateShadows: true },
-      { test: 'Full resolution, reuse shadows', scale: 1, updateShadows: false },
+    for (const { test, scale, updateShadows, updateLight } of [
+      { test: 'Full resolution, current settings', scale: 1, updateShadows: true, updateLight: lightAutoUpdate },
+      { test: 'Full resolution, shadows every frame', scale: 1, updateShadows: true, updateLight: true },
+      { test: 'Half pixel count, shadows every frame', scale: Math.SQRT1_2, updateShadows: true, updateLight: true },
+      { test: 'Full resolution, reuse shadows', scale: 1, updateShadows: false, updateLight: true },
     ]) {
       renderer.setPixelRatio(pixelRatio * scale);
       shadowMap.autoUpdate = updateShadows;
+      sun.shadow.autoUpdate = updateLight;
       shadowMap.needsUpdate = true;
+      sun.shadow.needsUpdate = true;
       const settleUntil = performance.now() + 1000;
       while (await nextFrame() < settleUntil) { /* wait for the resize or shadow update */ }
 
@@ -116,7 +120,9 @@ async function profileRendering(renderer: THREE.WebGLRenderer): Promise<RenderPr
   } finally {
     renderer.setPixelRatio(pixelRatio);
     shadowMap.autoUpdate = autoUpdate;
+    sun.shadow.autoUpdate = lightAutoUpdate;
     shadowMap.needsUpdate = true;
+    sun.shadow.needsUpdate = true;
   }
   return results;
 }
@@ -343,7 +349,7 @@ async function start(): Promise<void> {
         if (profiling) throw new Error('A rendering profile is already running.');
         profiling = true;
         try {
-          return await profileRendering(renderer);
+          return await profileRendering(renderer, world.sun);
         } finally {
           profiling = false;
         }
