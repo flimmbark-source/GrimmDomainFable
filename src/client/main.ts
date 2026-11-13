@@ -169,6 +169,13 @@ interface DebugApi {
   focus(x: number, z: number): void;
   profileRendering?: () => Promise<RenderProfile[]>;
   profileVillagePan?: () => Promise<RenderProfile[]>;
+  /**
+   * Render the current view `frames` times back to back, waiting for the GPU
+   * after each (median ms), with and without a sun-shadow refresh. Unlike the rAF
+   * profiles this is not capped by vsync, so it compares shading cost
+   * between builds even where the frame rate is very low or very high.
+   */
+  benchmarkFrames?: (frames?: number) => { mainMs: number; withShadowMs: number; drawCalls: number; triangles: number };
   stats(): {
     fps: number; drawCalls: number; triangles: number; snapshots: number; renderer: string; assets: Record<string, string>;
     /** GPU objects alive, and how much scenery the region placed. */
@@ -404,6 +411,26 @@ async function start(): Promise<void> {
     },
     focus: (x, z) => rig.focusOn(new THREE.Vector3(x, 0, z)),
     ...(params.get('profile') === '1' && !observerOnly ? {
+      benchmarkFrames: (frames = 8) => {
+        const gl = renderer.getContext();
+        const pixel = new Uint8Array(4);
+        const median = (shadows: boolean): number => {
+          const times: number[] = [];
+          for (let i = -1; i < frames; i++) {
+            if (shadows) world.sun.shadow.needsUpdate = true;
+            const start = performance.now();
+            renderer.render(scene, rig.camera);
+            // Reading back one pixel waits for the frame (gl.finish() need not).
+            gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+            if (i >= 0) times.push(performance.now() - start);
+          }
+          times.sort((a, b) => a - b);
+          return Number(times[Math.floor(times.length / 2)]!.toFixed(1));
+        };
+        const mainMs = median(false);
+        const { calls: drawCalls, triangles } = renderer.info.render;
+        return { mainMs, withShadowMs: median(true), drawCalls, triangles };
+      },
       profileRendering: async () => {
         if (profiling) throw new Error('A rendering profile is already running.');
         profiling = true;
