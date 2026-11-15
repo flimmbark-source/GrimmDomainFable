@@ -84,7 +84,7 @@ function canSee(state: SimState, map: MapDef, viewer: Viewer, actor: ActorState)
   return seatSees(state, map, viewer.slot, viewer.team, actor);
 }
 
-function projectActor(viewer: Viewer, actor: ActorState): ActorView {
+function projectActor(viewer: Viewer, actor: ActorState, tick: number): ActorView {
   const view: ActorView = {
     id: actor.id,
     kind: actor.kind,
@@ -100,6 +100,7 @@ function projectActor(viewer: Viewer, actor: ActorState): ActorView {
   const brain = actor.brain;
   if (!brain) {
     if (actor.sneaking) view.sneaking = true;
+    if (actor.actionMotion && tick - actor.actionMotion.tick <= 12) view.action = actor.actionMotion;
     // A hero's pending order is its own business (team sharing is undecided).
     if (actor.intent.type === 'goto' && viewer && actor.slot === viewer.slot) {
       view.order = { x: actor.intent.x, z: actor.intent.z };
@@ -196,7 +197,7 @@ export function projectSnapshot(state: SimState, viewer: Viewer): Snapshot {
     tick: state.tick,
     you,
     slots: state.slots.map((s) => ({ id: s.id, team: s.team, occupant: s.occupant })),
-    actors: actors.map((a) => projectActor(viewer, a)),
+    actors: actors.map((a) => projectActor(viewer, a, state.tick)),
     sites: state.operation ? [] : projectSites(state, map, viewer, hero),
     evidence: projectEvidence(state, viewer),
     sounds: projectSounds(state, visible, hero),

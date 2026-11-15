@@ -15,9 +15,11 @@ The relay, interaction timings, interruption range, and local scoring are playte
 
 ## Goblin player interface
 
-The Light relay seat starts in hero view with the new player dock. **Tab** switches views, **I** opens inventory, and **Esc** closes it. The dock reads live detection and whistle cooldown from the player snapshot. Use **Shift** or the Sneak button for stealth, and **F** or the Whistle button to distract a Scout. The relay action appears when the simulation permits it.
+The Light relay seat starts in an overhead hero view. Use the **arrow keys** to move in hero view or pan in strategy view. Drag with the left mouse button to turn the hero camera. **Tab** switches views, **I** opens inventory, and **Esc** dismisses the inventory or action menu. Detection follows the hero on screen.
 
-Append `&hud=preview` to the Orchard operation URL to try the sample kit. Select a carried item to inspect it, equip or unequip a gear piece, drop one item from a stack, or assign a quick item to **1–3**. Outside assignment, those keys inspect the item. The kit resets on reload. Preview health and cargo are sample values. Strike, evade, item effects, and acquiring real gear or heist cargo are pending gameplay rules.
+Right-click terrain to open the action menu, then left-click an option to walk to that location and perform the action on arrival. Press **A** for Attack, **S** to toggle Sneak, **E** to Evade forward, or **W** to Whistle at your current position. **X** stops movement and cancels a queued action. The server resolves the destination using normal pathfinding, including the nearest walkable point for blocked ground. Attack is a playtest swing without damage. Evade is a short forward move that respects terrain collision. Whistle uses the existing noise and cooldown rules.
+
+Append `&hud=preview` to the Orchard operation URL to try the sample kit. Select a carried item to inspect it, equip or unequip a gear piece, drop one item from a stack, or assign a quick item to **1–3**. Outside assignment, those keys inspect the item. The kit resets on reload. Preview health and cargo are sample values. Item effects and acquiring real gear or heist cargo are pending gameplay rules.
 
 ## Fog of war
 

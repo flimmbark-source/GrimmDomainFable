@@ -59,6 +59,15 @@ export interface WhistleCommand {
   type: 'whistle';
 }
 
+export type HeroAction = 'attack' | 'sneak' | 'evade' | 'whistle';
+
+export interface HeroActionCommand {
+  type: 'heroAction';
+  action: HeroAction;
+  /** Omit the destination to use the hero's current position. */
+  target?: { x: number; z: number };
+}
+
 /**
  * Dark side: re-task a monster you own. `guard` sends it to stand watch at a
  * point; `patrol` sends it back to its original assignment. The server
@@ -68,7 +77,7 @@ export type MonsterOrderCommand =
   | { type: 'monsterOrder'; actorId: number; order: 'guard'; x: number; z: number }
   | { type: 'monsterOrder'; actorId: number; order: 'patrol' };
 
-export type Command = MoveDirCommand | MoveToCommand | StopCommand | SetGaitCommand | WhistleCommand | MonsterOrderCommand |
+export type Command = MoveDirCommand | MoveToCommand | StopCommand | SetGaitCommand | WhistleCommand | HeroActionCommand | MonsterOrderCommand |
   { type: 'workOperation' };
 
 /** A command bound to the slot that issued it. The slot is assigned by the
@@ -111,6 +120,15 @@ export function parseCommand(raw: unknown): Command | null {
       return typeof r.sneak === 'boolean' ? { type: 'setGait', sneak: r.sneak } : null;
     case 'whistle':
       return { type: 'whistle' };
+    case 'heroAction': {
+      const action = r.action;
+      if (action !== 'attack' && action !== 'sneak' && action !== 'evade' && action !== 'whistle') return null;
+      if (r.target === undefined) return { type: 'heroAction', action };
+      if (!r.target || typeof r.target !== 'object') return null;
+      const { x, z } = r.target as Record<string, unknown>;
+      if (!finite(x) || !finite(z) || Math.abs(x) > MAX_COMMAND_COORD || Math.abs(z) > MAX_COMMAND_COORD) return null;
+      return { type: 'heroAction', action, target: { x, z } };
+    }
     case 'workOperation':
       return { type: 'workOperation' };
     case 'monsterOrder': {
@@ -155,6 +173,8 @@ export interface ActorView {
   radius: number;
   /** Heroes: visibly sneaking. */
   sneaking?: boolean;
+  /** A transient playtest motion on an already visible hero. */
+  action?: { kind: 'attack' | 'evade'; tick: number };
   /** Monsters only. */
   monster?: MonsterType;
   mood?: MonsterMood;

@@ -3,13 +3,16 @@
  * Everything here is plain JSON so a state can be hashed and copied.
  * The full SimState is server-only: clients receive projection.ts output.
  */
-import type { ActorKind, BrainMode, EvidenceKind, MonsterType, SlotId, SlotOccupant, SoundKind, Team } from '../protocol.ts';
+import type { ActorKind, BrainMode, EvidenceKind, HeroAction, MonsterType, SlotId, SlotOccupant, SoundKind, Team } from '../protocol.ts';
 import type { Point } from './map.ts';
 import type { StealthProfile } from './tuning.ts';
 
+export type DirectionIntent = { type: 'dir'; dx: number; dz: number };
+
 export type Intent =
   | { type: 'idle' }
-  | { type: 'dir'; dx: number; dz: number }
+  | DirectionIntent
+  | { type: 'evade'; ticks: number; after: DirectionIntent | null }
   | { type: 'goto'; x: number; z: number };
 
 export type Assignment =
@@ -84,6 +87,8 @@ export interface ActorState {
   stealth: StealthProfile;
   footstepTicks: number;
   whistleReadyTick: number;
+  queuedAction?: { kind: HeroAction; destination: Point };
+  actionMotion?: { kind: 'attack' | 'evade'; tick: number };
   carried: number;
   /** PRIVATE to the owning Dark seat: autonomous monster brain. */
   brain: MonsterBrain | null;

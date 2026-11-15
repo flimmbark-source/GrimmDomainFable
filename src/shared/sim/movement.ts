@@ -2,7 +2,7 @@
  * Actor movement: path-following goto orders, held directions, static
  * collision and turning. Deterministic (+ - * / sqrt only).
  */
-import { clamp, propsNearBox } from './geometry.ts';
+import { clamp, propsNearBox, segmentWalkable } from './geometry.ts';
 import { boundsOf, type MapDef, type PropDef } from './map.ts';
 import { findPath } from './nav.ts';
 import type { ActorState } from './state.ts';
@@ -13,7 +13,9 @@ export const TICK_DT = 1 / TICK_RATE;
 
 /** A goto that makes no progress for this long is re-planned once, then dropped. */
 const STUCK_TICKS = 20;
-const ARRIVE_EPS = 0.05;
+export const ARRIVE_EPS = 0.05;
+export const EVADE_TICKS = 9;
+const EVADE_SPEED = 8;
 
 export function stopActor(actor: ActorState): void {
   actor.intent = { type: 'idle' };
@@ -78,6 +80,19 @@ export function moveActor(actor: ActorState, map: MapDef): void {
   const intent = actor.intent;
   if (intent.type === 'idle') {
     actor.moving = false;
+    return;
+  }
+
+  if (intent.type === 'evade') {
+    const target = clampToMap(map, actor.x + actor.dirX * EVADE_SPEED * TICK_DT,
+      actor.z + actor.dirZ * EVADE_SPEED * TICK_DT, actor.radius);
+    actor.moving = segmentWalkable(map, actor.x, actor.z, target.x, target.z, actor.radius) &&
+      (target.x !== actor.x || target.z !== actor.z);
+    if (actor.moving) {
+      actor.x = target.x;
+      actor.z = target.z;
+    }
+    if (!actor.moving || --intent.ticks === 0) actor.intent = intent.after ?? { type: 'idle' };
     return;
   }
 

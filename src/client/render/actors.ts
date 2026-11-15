@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three';
 import type { ActorView, MonsterMood, Snapshot } from '../../shared/protocol.ts';
+import { TICK_RATE } from '../../shared/sim/movement.ts';
 import type { AssetId, AssetLibrary } from './assets.ts';
 import { PALETTE as P } from './palette.ts';
 
@@ -157,7 +158,11 @@ export class ActorLayer {
       let delta = targetYaw - visual.yaw;
       delta = Math.atan2(Math.sin(delta), Math.cos(delta));
       visual.yaw += delta * Math.min(1, dt * 12);
-      visual.root.rotation.y = visual.yaw;
+      const actionAge = actor.action
+        ? (older.snapshot.tick + (newer.snapshot.tick - older.snapshot.tick) * t - actor.action.tick) / TICK_RATE : -1;
+      const attack = actor.action?.kind === 'attack' && actionAge >= 0 && actionAge < 0.36
+        ? Math.sin(Math.PI * actionAge / 0.36) : 0;
+      visual.root.rotation.y = visual.yaw + attack * 0.9;
 
       // Cosmetic walk cycle, driven by the simulated `moving` flag.
       const alarmed = actor.mood === 'alarmed';
@@ -168,7 +173,8 @@ export class ActorLayer {
       visual.model.rotation.z = actor.moving ? stride * 0.07 : 0;
       // Posture: sneaking heroes crouch; a suspicious monster rears its head up,
       // an alarmed one drops low and forward.
-      const lean = actor.sneaking ? 0.32 : actor.mood === 'suspicious' ? -0.16 : alarmed ? 0.2 : actor.moving ? 0.08 : 0;
+      const evading = actor.action?.kind === 'evade' && actionAge >= 0 && actionAge < 0.3;
+      const lean = evading ? 0.64 : attack > 0 ? attack * 0.52 : actor.sneaking ? 0.32 : actor.mood === 'suspicious' ? -0.16 : alarmed ? 0.2 : actor.moving ? 0.08 : 0;
       visual.model.rotation.x += (lean - visual.model.rotation.x) * Math.min(1, dt * 10);
       const base = actor.monster === 'brute' ? 1.45 : 1;
       const squash = actor.sneaking ? 0.8 : 1;

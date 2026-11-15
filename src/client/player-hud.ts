@@ -1,4 +1,4 @@
-import type { OperationView, Snapshot } from '../shared/protocol.ts';
+import type { HeroAction, OperationView, Snapshot } from '../shared/protocol.ts';
 import './player-hud.css';
 
 const ICON_ROOT = `${import.meta.env.BASE_URL}art/player-hud/`;
@@ -36,13 +36,14 @@ const previewItems: readonly Item[] = [
 ];
 
 const actions = [
-  { id: 'strike', label: 'Strike', hint: 'Combat is pending in this playtest', key: null },
-  { id: 'evade', label: 'Evade', hint: 'Evade is pending in this playtest', key: null },
-  { id: 'sneak', label: 'Sneak', hint: 'Click to toggle sneak or hold Shift', key: 'Shift' },
-  { id: 'whistle', label: 'Whistle', hint: 'Whistle (F)', key: 'F' },
+  { id: 'attack', art: 'strike', label: 'Attack', key: 'A' },
+  { id: 'evade', art: 'evade', label: 'Evade', key: 'E' },
+  { id: 'sneak', art: 'sneak', label: 'Sneak', key: 'S' },
+  { id: 'whistle', art: 'whistle', label: 'Whistle', key: 'W' },
 ] as const;
 
-type Action = typeof actions[number]['id'] | 'relay' | 'stop' | 'camera';
+type Action = HeroAction | 'relay' | 'stop' | 'camera';
+type GroundPoint = { x: number; z: number };
 
 export class PlayerHud {
   private readonly root = document.createElement('section');
@@ -54,6 +55,10 @@ export class PlayerHud {
   private open = false;
   private enabled = false;
   private snapshotKey = '';
+  private actionTarget: GroundPoint | null = null;
+  private operationFinished = false;
+  private readonly actionMenu: HTMLElement;
+  private readonly menuAnchor: HTMLElement;
   private readonly bag: HTMLElement;
   private readonly bagToggle: HTMLButtonElement;
   private readonly gearList: HTMLElement;
@@ -67,13 +72,14 @@ export class PlayerHud {
   private readonly offline: HTMLProgressElement;
   private readonly objectiveDetails: HTMLElement;
   private readonly detection: HTMLElement;
+  private readonly detectionLabel: HTMLElement;
   private readonly sneak: HTMLButtonElement;
   private readonly whistle: HTMLButtonElement;
   private readonly cooldown: HTMLElement;
   private readonly camera: HTMLButtonElement;
   private readonly cameraLabel: HTMLElement;
 
-  constructor(private readonly preview: boolean, private readonly onAction: (action: Action) => void) {
+  constructor(private readonly preview: boolean, private readonly onAction: (action: Action, target?: GroundPoint) => void) {
     if (preview) {
       for (const item of previewItems) {
         this.items.set(item.id, item);
@@ -86,7 +92,7 @@ export class PlayerHud {
     this.root.hidden = true;
     this.root.setAttribute('aria-label', 'Player interface');
     this.root.innerHTML = `
-      <section class="ph-objective ph-surface" aria-label="Orchard objective">
+      <section class="ph-objective" aria-label="Orchard objective">
         <div class="ph-objective-title"><span class="ph-marker" aria-hidden="true"></span><strong></strong></div>
         <div class="ph-objective-details">
           <div class="ph-location">North of the bridge</div>
@@ -102,6 +108,13 @@ export class PlayerHud {
       </section>
       <button type="button" class="ph-view ph-surface" data-action="camera" aria-keyshortcuts="Tab"><span></span> <kbd>Tab</kbd></button>
       <button type="button" class="ph-relay ph-surface" data-action="relay" hidden></button>
+      <div class="ph-detection ph-surface" hidden><span class="ph-eye" aria-hidden="true"></span><span class="ph-detection-label"></span></div>
+      <div class="ph-menu-anchor" aria-hidden="true" hidden></div>
+      <div class="ph-actions ph-surface" role="group" aria-label="Actions at selected location" hidden>
+        ${actions.map(({ id, art, label, key }) => `<button type="button" class="ph-action" data-action="${id}" aria-keyshortcuts="${key}">
+          ${icon(art)}<span>${label}</span>${id === 'whistle' ? '<span class="ph-cooldown" hidden></span>' : ''}<kbd aria-hidden="true">${key}</kbd>
+        </button>`).join('')}
+      </div>
       <section id="player-inventory" class="ph-bag ph-surface" aria-label="Inventory" hidden>
         <header class="ph-bag-header"><strong>Inventory</strong>${preview ? '<span>Preview kit</span>' : ''}<button type="button" class="ph-close" data-action="bag" aria-label="Close inventory">Close <kbd>Esc</kbd></button></header>
         <div class="ph-storage">
@@ -110,29 +123,24 @@ export class PlayerHud {
         </div>
         <div class="ph-detail" aria-live="polite"></div>
       </section>
-      <div class="ph-dock ph-surface">
-        <div class="ph-character">
+        <div class="ph-character ph-surface">
           <div class="ph-portrait">${icon('portrait')}</div>
-          <div class="ph-identity"><strong>Goblin Outlaw</strong><span class="ph-detection"></span>
+          <div class="ph-identity"><strong>Goblin Outlaw</strong>
             ${preview ? '<meter class="ph-health" min="0" max="100" value="83" aria-label="Sample health"></meter>' : ''}
           </div>
-        </div>
-        <div class="ph-actions" role="group" aria-label="Player actions">
-          ${actions.map(({ id, label, hint, key }) => `<button type="button" class="ph-action" data-action="${id}" title="${hint}" ${key ? `aria-keyshortcuts="${key}"` : 'disabled'}>
-            <span class="ph-slot">${icon(id)}${key ? `<kbd aria-hidden="true">${key}</kbd>` : ''}${id === 'whistle' ? '<span class="ph-cooldown" hidden></span>' : ''}</span><span>${label}</span>
-          </button>`).join('')}
         </div>
         <div class="ph-kit">
           <div class="ph-quick" role="group" aria-label="Quick slots">
             ${this.quick.map((_, index) => `<button type="button" class="ph-slot ph-quick-slot" data-quick="${index}"></button>`).join('')}
           </div>
           <button type="button" class="ph-bag-toggle" data-action="bag" aria-controls="player-inventory" aria-expanded="false" aria-label="Inventory" aria-keyshortcuts="I">
-            ${icon('bag')}<span>Inventory</span><kbd aria-hidden="true">I</kbd>
+            ${icon('bag')}<kbd aria-hidden="true">I</kbd>
           </button>
-          ${preview ? `<div class="ph-cargo">${icon('cargo')}<div><strong>Carrying supplies</strong><meter min="0" max="100" value="65" aria-label="Sample cargo progress"></meter></div></div>` : ''}
-        </div>
-      </div>`;
+          <div class="ph-cargo ph-surface">${icon('cargo')}<div>${preview ? '<strong>Carrying supplies</strong><meter min="0" max="100" value="65" aria-label="Sample cargo progress"></meter>' : '<strong>No cargo</strong>'}</div></div>
+        </div>`;
     document.body.append(this.root);
+    this.actionMenu = this.element('.ph-actions');
+    this.menuAnchor = this.element('.ph-menu-anchor');
     this.bag = this.element('#player-inventory');
     this.bagToggle = this.element('.ph-bag-toggle');
     this.gearList = this.element('.ph-gear');
@@ -146,6 +154,7 @@ export class PlayerHud {
     this.offline = this.element('.ph-offline progress');
     this.objectiveDetails = this.element('.ph-objective-details');
     this.detection = this.element('.ph-detection');
+    this.detectionLabel = this.element('.ph-detection-label');
     this.sneak = this.element('[data-action="sneak"]');
     this.whistle = this.element('[data-action="whistle"]');
     this.cooldown = this.element('.ph-cooldown');
@@ -153,22 +162,61 @@ export class PlayerHud {
     this.cameraLabel = this.element('.ph-view span');
     this.setMode(false);
     this.root.addEventListener('click', (event) => this.click(event));
+    this.actionMenu.addEventListener('contextmenu', (event) => event.preventDefault());
+    window.addEventListener('pointerdown', (event) => {
+      if (event.target instanceof Node && !this.actionMenu.contains(event.target)) this.closeActions();
+    }, true);
+    window.addEventListener('blur', () => this.closeActions());
+    window.addEventListener('resize', () => this.closeActions());
     this.renderBag();
     this.renderQuick();
   }
 
   get isOpen(): boolean { return this.open; }
+  get usesActionMenu(): boolean { return this.enabled; }
+
+  openActions(x: number, y: number, target: GroundPoint): void {
+    if (!this.enabled || this.open || this.operationFinished) return;
+    this.actionTarget = target;
+    this.actionMenu.hidden = false;
+    const width = this.actionMenu.offsetWidth;
+    const height = this.actionMenu.offsetHeight;
+    const left = x + 14 + width <= innerWidth - 8 ? x + 14 : x - width - 14;
+    const top = y + 14 + height <= innerHeight - 8 ? y + 14 : y - height - 14;
+    this.actionMenu.style.left = `${Math.max(8, Math.min(left, innerWidth - width - 8))}px`;
+    this.actionMenu.style.top = `${Math.max(8, Math.min(top, innerHeight - height - 8))}px`;
+    this.menuAnchor.style.transform = `translate(${x}px, ${y}px)`;
+    this.menuAnchor.hidden = false;
+    this.actionMenu.querySelector('button')?.focus({ preventScroll: true });
+  }
+
+  setHeroScreenPosition(x: number, y: number, visible: boolean): void {
+    const hidden = !this.enabled || !visible || x < 0 || y < 0 || x > innerWidth || y > innerHeight;
+    if (this.detection.hidden !== hidden) this.detection.hidden = hidden;
+    if (!hidden) this.detection.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, -100%)`;
+  }
+
+  private closeActions(): void {
+    if (!this.actionTarget) return;
+    this.actionTarget = null;
+    this.actionMenu.hidden = true;
+    this.menuAnchor.hidden = true;
+  }
 
   setEnabled(enabled: boolean): void {
     if (enabled === this.enabled) return;
     this.enabled = enabled;
-    if (!enabled) this.setOpen(false);
+    if (!enabled) {
+      this.closeActions();
+      this.setOpen(false);
+    }
     this.snapshotKey = '';
     this.root.hidden = !enabled;
     document.body.classList.toggle('has-player-hud', enabled);
   }
 
   setMode(hero: boolean): void {
+    this.closeActions();
     const current = hero ? 'Hero view' : 'Strategy view';
     const target = hero ? 'Strategy view' : 'Hero view';
     this.cameraLabel.textContent = current;
@@ -182,9 +230,24 @@ export class PlayerHud {
       if (!event.repeat) this.setOpen(!this.open);
       return true;
     }
+    if (this.actionTarget && event.code === 'Escape') {
+      this.closeActions();
+      return true;
+    }
+    if (event.code === 'KeyX') this.closeActions();
     if (/^Digit[1-3]$/.test(event.code)) {
       if (!event.repeat) this.useSlot(Number(event.code.at(-1)) - 1);
       return true;
+    }
+    if (!this.open) {
+      const action = actions.find(({ key }) => event.code === `Key${key}`);
+      if (action) {
+        if (!event.repeat && !this.operationFinished && (action.id !== 'whistle' || !this.whistle.disabled)) {
+          this.closeActions();
+          this.onAction(action.id);
+        }
+        return true;
+      }
     }
     return false;
   }
@@ -201,17 +264,19 @@ export class PlayerHud {
       operation.interrupted, operation.result, sneaking, notice, seconds]);
     if (key === this.snapshotKey) return;
     this.snapshotKey = key;
-    this.detection.textContent = notice;
+    this.detectionLabel.textContent = notice;
     this.detection.dataset.notice = notice;
     this.sneak.setAttribute('aria-pressed', String(sneaking));
     this.whistle.disabled = seconds > 0;
     this.cooldown.hidden = seconds === 0;
     this.cooldown.textContent = `${seconds}s`;
-    this.whistle.title = seconds ? `Whistle ready in ${seconds}s` : 'Whistle (F)';
+    this.whistle.title = seconds ? `Whistle ready in ${seconds}s` : 'Whistle (W)';
     this.setObjective(operation);
   }
 
   private setObjective(op: OperationView): void {
+    this.operationFinished = Boolean(op.result);
+    if (this.operationFinished) this.closeActions();
     this.objective.textContent = op.result === 'light' ? 'Light secured Orchard Vale' : op.result === 'dark' ? 'Dark held Orchard Vale' :
       op.active ? 'Sabotage the Dark relay' : 'Keep the relay offline';
     this.objectiveDetails.hidden = Boolean(op.result);
@@ -242,6 +307,7 @@ export class PlayerHud {
   private setOpen(open: boolean): void {
     if (open === this.open) return;
     this.open = open;
+    if (open) this.closeActions();
     this.assigning = false;
     this.bag.hidden = !open;
     this.bagToggle.setAttribute('aria-expanded', String(open));
@@ -271,7 +337,13 @@ export class PlayerHud {
       const target = this.assigning ? this.slots[0] : this.details.querySelector<HTMLButtonElement>('[data-action="assign"]');
       target?.focus({ preventScroll: true });
     } else if (action === 'equip' || action === 'drop') this.changeItem(action);
-    else if (action === 'sneak' || action === 'whistle' || action === 'relay' || action === 'stop' || action === 'camera') {
+    else if (action === 'attack' || action === 'sneak' || action === 'evade' || action === 'whistle') {
+      const target = this.actionTarget;
+      if (target) {
+        this.closeActions();
+        this.onAction(action, target);
+      }
+    } else if (action === 'relay' || action === 'stop' || action === 'camera') {
       this.onAction(action);
       if (event.detail > 0) button.blur();
     }

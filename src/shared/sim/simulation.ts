@@ -9,11 +9,11 @@
  *    same seed and inputs give bit-identical state on any JS engine.
  *  - The full SimState is server-only. Clients receive projection.ts output.
  */
-import { SLOT_COUNT, teamOfSlot, type ActorKind, type Command, type SlotCommand, type SlotId, type Team } from '../protocol.ts';
+import { SLOT_COUNT, teamOfSlot, type ActorKind, type Command, type HeroAction, type SlotCommand, type SlotId, type Team } from '../protocol.ts';
 import { distance } from './geometry.ts';
 import { getMap, type MapDef, type Point } from './map.ts';
 import { applyOrder, thinkMonster } from './monster.ts';
-import { moveActor, orderGoto, stopActor } from './movement.ts';
+import { ARRIVE_EPS, EVADE_TICKS, moveActor, orderGoto, stopActor } from './movement.ts';
 import { createOperation, updateOperation, workOperation } from './operation.ts';
 import { updatePerception } from './perception.ts';
 import { seedToState } from './rng.ts';
@@ -193,7 +193,16 @@ export function step(state: SimState, commands: readonly SlotCommand[]): SimStat
   for (const actor of state.actors) {
     if (actor.brain) thinkMonster(state, actor, map);
     moveActor(actor, map);
-    if (actor.kind === 'hero') footsteps(state, actor);
+    if (actor.kind === 'hero') {
+      const queued = actor.queuedAction;
+      if (queued && actor.intent.type === 'idle') {
+        delete actor.queuedAction;
+        if (distance(actor.x, actor.z, queued.destination.x, queued.destination.z) <= ARRIVE_EPS) {
+          performHeroAction(state, actor, queued.kind);
+        }
+      }
+      footsteps(state, actor);
+    }
   }
   updateSites(state, map);
   updatePerception(state, map);
@@ -208,16 +217,24 @@ function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapD
   if (!actor) return;
   switch (command.type) {
     case 'moveDir': {
+      delete actor.queuedAction;
       // Re-normalise: the simulation never trusts its caller for speed.
       const len = Math.sqrt(command.dx * command.dx + command.dz * command.dz);
+      const direction = len >= 1e-6 ? { type: 'dir' as const, dx: command.dx / len, dz: command.dz / len } : null;
+      if (actor.intent.type === 'evade') {
+        actor.intent.after = direction;
+        break;
+      }
       stopActor(actor);
-      if (len >= 1e-6) actor.intent = { type: 'dir', dx: command.dx / len, dz: command.dz / len };
+      if (direction) actor.intent = direction;
       break;
     }
     case 'moveTo':
+      delete actor.queuedAction;
       orderGoto(actor, map, command.x, command.z);
       break;
     case 'stop':
+      delete actor.queuedAction;
       stopActor(actor);
       if (state.operation?.worker === actor.id) {
         state.operation.worker = null;
@@ -228,15 +245,21 @@ function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapD
       workOperation(state, map, actor);
       break;
     case 'setGait':
-      actor.sneaking = command.sneak;
-      actor.speed = HERO_SPEED * (command.sneak ? TUNING.hero.sneakSpeedFactor : 1);
+      setGait(actor, command.sneak);
       break;
-    case 'whistle': {
-      if (state.tick < actor.whistleReadyTick) break;
-      actor.whistleReadyTick = state.tick + TUNING.hero.whistleCooldownTicks;
-      const radius = TUNING.hero.whistleNoiseRadius * actor.stealth.noise;
-      state.noises.push({ x: actor.x, z: actor.z, radius, team: actor.team });
-      state.events.push({ kind: 'whistle', x: actor.x, z: actor.z, radius, actorId: actor.id });
+    case 'whistle':
+      whistle(state, actor);
+      break;
+    case 'heroAction': {
+      if (!state.operation || actor.team !== 'light') break;
+      const { action, target } = command;
+      if (action === 'whistle' && state.tick < actor.whistleReadyTick) break;
+      if (actor.queuedAction && !target) stopActor(actor);
+      delete actor.queuedAction;
+      if (!target) performHeroAction(state, actor, action);
+      else if (orderGoto(actor, map, target.x, target.z) && actor.intent.type === 'goto') {
+        actor.queuedAction = { kind: action, destination: { x: actor.intent.x, z: actor.intent.z } };
+      }
       break;
     }
     case 'monsterOrder': {
@@ -244,6 +267,37 @@ function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapD
       const monster = state.actors.find((a) => a.id === command.actorId);
       if (!monster?.brain || monster.brain.ownerSlot !== slot) break;
       applyOrder(monster, monster.brain, map, command);
+      break;
+    }
+  }
+}
+
+function setGait(actor: ActorState, sneak: boolean): void {
+  actor.sneaking = sneak;
+  actor.speed = HERO_SPEED * (sneak ? TUNING.hero.sneakSpeedFactor : 1);
+}
+
+function whistle(state: SimState, actor: ActorState): void {
+  if (state.tick < actor.whistleReadyTick) return;
+  actor.whistleReadyTick = state.tick + TUNING.hero.whistleCooldownTicks;
+  const radius = TUNING.hero.whistleNoiseRadius * actor.stealth.noise;
+  state.noises.push({ x: actor.x, z: actor.z, radius, team: actor.team });
+  state.events.push({ kind: 'whistle', x: actor.x, z: actor.z, radius, actorId: actor.id });
+}
+
+function performHeroAction(state: SimState, actor: ActorState, action: HeroAction): void {
+  switch (action) {
+    case 'sneak': setGait(actor, !actor.sneaking); break;
+    case 'whistle': whistle(state, actor); break;
+    case 'attack':
+      actor.actionMotion = { kind: 'attack', tick: state.tick };
+      break;
+    case 'evade': {
+      if (actor.intent.type === 'evade') break;
+      const after = actor.intent.type === 'dir' ? actor.intent : null;
+      stopActor(actor);
+      actor.intent = { type: 'evade', ticks: EVADE_TICKS, after };
+      actor.actionMotion = { kind: 'evade', tick: state.tick };
       break;
     }
   }

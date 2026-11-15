@@ -200,12 +200,12 @@ async function start(): Promise<void> {
   const toggleCamera = () => input.setMode(rig.mode === 'rts' ? 'hero' : 'rts');
   const hud = new Hud(toggleCamera);
   const playerHud = params.get('region') === 'orchard_operation' && params.get('spectate') !== '1' && params.get('team') !== 'dark'
-    ? new PlayerHud(params.get('hud') === 'preview', (action) => {
+    ? new PlayerHud(params.get('hud') === 'preview', (action, target) => {
       if (action === 'camera') toggleCamera();
-      if (action === 'sneak') input.toggleSneak();
-      if (action === 'whistle') connection.send({ type: 'whistle' });
-      if (action === 'relay' && actors.latest?.operation?.interaction) connection.send({ type: 'workOperation' });
-      if (action === 'stop') connection.send({ type: 'stop' });
+      else if (action === 'relay') {
+        if (actors.latest?.operation?.interaction) connection.send({ type: 'workOperation' });
+      } else if (action === 'stop') connection.send({ type: 'stop' });
+      else connection.send({ type: 'heroAction', action, target });
     })
     : null;
   const canvas = document.getElementById('view') as HTMLCanvasElement;
@@ -324,6 +324,8 @@ async function start(): Promise<void> {
     workOperation: () => Boolean(actors.latest?.operation?.interaction),
     handleUiKey: (event) => playerHud?.handleKey(event) ?? false,
     inventoryOpen: () => playerHud?.isOpen ?? false,
+    usesActionMenu: () => playerHud?.usesActionMenu ?? false,
+    openActionMenu: (x, y, target) => playerHud?.openActions(x, y, target),
     ...(map.region ? { heightAt: world.heightAt } : {}),
   });
   hud.setMode(rig.mode);
@@ -340,6 +342,7 @@ async function start(): Promise<void> {
   let fpsWindowStart = last;
   let initialFocusDone = false;
   let profiling = false;
+  const heroHead = new THREE.Vector3();
 
   renderer.setAnimationLoop(() => {
     const now = performance.now();
@@ -354,6 +357,10 @@ async function start(): Promise<void> {
       initialFocusDone = true;
       // Start centered on the hero and follow their movement in strategy view.
       rig.followHero(hero);
+      if (playerHud) {
+        rig.heroPitch = 1.05;
+        rig.heroDistance = 12;
+      }
       if (params.get('cam') === 'hero' || (playerHud && params.get('cam') !== 'rts')) input.setMode('hero');
       if (params.get('debug') === '1') {
         debugOverlay.visible = true;
@@ -362,6 +369,13 @@ async function start(): Promise<void> {
       }
     }
     rig.update(dt, window.innerWidth / window.innerHeight, hero);
+    if (hero && playerHud) {
+      rig.camera.updateMatrixWorld();
+      heroHead.copy(hero);
+      heroHead.y += 3;
+      heroHead.project(rig.camera);
+      playerHud.setHeroScreenPosition((heroHead.x + 1) * innerWidth / 2, (1 - heroHead.y) * innerHeight / 2, Math.abs(heroHead.z) <= 1);
+    }
     if (observerOnly) return;
     if (actors.latest) visionFog?.update(actors.latest, now);
     world.update?.(dt, rig.camera, rig.lookTarget, rig.mode);

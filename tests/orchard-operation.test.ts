@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { parseCommand } from '../src/shared/protocol.ts';
 import { OPERATION } from '../src/shared/sim/operation.ts';
 import { actorOfSlot, createSim, occupySlot, step, TICK_RATE } from '../src/shared/sim/simulation.ts';
 import { ORCHARD_VALE } from '../src/shared/world/orchardVale.ts';
-import { cmd, DARK_OWNER, LIGHT, LIGHT_MATE, place, post, run, view } from './helpers.ts';
+import { cmd, DARK_OWNER, LIGHT, LIGHT_MATE, place, post, run, runUntil, view } from './helpers.ts';
 
 function scenario() {
   const sim = createSim({ seed: 7, mapId: ORCHARD_VALE.id, operation: true });
@@ -71,5 +72,65 @@ describe('Orchard Vale relay', () => {
     expect(operation.progress).toBe(0);
     expect(view(sim, LIGHT).operation?.interrupted).toBe(true);
     expect(view(sim, DARK_OWNER).operation?.interrupted).toBe(false);
+  });
+});
+
+describe('Orchard Goblin action orders', () => {
+  it('performs a targeted whistle once, at the path destination after arriving', () => {
+    const { sim, light } = scenario();
+    const target = { x: light.x + 2, z: light.z };
+    const heardAt: Array<{ x: number; z: number }> = [];
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'whistle', target })]);
+    expect(sim.events).toEqual([]);
+    expect(view(sim, LIGHT).actors.find((a) => a.id === light.id)?.order).toEqual(target);
+    run(sim, 90, () => {
+      for (const event of sim.events) if (event.kind === 'whistle') heardAt.push({ x: event.x, z: event.z });
+    });
+    expect(heardAt).toHaveLength(1);
+    expect(heardAt[0]!.x).toBeCloseTo(target.x, 1);
+    expect(heardAt[0]!.z).toBeCloseTo(target.z, 1);
+  });
+
+  it('cancels a walk-and-act order on Stop or a replacement shortcut', () => {
+    const { sim, light } = scenario();
+    const target = { x: light.x + 2, z: light.z };
+    const queue = cmd(LIGHT, { type: 'heroAction', action: 'sneak', target });
+    step(sim, [queue]);
+    step(sim, [cmd(LIGHT, { type: 'stop' })]);
+    run(sim, 50);
+    expect(light.sneaking).toBe(false);
+    step(sim, [queue]);
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'attack' })]);
+    expect(light.intent.type).toBe('idle');
+    expect(view(sim, LIGHT).actors.find((a) => a.id === light.id)?.action?.kind).toBe('attack');
+    run(sim, 50);
+    expect(light.sneaking).toBe(false);
+  });
+
+  it('evades from the destination and resumes held movement after an immediate evade', () => {
+    const { sim, light } = scenario();
+    const target = { x: light.x + 1.5, z: light.z };
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'evade', target })]);
+    expect(runUntil(sim, () => light.intent.type === 'evade', 90)).toBeGreaterThan(0);
+    expect(light.x).toBeCloseTo(target.x, 1);
+    run(sim, 9);
+    expect(light.x).toBeGreaterThan(target.x + 2);
+
+    step(sim, [cmd(LIGHT, { type: 'moveDir', dx: -1, dz: 0 })]);
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'evade' })]);
+    run(sim, 9);
+    expect(light.intent.type).toBe('dir');
+  });
+
+  it('validates destinations and scopes context actions to Light operation heroes', () => {
+    const { sim, dark } = scenario();
+    expect(parseCommand({ type: 'heroAction', action: 'attack', target: { x: Infinity, z: 5 } })).toBeNull();
+    expect(parseCommand({ type: 'heroAction', action: 'evade', target: null })).toBeNull();
+    expect(parseCommand({ type: 'heroAction', action: 'whistle', target: { x: 5, z: 8 } })).toEqual({
+      type: 'heroAction', action: 'whistle', target: { x: 5, z: 8 },
+    });
+    step(sim, [cmd(DARK_OWNER, { type: 'heroAction', action: 'evade' })]);
+    expect(dark.intent.type).toBe('idle');
+    expect(dark.actionMotion).toBeUndefined();
   });
 });

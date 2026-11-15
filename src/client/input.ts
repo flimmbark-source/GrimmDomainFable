@@ -21,6 +21,8 @@ export interface InputHost {
   workOperation?(): boolean;
   handleUiKey?(event: KeyboardEvent): boolean;
   inventoryOpen?(): boolean;
+  usesActionMenu?(): boolean;
+  openActionMenu?(x: number, y: number, target: { x: number; z: number }): void;
 }
 
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -29,7 +31,6 @@ export class InputController {
   private readonly keys = new Set<string>();
   private lastDir = { dx: 0, dz: 0 };
   private sneaking = false;
-  private sneakToggled = false;
   private dragging = false;
   private readonly raycaster = new THREE.Raycaster();
 
@@ -65,10 +66,6 @@ export class InputController {
     this.host.onModeChanged(mode);
   }
 
-  toggleSneak(): void {
-    this.sneakToggled = !this.sneakToggled;
-  }
-
   private onKeyDown(e: KeyboardEvent): void {
     if (this.host.handleUiKey?.(e)) {
       e.preventDefault();
@@ -89,22 +86,26 @@ export class InputController {
       if (hero) this.host.rig.followHero(hero);
     }
     if (e.code === 'KeyX' && !e.repeat) this.host.send({ type: 'stop' });
-    if (e.code === 'KeyF' && !e.repeat) this.host.send({ type: 'whistle' });
+    if (e.code === 'KeyF' && !e.repeat && !this.host.usesActionMenu?.()) this.host.send({ type: 'whistle' });
     if (e.code === 'KeyR' && !e.repeat && this.host.workOperation?.()) this.host.send({ type: 'workOperation' });
     if (e.code === 'KeyP' && !e.repeat) {
       const monster = this.host.ownedMonster();
       if (monster !== null) this.host.send({ type: 'monsterOrder', actorId: monster, order: 'patrol' });
     }
+    if (e.code.startsWith('Arrow')) e.preventDefault();
     this.keys.add(e.code);
   }
 
   private onPointerDown(e: PointerEvent): void {
     if (this.host.inventoryOpen?.()) return;
     const rig = this.host.rig;
-    if (rig.mode === 'hero') {
+    const usesMenu = this.host.usesActionMenu?.();
+    if (rig.mode === 'hero' && !(usesMenu && e.button === 2)) {
+      if (e.button !== 0) return;
       this.dragging = true;
       return;
     }
+    if (e.button !== 0 && e.button !== 2) return;
     // RTS view: a click orders the hero to that ground point. For a Dark
     // player who owns a monster, the RIGHT button posts that monster there.
     const rect = this.host.canvas.getBoundingClientRect();
@@ -120,6 +121,10 @@ export class InputController {
         plane.constant = -heightAt(hit.x, hit.z);
         if (!this.raycaster.ray.intersectPlane(plane, hit)) return;
       }
+    }
+    if (usesMenu && e.button === 2) {
+      this.host.openActionMenu?.(e.clientX, e.clientY, { x: hit.x, z: hit.z });
+      return;
     }
     const monster = e.button === 2 ? this.host.ownedMonster() : null;
     if (monster !== null) this.host.send({ type: 'monsterOrder', actorId: monster, order: 'guard', x: hit.x, z: hit.z });
@@ -138,21 +143,22 @@ export class InputController {
       this.keys.clear();
       this.dragging = false;
     }
-    // Hold Shift to sneak, in either view.
-    const sneak = this.sneakToggled || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
+    const usesMenu = this.host.usesActionMenu?.();
+    // The Orchard action controls manage their gait through the server command.
+    const sneak = !usesMenu && (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'));
     if (sneak !== this.sneaking) {
       this.sneaking = sneak;
       this.host.send({ type: 'setGait', sneak });
     }
-    const right = this.axis(['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']);
-    const forward = this.axis(['KeyW', 'ArrowUp'], ['KeyS', 'ArrowDown']);
+    const right = usesMenu ? this.axis(['ArrowRight'], ['ArrowLeft']) : this.axis(['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']);
+    const forward = usesMenu ? this.axis(['ArrowUp'], ['ArrowDown']) : this.axis(['KeyW', 'ArrowUp'], ['KeyS', 'ArrowDown']);
 
     if (rig.mode === 'rts') {
       if (right || forward) rig.panRts(right, -forward, dt);
       return;
     }
 
-    rig.turnHero(this.axis(['KeyQ'], ['KeyE']), dt);
+    rig.turnHero(usesMenu ? 0 : this.axis(['KeyQ'], ['KeyE']), dt);
     const basis = rig.heroBasis();
     let dx = basis.forwardX * forward + basis.rightX * right;
     let dz = basis.forwardZ * forward + basis.rightZ * right;
