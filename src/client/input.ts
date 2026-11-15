@@ -75,6 +75,8 @@ export class InputController {
       return;
     }
     if (this.host.inventoryOpen?.() || e.ctrlKey || e.metaKey || e.altKey) return;
+    if ((e.code === 'Tab' || e.code === 'Space') && e.target instanceof HTMLButtonElement && e.target.closest('#player-hud')) return;
+    if (e.code === 'Tab' && e.shiftKey) return;
     if (e.code === 'Tab') {
       e.preventDefault();
       if (!e.repeat) this.setMode(this.host.rig.mode === 'rts' ? 'hero' : 'rts');

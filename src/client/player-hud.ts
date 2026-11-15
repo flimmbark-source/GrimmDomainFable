@@ -36,10 +36,10 @@ const previewItems: readonly Item[] = [
 ];
 
 const actions = [
-  { id: 'strike', label: 'Strike', hint: 'Combat is pending in this playtest' },
-  { id: 'evade', label: 'Evade', hint: 'Evade is pending in this playtest' },
-  { id: 'sneak', label: 'Sneak', hint: 'Toggle sneak or hold Shift' },
-  { id: 'whistle', label: 'Whistle', hint: 'Whistle (F)' },
+  { id: 'strike', label: 'Strike', hint: 'Combat is pending in this playtest', key: null },
+  { id: 'evade', label: 'Evade', hint: 'Evade is pending in this playtest', key: null },
+  { id: 'sneak', label: 'Sneak', hint: 'Click to toggle sneak or hold Shift', key: 'Shift' },
+  { id: 'whistle', label: 'Whistle', hint: 'Whistle (F)', key: 'F' },
 ] as const;
 
 type Action = typeof actions[number]['id'] | 'relay' | 'stop' | 'camera';
@@ -62,12 +62,16 @@ export class PlayerHud {
   private readonly slots: HTMLButtonElement[];
   private readonly objective: HTMLElement;
   private readonly relay: HTMLButtonElement;
-  private readonly meters: HTMLElement;
+  private readonly location: HTMLElement;
+  private readonly output: HTMLProgressElement;
+  private readonly offline: HTMLProgressElement;
+  private readonly objectiveDetails: HTMLElement;
   private readonly detection: HTMLElement;
   private readonly sneak: HTMLButtonElement;
   private readonly whistle: HTMLButtonElement;
   private readonly cooldown: HTMLElement;
   private readonly camera: HTMLButtonElement;
+  private readonly cameraLabel: HTMLElement;
 
   constructor(private readonly preview: boolean, private readonly onAction: (action: Action) => void) {
     if (preview) {
@@ -84,10 +88,20 @@ export class PlayerHud {
     this.root.innerHTML = `
       <section class="ph-objective ph-surface" aria-label="Orchard objective">
         <div class="ph-objective-title"><span class="ph-marker" aria-hidden="true"></span><strong></strong></div>
-        <div class="ph-objective-meters"></div>
-        <button type="button" class="ph-relay" data-action="relay" hidden></button>
+        <div class="ph-objective-details">
+          <div class="ph-location">North of the bridge</div>
+          <div class="ph-objective-meter ph-output">
+            <div>Dark relay output <span class="ph-total" aria-hidden="true"></span></div>
+            <progress aria-label="Dark relay output"></progress>
+          </div>
+          <div class="ph-objective-meter ph-offline" hidden>
+            <div>Time held offline <span class="ph-total" aria-hidden="true"></span></div>
+            <progress aria-label="Time held offline"></progress>
+          </div>
+        </div>
       </section>
-      <button type="button" class="ph-view ph-surface" data-action="camera">Hero view <kbd>Tab</kbd></button>
+      <button type="button" class="ph-view ph-surface" data-action="camera" aria-keyshortcuts="Tab"><span></span> <kbd>Tab</kbd></button>
+      <button type="button" class="ph-relay ph-surface" data-action="relay" hidden></button>
       <section id="player-inventory" class="ph-bag ph-surface" aria-label="Inventory" hidden>
         <header class="ph-bag-header"><strong>Inventory</strong>${preview ? '<span>Preview kit</span>' : ''}<button type="button" class="ph-close" data-action="bag" aria-label="Close inventory">Close <kbd>Esc</kbd></button></header>
         <div class="ph-storage">
@@ -103,18 +117,20 @@ export class PlayerHud {
             ${preview ? '<meter class="ph-health" min="0" max="100" value="83" aria-label="Sample health"></meter>' : ''}
           </div>
         </div>
-        <div class="ph-actions" aria-label="Player actions">
-          ${actions.map(({ id, label, hint }) => `<button type="button" class="ph-action" data-action="${id}" title="${hint}" ${id === 'strike' || id === 'evade' ? 'disabled' : ''}>
-            <span class="ph-slot">${icon(id)}${id === 'whistle' ? '<span class="ph-cooldown" hidden></span>' : ''}</span><span>${label}</span>
+        <div class="ph-actions" role="group" aria-label="Player actions">
+          ${actions.map(({ id, label, hint, key }) => `<button type="button" class="ph-action" data-action="${id}" title="${hint}" ${key ? `aria-keyshortcuts="${key}"` : 'disabled'}>
+            <span class="ph-slot">${icon(id)}${key ? `<kbd aria-hidden="true">${key}</kbd>` : ''}${id === 'whistle' ? '<span class="ph-cooldown" hidden></span>' : ''}</span><span>${label}</span>
           </button>`).join('')}
         </div>
-        <div class="ph-quick" aria-label="Quick slots">
-          ${this.quick.map((_, index) => `<button type="button" class="ph-slot ph-quick-slot" data-quick="${index}"></button>`).join('')}
+        <div class="ph-kit">
+          <div class="ph-quick" role="group" aria-label="Quick slots">
+            ${this.quick.map((_, index) => `<button type="button" class="ph-slot ph-quick-slot" data-quick="${index}"></button>`).join('')}
+          </div>
+          <button type="button" class="ph-bag-toggle" data-action="bag" aria-controls="player-inventory" aria-expanded="false" aria-label="Inventory" aria-keyshortcuts="I">
+            ${icon('bag')}<span>Inventory</span><kbd aria-hidden="true">I</kbd>
+          </button>
+          ${preview ? `<div class="ph-cargo">${icon('cargo')}<div><strong>Carrying supplies</strong><meter min="0" max="100" value="65" aria-label="Sample cargo progress"></meter></div></div>` : ''}
         </div>
-        <button type="button" class="ph-bag-toggle" data-action="bag" aria-controls="player-inventory" aria-expanded="false" aria-label="Inventory (I)">
-          ${icon('bag')}<kbd>I</kbd>
-        </button>
-        <div class="ph-cargo">${icon('cargo')}<div>${preview ? '<strong>Carrying supplies</strong><meter min="0" max="100" value="65" aria-label="Sample cargo progress"></meter>' : '<strong>No cargo</strong><small>Objective supplies</small>'}</div></div>
       </div>`;
     document.body.append(this.root);
     this.bag = this.element('#player-inventory');
@@ -125,12 +141,17 @@ export class PlayerHud {
     this.slots = Array.from(this.root.querySelectorAll<HTMLButtonElement>('[data-quick]'));
     this.objective = this.element('.ph-objective-title strong');
     this.relay = this.element('.ph-relay');
-    this.meters = this.element('.ph-objective-meters');
+    this.location = this.element('.ph-location');
+    this.output = this.element('.ph-output progress');
+    this.offline = this.element('.ph-offline progress');
+    this.objectiveDetails = this.element('.ph-objective-details');
     this.detection = this.element('.ph-detection');
     this.sneak = this.element('[data-action="sneak"]');
     this.whistle = this.element('[data-action="whistle"]');
     this.cooldown = this.element('.ph-cooldown');
     this.camera = this.element('.ph-view');
+    this.cameraLabel = this.element('.ph-view span');
+    this.setMode(false);
     this.root.addEventListener('click', (event) => this.click(event));
     this.renderBag();
     this.renderQuick();
@@ -148,7 +169,11 @@ export class PlayerHud {
   }
 
   setMode(hero: boolean): void {
-    this.camera.innerHTML = `${hero ? 'Strategy view' : 'Hero view'} <kbd>Tab</kbd>`;
+    const current = hero ? 'Hero view' : 'Strategy view';
+    const target = hero ? 'Strategy view' : 'Hero view';
+    this.cameraLabel.textContent = current;
+    this.camera.title = `Switch to ${target} (Tab)`;
+    this.camera.setAttribute('aria-label', `${current}. Switch to ${target}`);
   }
 
   handleKey(event: KeyboardEvent): boolean {
@@ -172,7 +197,8 @@ export class PlayerHud {
     const notice = you.spotted ? 'Spotted' : you.attention > 0 ? 'Noticed' : 'Unseen';
     const seconds = Math.ceil(you.whistleCooldown / 30);
     const key = JSON.stringify([operation.active, operation.offlineSeconds, operation.production,
-      operation.interaction, Math.floor(operation.progress * 100), operation.interrupted, operation.result, sneaking, notice, seconds]);
+      operation.productionGoal, operation.offlineGoal, operation.interaction, Math.floor(operation.progress * 100),
+      operation.interrupted, operation.result, sneaking, notice, seconds]);
     if (key === this.snapshotKey) return;
     this.snapshotKey = key;
     this.detection.textContent = notice;
@@ -188,16 +214,25 @@ export class PlayerHud {
   private setObjective(op: OperationView): void {
     this.objective.textContent = op.result === 'light' ? 'Light secured Orchard Vale' : op.result === 'dark' ? 'Dark held Orchard Vale' :
       op.active ? 'Sabotage the Dark relay' : 'Keep the relay offline';
-    this.meters.textContent = op.result ? '' : op.active ?
-      `North of the bridge · Output ${op.production}/${op.productionGoal}` :
-      `Offline ${op.offlineSeconds}/${op.offlineGoal}s · Output ${op.production}/${op.productionGoal}`;
-    this.meters.hidden = Boolean(op.result);
+    this.objectiveDetails.hidden = Boolean(op.result);
+    this.location.hidden = !op.active;
+    this.offline.parentElement!.hidden = op.active;
+    this.setProgress(this.output, op.production, op.productionGoal);
+    if (!op.active) this.setProgress(this.offline, op.offlineSeconds, op.offlineGoal, 's');
     this.relay.hidden = Boolean(op.result) || (!op.interaction && !op.interrupted);
     this.relay.disabled = !op.interaction && op.progress === 0;
     this.relay.dataset.action = op.progress > 0 ? 'stop' : 'relay';
-    const prompt = op.progress > 0 ? `Sabotaging ${Math.floor(op.progress * 100)}% <kbd>X</kbd> Cancel` :
-      op.interaction ? `<kbd>R</kbd> ${op.interrupted ? 'Interrupted · Retry sabotage' : 'Sabotage relay'}` : 'Interrupted by a nearby threat';
+    const prompt = op.progress > 0 ? `<span>Sabotaging ${Math.floor(op.progress * 100)}%</span><span>Cancel <kbd>X</kbd></span>` :
+      op.interaction ? `<span>${op.interrupted ? 'Retry sabotage' : 'Sabotage relay'}</span><kbd>R</kbd>` : 'Interrupted by a nearby threat';
     if (this.relay.innerHTML !== prompt) this.relay.innerHTML = prompt;
+  }
+
+  private setProgress(progress: HTMLProgressElement, value: number, max: number, unit = ''): void {
+    progress.max = max;
+    progress.value = value;
+    const total = `${value} / ${max}${unit}`;
+    progress.setAttribute('aria-valuetext', total);
+    progress.parentElement!.querySelector('.ph-total')!.textContent = total;
   }
 
   private element<T extends HTMLElement>(selector: string): T {
@@ -238,7 +273,7 @@ export class PlayerHud {
     } else if (action === 'equip' || action === 'drop') this.changeItem(action);
     else if (action === 'sneak' || action === 'whistle' || action === 'relay' || action === 'stop' || action === 'camera') {
       this.onAction(action);
-      button.blur();
+      if (event.detail > 0) button.blur();
     }
   }
 
@@ -328,6 +363,7 @@ export class PlayerHud {
         button.innerHTML = `<kbd>${key}</kbd>${item ? `${icon(item.id)}<span class="ph-count">${item.count}</span>` : ''}`;
       }
       button.setAttribute('aria-label', `Quick slot ${key}${item ? `: ${item.name}, ${item.count}` : ': empty'}`);
+      button.classList.toggle('is-empty', !item && !this.assigning);
       button.setAttribute('aria-pressed', String(Boolean(this.open && item && item.id === this.selected)));
       button.disabled = !item && !this.assigning;
       button.title = item ? `Inspect ${item.name} (${key})` : `Quick slot ${key}`;
