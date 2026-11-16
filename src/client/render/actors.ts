@@ -36,12 +36,19 @@ interface ActorVisual {
   ghost: boolean;
   /** Tick of the last attack already drawn. */
   attackTick: number;
+  /** Last health fraction seen, to notice a hit or a heal. */
+  health: number;
+  smoke?: THREE.Group;
 }
 
 /** A short-lived ground mark showing where an attack reached. */
 interface AttackMark {
   mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
   age: number;
+  /** Seconds it lasts, peak opacity, and how much it swells. */
+  life: number;
+  peak: number;
+  grow: number;
 }
 
 const GHOST_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.42, depthWrite: false });
@@ -209,8 +216,10 @@ export class ActorLayer {
     for (let i = this.marks.length - 1; i >= 0; i--) {
       const mark = this.marks[i]!;
       mark.age += dt;
-      mark.mesh.material.opacity = 0.7 * Math.max(0, 1 - mark.age / MARK_SECONDS);
-      if (mark.age < MARK_SECONDS) continue;
+      const t = Math.min(1, mark.age / mark.life);
+      mark.mesh.material.opacity = mark.peak * (1 - t) * (1 - t);
+      if (mark.grow) mark.mesh.scale.setScalar(1 + mark.grow * t);
+      if (mark.age < mark.life) continue;
       this.group.remove(mark.mesh);
       mark.mesh.geometry.dispose();
       mark.mesh.material.dispose();
@@ -262,6 +271,10 @@ export class ActorLayer {
       });
     }
     const health = actor.health ?? 1;
+    // A drop in health is a hit; a rise is healing. Both get a brief burst.
+    if (!ghost && Math.abs(health - visual.health) > 0.004) this.addBurst(visual, health < visual.health ? 0xff5a3c : 0x8ff0a0, actor.radius);
+    visual.health = health;
+    this.updateSmoke(visual, actor.smoked === true);
     const show = health < 1 && !ghost;
     if (!show) {
       if (visual.bar) visual.bar.back.visible = visual.bar.fill.visible = false;
@@ -306,12 +319,63 @@ export class ActorLayer {
       geometry.rotateX(Math.PI / 2);
     }
     const color = actor.team === 'dark' ? 0xff6a8a : 0xfff0a8;
-    const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
-    mesh.position.set(actor.x, this.heightAt(actor.x, actor.z) + 0.12, actor.z);
-    mesh.rotation.y = Math.atan2(actor.dirX, actor.dirZ);
-    mesh.renderOrder = 25;
+    const y = this.heightAt(actor.x, actor.z) + 0.12;
+    const yaw = Math.atan2(actor.dirX, actor.dirZ);
+    const lay = (geo: THREE.BufferGeometry, peak: number) => {
+      const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: peak, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }));
+      mesh.position.set(actor.x, y, actor.z);
+      mesh.rotation.y = yaw;
+      mesh.renderOrder = 25;
+      this.group.add(mesh);
+      this.marks.push({ mesh, age: 0, life: MARK_SECONDS, peak, grow: 0 });
+    };
+    lay(geometry, 0.3);
+    // A bright leading edge: the arc of the blade, or the head of the shot.
+    if (weapon?.pattern === 'line') {
+      const tip = new THREE.CircleGeometry(0.34, 14);
+      tip.rotateX(-Math.PI / 2);
+      tip.translate(0, 0.01, reach);
+      lay(tip, 0.95);
+    } else {
+      const half = Math.acos(weapon?.halfArcCos ?? 0.5);
+      const edge = new THREE.RingGeometry(reach * 0.82, reach, 24, 1, Math.PI / 2 - half, half * 2);
+      edge.rotateX(Math.PI / 2);
+      edge.translate(0, 0.01, 0);
+      lay(edge, 0.95);
+    }
+  }
+
+  /** A quick expanding ring at an actor's feet: red for a hit, green for healing. */
+  private addBurst(visual: ActorVisual, color: number, radius: number): void {
+    const geo = new THREE.RingGeometry(radius + 0.15, radius + 0.42, 28);
+    geo.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    mesh.position.copy(visual.root.position);
+    mesh.position.y += 0.14;
+    mesh.renderOrder = 26;
     this.group.add(mesh);
-    this.marks.push({ mesh, age: 0 });
+    this.marks.push({ mesh, age: 0, life: 0.45, peak: 0.9, grow: 1.1 });
+  }
+
+  /** Smoke-pot cloud round a hidden hero. */
+  private updateSmoke(visual: ActorVisual, smoked: boolean): void {
+    if (!smoked) {
+      if (visual.smoke) visual.smoke.visible = false;
+      return;
+    }
+    if (!visual.smoke) {
+      visual.smoke = new THREE.Group();
+      const material = new THREE.MeshLambertMaterial({ color: 0xb9b4ad, transparent: true, opacity: 0.62, depthWrite: false, flatShading: true });
+      for (let i = 0; i < 7; i++) {
+        const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7 + (i % 3) * 0.22, 1), material);
+        const angle = i * 0.9;
+        puff.position.set(Math.cos(angle) * 0.9, 0.7 + (i % 4) * 0.42, Math.sin(angle) * 0.9);
+        visual.smoke.add(puff);
+      }
+      visual.root.add(visual.smoke);
+    }
+    visual.smoke.visible = true;
+    visual.smoke.rotation.y += 0.01;
   }
 
   /** A flat tint of the model drawn only where something is in front of it. */
@@ -382,7 +446,7 @@ export class ActorLayer {
     }
     const visual: ActorVisual = {
       root, model, yaw: Math.atan2(actor.dirX, actor.dirZ), walkPhase: 0, signAge: 0, appear: 0,
-      base, ghost: false, attackTick: actor.action?.tick ?? -1,
+      base, ghost: false, attackTick: actor.action?.tick ?? -1, health: actor.health ?? 1,
     };
     this.visuals.set(actor.id, visual);
     this.group.add(root);

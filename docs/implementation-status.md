@@ -1,8 +1,12 @@
 # Implementation status
 
-**Last updated:** 2026-11-12, M1 camera-follow correction and creator chase feedback on `integration/m0-preserve-design-20261111`.
+**Last updated:** 2026-11-16 (Orchard contest slice added; the M1 text below is from 2026-11-12), M1 camera-follow correction and creator chase feedback on `integration/m0-preserve-design-20261111`.
 
 This file reports what the code does and what was actually run. Behaviour described here is **implemented behaviour, not approved design**. Choices engineering had to make are listed as P-1 to P-12 in [decisions.md](decisions.md) for creator review. **M1 still requires full creator acceptance** ([playtest checklist](playtests/m1-playtest-checklist.md)). The creator has tested the chase but not yet approved the complete set of M1 interactions.
+
+## Orchard Vale contest slice (2026-11-16, branch `orchard/context-actions`)
+
+The relay contest (`?region=orchard_operation`) now has server-authoritative health, inventory, equipment and quick slots; 29 provisional items; hero and monster combat; Dark army command alongside a Dark Hero who fights in person; and the Light body-and-ghost recovery loop with two stand-in wayshrines. Rules, controls, exact playtest steps, results and gaps are in the [Orchard Vale gameplay milestone](production/orchard-vale-gameplay.md). Engineering choices are P-20 to P-33 in [decisions.md](decisions.md); none is approved design. The M1 crossing and the plain Orchard Vale hunt are unchanged.
 
 ## Creator observation and follow-up fixes (2026-11-12)
 

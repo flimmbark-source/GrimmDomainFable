@@ -118,6 +118,7 @@ export class PlayerHud {
           <div class="ph-portrait">${icon('portrait')}</div>
           <div class="ph-identity"><strong class="ph-name"></strong>
             <div class="ph-health-row"><meter class="ph-health" min="0" max="100" value="100" aria-label="Health"></meter><span class="ph-health-text"></span></div>
+            <div class="ph-vignette" aria-hidden="true"></div>
             <div class="ph-stats"></div>
           </div>
         </div>
@@ -232,6 +233,7 @@ export class PlayerHud {
     this.heroMode = hero;
   }
   private heroMode = false;
+  private lastHp: number | null = null;
 
   handleKey(event: KeyboardEvent): boolean {
     if (!this.enabled || event.ctrlKey || event.metaKey || event.altKey) return false;
@@ -293,7 +295,7 @@ export class PlayerHud {
     const key = JSON.stringify([operation.active, operation.offlineSeconds, operation.production, operation.energy, operation.energyPerSecond,
       operation.productionGoal, operation.offlineGoal, operation.interaction, Math.floor(operation.progress * 100),
       operation.interrupted, operation.result, sneaking, notice, seconds, kit.hp, kit.dead, kit.interaction,
-      kit.channel && [kit.channel.kind, kit.channel.seconds], kit.ritualLost, kit.returnSeconds, threatened]);
+      kit.channel && [kit.channel.kind, kit.channel.seconds], kit.ritualLost, kit.returnSeconds, threatened, kit.maxHp, kit.hasteSeconds]);
     if (key === this.snapshotKey) return;
     this.snapshotKey = key;
 
@@ -309,6 +311,16 @@ export class PlayerHud {
 
     this.heroName.textContent = kit.dead ? (this.team === 'light' ? 'Ghost' : 'Fallen') : this.team === 'light' ? 'Goblin Outlaw' : 'Dark Hero';
     this.root.dataset.dead = String(kit.dead);
+    // Feedback for the player's own condition: a flash when hurt, a cold
+    // wash over the world while a ghost.
+    if (this.lastHp !== null && kit.hp < this.lastHp && !kit.dead) {
+      this.root.classList.remove('ph-hurt');
+      void this.root.offsetWidth;
+      this.root.classList.add('ph-hurt');
+    }
+    this.lastHp = kit.hp;
+    document.body.dataset.ghost = String(kit.dead && this.team === 'light');
+    this.root.dataset.haste = String(kit.hasteSeconds > 0);
     this.health.max = kit.maxHp;
     this.health.low = kit.maxHp * 0.3;
     this.health.high = kit.maxHp * 0.6;
@@ -456,7 +468,7 @@ export class PlayerHud {
   }
 
   private itemButton(item: ItemId, label: string, count: number): string {
-    return `<button type="button" class="ph-slot" data-item="${item}" aria-label="${label}" title="${label}" aria-pressed="false">${itemIcon(item)}${count > 1 ? `<span class="ph-count">${count}</span>` : ''}</button>`;
+    return `<button type="button" class="ph-slot" data-kind="${ITEMS[item].kind}" data-item="${item}" aria-label="${label}" title="${label}" aria-pressed="false">${itemIcon(item)}${count > 1 ? `<span class="ph-count">${count}</span>` : ''}</button>`;
   }
 
   private renderStats(kit: KitView): void {

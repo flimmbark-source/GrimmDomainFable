@@ -185,50 +185,92 @@ function castleParts(): Part[] {
 // --- Characters (placeholders; hero identities are not decided) -------------
 
 function lightHeroParts(): Part[] {
+  // Goblin Outlaw: hunched, big-headed, long-eared, hooded in the Light colour
+  // with an orange scarf. Built to read from the high camera: the head, ears
+  // and blade are oversized on purpose.
+  const skin = P.goblinSkin;
+  const scarf = 0xd9822b;
+  const cloth = 0x4a3a2c;
+  const side = (x: 1 | -1): Part[] => [
+    { geo: box(0.3, 0.2, 0.46), color: 0x2e2118, pos: [x * 0.22, 0.1, 0.06], shade: 0.1 }, // boot
+    { geo: cyl(0.14, 0.17, 0.5, 6), color: cloth, pos: [x * 0.22, 0.44, 0] }, // leg
+    { geo: cyl(0.12, 0.15, 0.62, 6), color: P.lightTeam, pos: [x * 0.56, 1.14, 0.1], rot: [0.35, 0, x * 0.55] }, // sleeve
+    { geo: blob(0.17, 0), color: skin, pos: [x * 0.74, 0.86, 0.26], shade: 0.1 }, // hand
+    { geo: cone(0.16, 0.78, 4), color: skin, pos: [x * 0.74, 1.98, -0.02], rot: [0, 0, -x * 1.25], shade: 0.05 }, // ear
+    { geo: blob(0.075, 0), color: 0xfff2a0, pos: [x * 0.17, 1.9, 0.4], shade: 0 }, // eye
+  ];
   return [
-    { geo: cyl(0.2, 0.24, 0.55, 6), color: P.leather, pos: [-0.24, 0.28, 0] },
-    { geo: cyl(0.2, 0.24, 0.55, 6), color: P.leather, pos: [0.24, 0.28, 0] },
-    { geo: cyl(0.42, 0.56, 0.95, 8), color: P.lightTeam, pos: [0, 0.95, 0] },
-    { geo: cyl(0.58, 0.58, 0.14, 8), color: P.lightTeamTrim, pos: [0, 0.72, 0], shade: 0 },
-    // Oversized head and hands: readable from the high camera.
-    { geo: blob(0.46), color: P.skin, pos: [0, 1.82, 0.04], shade: 0.15 },
-    { geo: cone(0.66, 1.0, 7), color: P.lightTeam, pos: [0, 2.22, -0.14], rot: [-0.3, 0, 0], shade: 0.15 },
-    { geo: blob(0.2, 0), color: P.skin, pos: [-0.68, 0.95, 0.12], shade: 0.1 },
-    { geo: blob(0.2, 0), color: P.skin, pos: [0.68, 0.95, 0.12], shade: 0.1 },
-    { geo: cyl(0.14, 0.17, 0.6, 6), color: P.lightTeam, pos: [-0.56, 1.2, 0.04], rot: [0, 0, -0.5] },
-    { geo: cyl(0.14, 0.17, 0.6, 6), color: P.lightTeam, pos: [0.56, 1.2, 0.04], rot: [0, 0, 0.5] },
-    { geo: box(0.55, 0.6, 0.3), color: P.leather, pos: [0, 1.1, -0.48] },
-    { geo: box(0.1, 0.1, 0.22), color: P.skin, pos: [0, 1.78, 0.5], shade: 0 }, // nose = facing cue
+    ...side(1), ...side(-1),
+    { geo: cyl(0.36, 0.5, 0.82, 8), color: P.leather, pos: [0, 1.0, 0], rot: [0.12, 0, 0] }, // jerkin
+    { geo: cyl(0.52, 0.52, 0.12, 8), color: 0x2e2118, pos: [0, 0.74, 0] }, // belt
+    { geo: box(0.16, 0.14, 0.08), color: P.lightTeamTrim, pos: [0, 0.74, 0.5], shade: 0 }, // buckle
+    { geo: cyl(0.42, 0.34, 0.24, 8), color: scarf, pos: [0, 1.46, 0.04], shade: 0.1 }, // scarf
+    { geo: box(0.2, 0.5, 0.08), color: scarf, pos: [0.2, 1.2, 0.36], rot: [0.1, 0, -0.2], shade: 0.1 }, // scarf tail
+    { geo: blob(0.44), color: skin, pos: [0, 1.84, 0.08], shade: 0.15 }, // head
+    { geo: cone(0.1, 0.4, 5), color: skin, pos: [0, 1.76, 0.56], rot: [Math.PI / 2, 0, 0], shade: 0 }, // nose = facing cue
+    { geo: box(0.3, 0.05, 0.08), color: 0x33421f, pos: [0, 1.62, 0.44], shade: 0 }, // grin
+    { geo: cone(0.6, 0.95, 7), color: P.lightTeam, pos: [0, 2.2, -0.16], rot: [-0.42, 0, 0], shade: 0.2 }, // hood
+    { geo: box(0.92, 1.25, 0.1), color: P.lightTeam, pos: [0, 0.98, -0.4], rot: [0.14, 0, 0], shade: 0.4 }, // cloak
+    { geo: box(0.48, 0.44, 0.24), color: P.leather, pos: [-0.2, 0.9, -0.52], rot: [0, 0, 0.1] }, // satchel
+    // Blade in the right hand.
+    { geo: box(0.08, 0.1, 0.22), color: 0x2e2118, pos: [0.74, 0.88, 0.42], shade: 0 },
+    { geo: cone(0.09, 0.62, 4), color: P.steel, pos: [0.74, 0.9, 0.82], rot: [Math.PI / 2, 0, 0], shade: 0 },
   ];
 }
 
 function darkHeroParts(): Part[] {
+  // Dark Hero: tall, plated and horned, with a torn cape and a heavy cleaver.
+  const plate = 0x4b4458;
+  const side = (x: 1 | -1): Part[] => [
+    { geo: box(0.34, 0.24, 0.52), color: plate, pos: [x * 0.26, 0.12, 0.06], shade: 0.1 }, // sabaton
+    { geo: cyl(0.17, 0.2, 0.8, 6), color: P.darkTeamTrim, pos: [x * 0.26, 0.6, 0] }, // leg
+    { geo: blob(0.4, 0), color: plate, pos: [x * 0.66, 1.98, 0], scale: [1.25, 0.8, 1.1] }, // pauldron
+    { geo: cone(0.13, 0.5, 4), color: P.steel, pos: [x * 0.92, 2.26, 0], rot: [0, 0, -x * 0.7], shade: 0 }, // pauldron spike
+    { geo: cyl(0.15, 0.18, 0.78, 6), color: P.darkTeamTrim, pos: [x * 0.72, 1.5, 0.08], rot: [0.25, 0, x * 0.2] }, // arm
+    { geo: blob(0.2, 0), color: plate, pos: [x * 0.78, 1.08, 0.2], shade: 0.1 }, // gauntlet
+    { geo: cone(0.12, 0.9, 5), color: 0xd8d2c0, pos: [x * 0.4, 2.98, -0.04], rot: [-0.2, 0, -x * 0.6], shade: 0 }, // horn
+  ];
   return [
-    { geo: cone(0.72, 1.7, 8), color: P.darkTeamTrim, pos: [0, 0.85, 0], shade: 0.4 },
-    { geo: cyl(0.4, 0.55, 0.9, 8), color: P.darkTeam, pos: [0, 1.45, 0] },
-    { geo: blob(0.38, 0), color: P.steel, pos: [-0.62, 1.85, 0], scale: [1.2, 0.8, 1] },
-    { geo: blob(0.38, 0), color: P.steel, pos: [0.62, 1.85, 0], scale: [1.2, 0.8, 1] },
-    { geo: blob(0.4), color: P.darkTeamTrim, pos: [0, 2.3, 0.02], shade: 0.1 },
-    { geo: cone(0.13, 0.85, 5), color: P.steel, pos: [-0.38, 2.82, 0], rot: [0, 0, 0.55], shade: 0 },
-    { geo: cone(0.13, 0.85, 5), color: P.steel, pos: [0.38, 2.82, 0], rot: [0, 0, -0.55], shade: 0 },
-    { geo: box(0.5, 0.09, 0.12), color: P.eyeGlow, pos: [0, 2.32, 0.36], shade: 0 }, // visor = facing cue
-    { geo: box(1.3, 1.9, 0.12), color: P.darkTeam, pos: [0, 1.25, -0.42], rot: [0.16, 0, 0], shade: 0.5 },
+    ...side(1), ...side(-1),
+    { geo: cyl(0.5, 0.66, 0.9, 8), color: P.darkTeam, pos: [0, 0.85, 0], shade: 0.3 }, // tabard skirt
+    { geo: cyl(0.52, 0.46, 0.86, 8), color: plate, pos: [0, 1.62, 0], shade: 0.1 }, // breastplate
+    { geo: box(0.2, 0.9, 0.06), color: P.darkTeam, pos: [0, 1.5, 0.5], shade: 0 }, // crimson stripe
+    { geo: cyl(0.6, 0.6, 0.12, 8), color: 0x1b1420, pos: [0, 1.2, 0] }, // belt
+    { geo: blob(0.4), color: plate, pos: [0, 2.42, 0.02], scale: [1, 1.1, 1], shade: 0.1 }, // helm
+    { geo: box(0.5, 0.09, 0.12), color: P.eyeGlow, pos: [0, 2.44, 0.38], shade: 0 }, // visor = facing cue
+    { geo: box(0.1, 0.34, 0.12), color: 0x1b1420, pos: [0, 2.26, 0.4], shade: 0 }, // visor slit
+    { geo: box(1.4, 1.5, 0.1), color: P.darkTeam, pos: [0, 1.5, -0.46], rot: [0.14, 0, 0], shade: 0.5 }, // cape
+    { geo: box(0.5, 0.7, 0.1), color: P.darkTeam, pos: [-0.44, 0.55, -0.6], rot: [0.2, 0, 0.12], shade: 0.5 }, // torn cape ends
+    { geo: box(0.44, 0.5, 0.1), color: P.darkTeam, pos: [0.46, 0.66, -0.58], rot: [0.2, 0, -0.1], shade: 0.5 },
+    // Cleaver in the right hand.
+    { geo: cyl(0.05, 0.05, 0.5, 5), color: 0x2e2118, pos: [0.78, 1.1, 0.46], rot: [Math.PI / 2, 0, 0], shade: 0 },
+    { geo: box(0.07, 0.5, 0.8), color: P.steel, pos: [0.78, 1.22, 1.06], shade: 0 },
   ];
 }
 
 function monsterParts(): Part[] {
-  const leg = (x: number, z: number): Part => ({ geo: cyl(0.14, 0.2, 0.8, 5), color: P.fur, pos: [x, 0.4, z] });
+  const leg = (x: number, z: number): Part[] => [
+    { geo: cyl(0.16, 0.22, 0.62, 5), color: P.fur, pos: [x, 0.62, z], rot: [z > 0 ? 0.25 : -0.3, 0, 0] },
+    { geo: cyl(0.1, 0.14, 0.5, 5), color: P.fur, pos: [x, 0.25, z + (z > 0 ? 0.1 : -0.12)] },
+    { geo: cone(0.16, 0.34, 4), color: 0x1e1b26, pos: [x, 0.08, z + (z > 0 ? 0.26 : 0.02)], rot: [Math.PI / 2, 0, 0], shade: 0 }, // claws
+  ];
+  const spine = [0.55, 0.2, -0.15, -0.5, -0.85].map((z, i): Part => (
+    { geo: cone(0.1, 0.5 - i * 0.05, 4), color: P.furLight, pos: [0, 1.86 - i * 0.12, z], rot: [-0.5, 0, 0], shade: 0 }
+  ));
   return [
-    leg(-0.38, 0.6), leg(0.38, 0.6), leg(-0.36, -0.65), leg(0.36, -0.65),
-    { geo: blob(0.75), color: P.fur, pos: [0, 1.05, -0.1], scale: [0.85, 0.8, 1.45] },
-    { geo: blob(0.62), color: P.furLight, pos: [0, 1.4, 0.55], scale: [0.95, 0.95, 0.9], shade: 0.35 }, // hunched shoulders
-    { geo: blob(0.42), color: P.fur, pos: [0, 1.25, 1.2], scale: [0.9, 0.85, 1.1] },
-    { geo: cone(0.24, 0.7, 5), color: P.furLight, pos: [0, 1.12, 1.72], rot: [Math.PI / 2, 0, 0], shade: 0.1 },
-    { geo: cone(0.13, 0.5, 4), color: P.fur, pos: [-0.26, 1.72, 1.1], rot: [-0.2, 0, 0.3], shade: 0 },
-    { geo: cone(0.13, 0.5, 4), color: P.fur, pos: [0.26, 1.72, 1.1], rot: [-0.2, 0, -0.3], shade: 0 },
-    { geo: cone(0.16, 1.1, 5), color: P.fur, pos: [0, 1.2, -1.45], rot: [-1.9, 0, 0], shade: 0.1 },
-    { geo: cone(0.1, 0.5, 4), color: P.furLight, pos: [0, 1.85, 0.2], rot: [-0.5, 0, 0], shade: 0 },
-    { geo: cone(0.1, 0.45, 4), color: P.furLight, pos: [0, 1.72, -0.25], rot: [-0.6, 0, 0], shade: 0 },
+    ...leg(-0.4, 0.6), ...leg(0.4, 0.6), ...leg(-0.38, -0.7), ...leg(0.38, -0.7),
+    { geo: blob(0.75), color: P.fur, pos: [0, 1.08, -0.15], scale: [0.85, 0.78, 1.45] }, // barrel
+    { geo: blob(0.64), color: P.furLight, pos: [0, 1.42, 0.52], scale: [1, 0.95, 0.9], shade: 0.35 }, // hunched shoulders
+    { geo: blob(0.42), color: P.fur, pos: [0, 1.28, 1.18], scale: [0.95, 0.85, 1.05] }, // skull
+    { geo: cone(0.25, 0.72, 5), color: P.furLight, pos: [0, 1.2, 1.7], rot: [Math.PI / 2, 0, 0], shade: 0.1 }, // muzzle
+    { geo: cone(0.2, 0.6, 5), color: 0x2a2633, pos: [0, 0.98, 1.6], rot: [Math.PI / 2 - 0.3, 0, 0], shade: 0 }, // jaw
+    ...[-0.12, 0.12].flatMap((x): Part[] => [
+      { geo: cone(0.04, 0.2, 4), color: 0xf2ead8, pos: [x, 1.02, 1.86], rot: [Math.PI, 0, 0], shade: 0 }, // fangs
+    ]),
+    { geo: cone(0.14, 0.56, 4), color: P.fur, pos: [-0.28, 1.74, 1.08], rot: [-0.25, 0, 0.35], shade: 0 }, // ears
+    { geo: cone(0.14, 0.56, 4), color: P.fur, pos: [0.28, 1.74, 1.08], rot: [-0.25, 0, -0.35], shade: 0 },
+    { geo: cone(0.16, 1.2, 5), color: P.fur, pos: [0, 1.22, -1.5], rot: [-1.9, 0, 0], shade: 0.1 }, // tail
+    ...spine,
   ];
 }
 

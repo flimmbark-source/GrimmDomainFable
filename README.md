@@ -44,7 +44,7 @@ Open http://localhost:5173. The Colyseus server is on port 2567. Browser connect
 ## Orchard Vale test region
 After `npm run build && npm start`, open http://localhost:2567/?region=orchard_vale. See the [Orchard Vale implementation report](docs/production/orchard-vale-implementation-report.md). The region's folklore is candidate direction, not canon.
 
-Open http://localhost:2567/?region=orchard_operation&bakedShadows=1 for the Orchard Vale operation playtest. Add `&team=dark` for the Dark seat. Reach the relay north of the bridge, stop and press **R** to sabotage or repair it. Move or press **X** to cancel. See the [Orchard Vale gameplay milestone](docs/production/orchard-vale-gameplay.md) for the objectives and playtest settings.
+Open http://localhost:2567/?region=orchard_operation&bakedShadows=1 for the Orchard Vale operation playtest. Add `&team=dark` for the Dark seat. Left-click to move, right-click for the action menu, **A / S / E / W** to attack, sneak, evade and whistle, **I** for the inventory, **R** to sabotage, repair or revive. Start the server with `GRIMM_RELAY_GOAL=3600` for a long session. See the [Orchard Vale gameplay milestone](docs/production/orchard-vale-gameplay.md) for the objectives and playtest settings.
 
 ## Review and next work
 1. Read [confirmed and open decisions](docs/decisions.md) before changing game mechanics.

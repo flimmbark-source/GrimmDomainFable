@@ -365,3 +365,51 @@ button.ph-slot:hover:not(:disabled), .ph-slot[aria-pressed='true'] {
 .ph-energy[data-slowed='true'] { color: #b9d99a; }
 .ph-notice { margin-top: 6px; color: #ffd9a0; font: italic clamp(13px, 1.05vw, 17px)/1.25 var(--ph-display); }
 .ph-effect { color: #b9d99a; font-style: normal; font-size: clamp(12px, 1vw, 15px); }
+
+/* ---- Polish pass: health, feedback, item framing, ghost world ---- */
+.ph-character { padding-block: 7px; background-image: linear-gradient(180deg, #2c211980, #15100de6), var(--ph-leather-image); border-color: #9a7f58; }
+.ph-portrait { border-color: #d4ab6c; box-shadow: inset 0 0 0 3px #19110c, 0 0 0 1px #1a120c, 0 4px 10px #0c0806cc; }
+.ph-identity strong { letter-spacing: 0.02em; text-shadow: 0 1px 2px #000; }
+#player-hud meter.ph-health { height: 13px; }
+#player-hud meter.ph-health::-webkit-meter-bar { border: 1px solid #b89a6a; border-radius: 4px; background: linear-gradient(#0d0907, #1f1712); box-shadow: inset 0 1px 3px #000; height: 13px; }
+#player-hud meter.ph-health::-webkit-meter-optimum-value { background: linear-gradient(#b5d977, #6f9a3f 55%, #4f7a2c); border-radius: 3px; box-shadow: inset 0 1px 0 #e3f5b860; }
+#player-hud meter.ph-health::-webkit-meter-suboptimum-value { background: linear-gradient(#f0c869, #c98f2b 55%, #a56f1b); border-radius: 3px; }
+#player-hud meter.ph-health::-webkit-meter-even-less-good-value { background: linear-gradient(#ef7a5c, #c1402b 55%, #96281a); border-radius: 3px; }
+#player-hud meter.ph-health::-moz-meter-bar { background: linear-gradient(#b5d977, #4f7a2c); border-radius: 3px; }
+.ph-health-text { font-size: 13px; text-shadow: 0 1px 2px #000; }
+.ph-stats { font-size: 12px; opacity: 0.92; }
+#player-hud[data-haste='true'] [data-stat='speed'] { color: #ffd98a; font-weight: 650; }
+
+/* Hurt: the frame of the screen flashes and the bar shakes once. */
+.ph-vignette { position: fixed; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 150px 40px #c81f10; }
+#player-hud.ph-hurt .ph-vignette { animation: ph-flash 0.55s ease-out; }
+#player-hud.ph-hurt .ph-health-row { animation: ph-shake 0.3s linear; }
+@keyframes ph-flash { 0% { opacity: 0.75; } 100% { opacity: 0; } }
+@keyframes ph-shake { 20% { translate: -3px 0; } 40% { translate: 3px 0; } 60% { translate: -2px 0; } 80% { translate: 2px 0; } }
+@media (prefers-reduced-motion: reduce) { #player-hud.ph-hurt .ph-health-row { animation: none; } }
+
+/* A ghost sees the same kingdom drained of colour and gone cold (D-036: same place, another layer). */
+canvas#view { transition: filter 0.8s; }
+body[data-ghost='true'] canvas#view { filter: grayscale(0.82) contrast(1.06) brightness(1.08) sepia(0.25) hue-rotate(165deg); }
+#player-hud[data-dead='true'] .ph-character { border-color: #8fb4d6; box-shadow: inset 0 0 0 2px #0d141bc0, 0 0 18px #6fb2e455; }
+#player-hud[data-dead='true'] .ph-objective-title { color: #cfe6ff; }
+
+/* Item frames by kind, so gear, usables and materials read at a glance. */
+.ph-slot { background: radial-gradient(circle at 50% 38%, #35281c, #170f0a 78%); transition: border-color 0.12s, box-shadow 0.12s, translate 0.12s; }
+.ph-slot[data-kind='gear'] { border-color: #b8924f; }
+.ph-slot[data-kind='active'] { border-color: #6f9a61; }
+.ph-slot[data-kind='material'] { border-color: #7d7468; }
+button.ph-slot:hover:not(:disabled) { translate: 0 -1px; box-shadow: inset 0 0 0 2px #74502b, 0 3px 8px #000a; }
+.ph-gear .ph-slot:not(.ph-empty) { box-shadow: inset 0 0 0 2px #130d09, 0 0 10px #e7b76f40; }
+.ph-count { padding: 0 3px; border-radius: 3px; background: #120c08d0; }
+.ph-quick-slot { box-shadow: inset 0 0 0 2px #130d09, 0 3px 8px #0009; }
+.ph-bag { box-shadow: inset 0 0 0 2px #170f0bc0, 0 12px 34px #050302d9; border-color: #a88e63; }
+.ph-bag-header strong { letter-spacing: 0.04em; }
+.ph-effect { display: block; }
+
+/* Prompts and the objective. */
+#player-hud .ph-relay { box-shadow: inset 0 0 0 2px #170f0bc0, 0 0 0 1px #e7b76f30, 0 6px 16px #000a; animation: ph-breathe 2.2s ease-in-out infinite; }
+#player-hud .ph-relay:disabled { animation: none; }
+@keyframes ph-breathe { 50% { box-shadow: inset 0 0 0 2px #170f0bc0, 0 0 0 1px #e7b76f90, 0 6px 22px #e7b76f40; } }
+.ph-objective-title strong { text-shadow: 0 2px 3px #130c07, 0 0 14px #0c0805; }
+.ph-notice { padding: 3px 10px; border-radius: 4px; background: #1a120cb0; display: inline-block; }

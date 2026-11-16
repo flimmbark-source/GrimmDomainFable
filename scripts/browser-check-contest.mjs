@@ -365,6 +365,8 @@ try {
     check('command view: right-click posts the Dark commander\'s Scout (army orders preserved)', posted && (await dark.evaluate(() => document.querySelector('.ph-actions').hidden)));
 
     // Left-click one of your monsters to select it, then post that one.
+    // (The relay guard may be routed at this moment; give it time to walk back in.)
+    await until(dark, () => window.__grimm.snapshot().actors.some((a) => a.monster === 'brute' && a.mode !== undefined), null, 45000);
     const brute = (await army()).find((m) => m.monster === 'brute');
     let bruteOrdered = false;
     if (brute) {
@@ -382,20 +384,34 @@ try {
       bruteOrdered = unchanged && await until(dark, ([id, x, z]) => window.__grimm.snapshot().actors.some((a) => a.id === id && a.order && Math.hypot(a.order.x - x, a.order.z - z) < 2), [brute.id, ground.x, ground.z], 8000);
     }
     check('command view: clicking an owned monster selects it for the next order', bruteOrdered, brute ? '' : 'the relay guard was routed at that moment');
+    // If that click missed a moving monster the order went to the Scout: put the Scout back on its post.
+    const scoutOrder = (await scoutNow())?.order;
+    if (scoutOrder && dist(scoutOrder, post) > 2) await send(dark, { type: 'monsterOrder', actorId: (await scoutNow()).id, order: 'guard', x: post.x, z: post.z });
 
     // Wait for the Scout to take its post, then fight on the road, out of its sight.
     const atPost = await until(dark, ([x, z]) => window.__grimm.snapshot().actors.some((a) => a.monster === 'scout' && a.mode === 'patrol' && !a.moving && Math.hypot(a.x - x, a.z - z) < 1.5), [post.x, post.z], 90000);
     await dark.keyboard.press('Space');
     await idle(dark, 60000);
-    const hp0 = (await state(light)).kit.hp;
-    const darkHp0 = (await state(dark)).kit.hp;
-    await darkStrikes(false, 6);
-    const hurt = await state(light);
-    // The Light hero answers with its own weapon.
-    await until(light, () => window.__grimm.snapshot().you.kit.attackCooldown === 0, null, 5000);
-    await light.keyboard.press('KeyA');
-    await until(dark, (hp) => window.__grimm.snapshot().you.kit.hp < hp, darkHp0, 6000);
-    const darkHurt = await state(dark);
+    // The duel. Light bots coming back from a wayshrine can cut it short by
+    // killing the Dark Hero; if so it returns from the castle road and tries again.
+    let hp0 = 0;
+    let darkHp0 = 0;
+    let hurt = null;
+    let darkHurt = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await until(dark, () => !window.__grimm.snapshot().you.kit.dead, null, 30000);
+      hp0 = (await state(light)).kit.hp;
+      darkHp0 = (await state(dark)).kit.hp;
+      await darkStrikes(false, 8);
+      hurt = await state(light);
+      // The Light hero answers with its own weapon.
+      await until(light, () => window.__grimm.snapshot().you.kit.attackCooldown === 0, null, 5000);
+      await light.keyboard.press('KeyA');
+      await until(dark, (hp) => window.__grimm.snapshot().you.kit.hp < hp, darkHp0, 6000);
+      darkHurt = await state(dark);
+      if (hurt.kit.hp < hp0 && darkHurt.kit.hp < darkHp0 && !darkHurt.kit.dead) break;
+      console.log(`info  duel attempt ${attempt + 1} was cut short (Dark Hero ${darkHurt.kit.dead ? 'fell' : 'did not connect'}); trying again`);
+    }
     await shot(dark, 'dark-hero-fights-scout-holds-post');
     const scout = await scoutNow();
     check('the Dark Hero fights in person: both heroes take damage from the other\'s weapon', hurt.kit.hp < hp0 && darkHurt.kit.hp < darkHp0, `Light ${hp0} -> ${hurt.kit.hp}, Dark ${darkHp0} -> ${darkHurt.kit.hp}`);
@@ -555,8 +571,13 @@ try {
   await part('Body route: a living ally revives the fallen hero', async () => {
     // The Dark Hero comes for the hero again, near the Light bots this time.
     let l = await state(light);
-    await walk(dark, l.me.x + 1.5, l.me.z + 0.3, 120000);
-    const died = await darkStrikes(true, 30);
+    // (Light bots near the relay sometimes kill the Dark Hero first; it then returns and tries again.)
+    let died = false;
+    for (let attempt = 0; attempt < 3 && !died; attempt++) {
+      await until(dark, () => !window.__grimm.snapshot().you.kit.dead, null, 30000);
+      await walk(dark, l.me.x + 1.5, l.me.z + 0.3, 120000);
+      died = await darkStrikes(true, 30);
+    }
     const body = (await snap(light)).bodies.find((b) => b.heroId === lightId);
     await send(dark, { type: 'moveTo', x: -40, z: -45 });
     check('the hero falls again, within reach of its bot allies', died && Boolean(body), body ? `body at ${fmt(body)}` : '');
