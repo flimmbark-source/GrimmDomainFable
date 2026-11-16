@@ -74,7 +74,7 @@ export function botThink(memory: BotMemory, view: Snapshot, map: MapDef): Comman
         return { type: 'moveTo', x: threat.x, z: threat.z };
       }
       // A fallen ally within reach is worth the walk (D-034).
-      const body = view.you.team === 'light' ? (view.bodies ?? []).find((b) => Math.hypot(b.x - me.x, b.z - me.z) <= 45) : undefined;
+      const body = view.you.team === 'light' ? (view.bodies ?? []).find((b) => Math.hypot(b.x - me.x, b.z - me.z) <= 40) : undefined;
       if (body && !threat) {
         memory.nextDecisionTick = view.tick + 20;
         return me.order ? null : { type: 'moveTo', x: body.x, z: body.z };
@@ -93,12 +93,12 @@ export function botThink(memory: BotMemory, view: Snapshot, map: MapDef): Comman
     // When a Light player is present, reserve the opening sabotage for them.
     // Light bots take the approaches and stay available to screen the site.
     if (view.you.team === 'light' && view.slots.some((slot) => slot.team === 'light' && slot.occupant === 'human')) {
-      // They wait out of the relay guards' sight, on the south bank and at the
-      // ford, and close in on the relay only once the player commits to it.
+      // They wait out of the relay guards' sight on the south bank by the bridge,
+      // and close in on the relay only once the player commits to it.
       const human = view.actors.find((a) => a.team === 'light' && a.slot !== null && !a.ghost && view.slots[a.slot]?.occupant === 'human');
       const pushing = human !== undefined && Math.hypot(human.x - operation.x, human.z - operation.z) <= 16;
       const forward = [{ x: -9, z: -28 }, { x: -7, z: -28 }, { x: -5, z: -24 }, { x: 3, z: -24 }];
-      const back = [{ x: -6, z: 2 }, { x: -6, z: 2 }, { x: 5, z: 3 }, { x: -64, z: -21 }];
+      const back = [{ x: -6, z: 2 }, { x: -6, z: 2 }, { x: 5, z: 3 }, { x: -2, z: 6 }];
       const approach = (pushing ? forward : back)[view.you.slot % 4]!;
       if (!me.order && Math.hypot(me.x - approach.x, me.z - approach.z) > 2) return { type: 'moveTo', ...approach };
       return null;

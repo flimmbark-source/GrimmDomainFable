@@ -379,7 +379,7 @@ try {
     check('an active item can be assigned to a quick slot', assigned && (await state(light)).kit.quick[0] === null);
   });
 
-  const post = { x: -10, z: 13 };
+  const post = { x: -24, z: 13 };
   await part('Army command, then the Dark Hero fights in person', async () => {
     // Real right-click in command view posts the selected monster (the Scout by default).
     await waitScout();
@@ -471,7 +471,7 @@ try {
       return { far: Math.hypot(hero.x - me.x, hero.z - me.z), report, tick: s.tick, list: document.getElementById('reports').textContent, scout: s.actors.find((a) => a.monster === 'scout')?.mode };
     }, lightId, { timeout: 60000, polling: 30 }).then((h) => h.jsonValue(), () => null);
     // The Light hero walks east along the open road, into the Scout's view.
-    await send(light, { type: 'moveTo', x: -22, z: 12.3 });
+    await send(light, { type: 'moveTo', x: -32, z: 12.3 });
     let spotted = await until(light, () => window.__grimm.snapshot().you.spotted, null, 25000);
     if (!spotted) {
       await light.keyboard.press('KeyW');
