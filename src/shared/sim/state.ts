@@ -4,6 +4,7 @@
  * The full SimState is server-only: clients receive projection.ts output.
  */
 import type { ActorKind, BrainMode, EvidenceKind, HeroAction, MonsterType, SlotId, SlotOccupant, SoundKind, Team } from '../protocol.ts';
+import type { Equipment, ItemId } from './items.ts';
 import type { Point } from './map.ts';
 import type { StealthProfile } from './tuning.ts';
 
@@ -88,8 +89,28 @@ export interface ActorState {
   footstepTicks: number;
   whistleReadyTick: number;
   queuedAction?: { kind: HeroAction; destination: Point };
-  actionMotion?: { kind: 'attack' | 'evade'; tick: number };
+  actionMotion?: { kind: 'attack' | 'evade'; tick: number; weapon?: ItemId };
   carried: number;
+  /** Health. Damage is only ever applied in the Orchard contest. */
+  hp: number;
+  maxHp: number;
+  attackReadyTick: number;
+  evadeReadyTick: number;
+  itemReadyTick: number;
+  /** Tick of the last damage taken (interrupts channels). */
+  lastHitTick: number;
+  /** PRIVATE to the owning seat: carried items by id, worn gear and quick slots. */
+  inventory: Partial<Record<ItemId, number>>;
+  equipment: Equipment;
+  quick: (ItemId | null)[];
+  /**
+   * Set while a hero is dead. For a Light Hero the body lies at (x, z) and
+   * this actor is the player's ghost (D-032): one actor, never two heroes.
+   * A Dark Hero simply waits here until `returnTick` (placeholder rule).
+   */
+  dead?: { tick: number; x: number; z: number; returnTick?: number };
+  /** Tick at which this ghost's sanctuary ritual was ended by full corruption. */
+  ritualLostTick?: number;
   /** PRIVATE to the owning Dark seat: autonomous monster brain. */
   brain: MonsterBrain | null;
 }
@@ -156,6 +177,55 @@ export interface SimState {
   noises: Noise[];
   events: SimEvent[];
   operation?: OperationState;
+  /** Combat, items and recovery. Present only in the Orchard contest. */
+  contest?: ContestState;
+}
+
+export interface PickupState {
+  id: number;
+  item: ItemId;
+  count: number;
+  x: number;
+  z: number;
+  /** Slots that have already collected their share (see contest.ts). */
+  takenBy: SlotId[];
+}
+
+export interface SanctuaryState {
+  id: number;
+  name: string;
+  x: number;
+  z: number;
+  /** Corruption in tick units, 0 .. CONTEST.corruptTicks. */
+  corruption: number;
+  /** Fully corrupted: no longer eligible for resurrection (D-039). */
+  corrupted: boolean;
+  /** Dark forces were inside the precinct this tick. */
+  threatened: boolean;
+}
+
+/** A living Light Hero reviving a fallen one at the body (D-034). */
+export interface RescueState {
+  rescuerId: number;
+  heroId: number;
+  progress: number;
+  startTick: number;
+}
+
+/** A ghost's resurrection ritual at a sanctuary (D-038). */
+export interface RitualState {
+  heroId: number;
+  sanctuaryId: number;
+  progress: number;
+  /** Locked when the ritual starts (D-040; when it locks is provisional). */
+  duration: number;
+}
+
+export interface ContestState {
+  pickups: PickupState[];
+  sanctuaries: SanctuaryState[];
+  rescues: RescueState[];
+  rituals: RitualState[];
 }
 
 export interface OperationState {

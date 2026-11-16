@@ -77,6 +77,19 @@ export class AudioCues {
         this.tone('square', 180, 90, 0.12, 0.2 * v);
         this.tone('sine', 880, 1320, 0.35, 0.2 * v, 0.1);
         break;
+      case 'hit':
+        this.tone('square', 210, 70, 0.09, 0.28 * v);
+        break;
+      case 'pickup':
+        this.tone('sine', 660, 990, 0.16, 0.2 * v);
+        break;
+      case 'heal':
+        this.tone('sine', 520, 780, 0.3, 0.2 * v);
+        break;
+      case 'revive':
+        this.tone('sine', 392, 784, 0.6, 0.25 * v);
+        this.tone('sine', 588, 1176, 0.6, 0.15 * v, 0.12);
+        break;
     }
   }
 

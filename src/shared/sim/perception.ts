@@ -46,7 +46,8 @@ export function memoryOf(brain: MonsterBrain, actorId: number): TargetMemory | u
 function updateSight(state: SimState, map: MapDef, monster: ActorState, brain: MonsterBrain): void {
   const P = TUNING.perception;
   const profile = TUNING.monsters[brain.type];
-  const enemies = state.actors.filter((a) => a.kind === 'hero' && a.team !== monster.team);
+  // The dead are not prey: a ghost is never seen and a body is not chased.
+  const enemies = state.actors.filter((a) => a.kind === 'hero' && a.team !== monster.team && !a.dead);
 
   // Forget heroes that left the match.
   brain.targets = brain.targets.filter((t) => enemies.some((e) => e.id === t.actorId));
@@ -163,11 +164,11 @@ function hear(state: SimState, map: MapDef, monster: ActorState, brain: MonsterB
 /** Run once per tick, after movement. */
 export function updatePerception(state: SimState, map: MapDef): void {
   for (const actor of state.actors) {
-    if (actor.brain) updateSight(state, map, actor, actor.brain);
+    if (actor.brain && !actor.dead) updateSight(state, map, actor, actor.brain);
   }
   for (const noise of state.noises) {
     for (const actor of state.actors) {
-      if (actor.brain) hear(state, map, actor, actor.brain, noise);
+      if (actor.brain && !actor.dead) hear(state, map, actor, actor.brain, noise);
     }
   }
   state.noises = [];

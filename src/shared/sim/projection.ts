@@ -29,10 +29,13 @@
  * Visibility is computed here, on the server, from simulation state. Clients
  * never report what they can see.
  */
-import type { ActorView, EvidenceView, SiteView, SlotId, Snapshot, SoundView, Team } from '../protocol.ts';
+import type { ActorView, BodyView, EvidenceView, KitView, PickupView, SanctuaryView, SiteView, SlotId, Snapshot, SoundView, Team } from '../protocol.ts';
+import { CONTEST, evadeTicksOf, rescuableBody, sanctuaryFor } from './contest.ts';
 import { distance } from './geometry.ts';
+import { ITEM_IDS, salveHeal, weaponOf } from './items.ts';
 import { getMap, type MapDef } from './map.ts';
 import { moodOf } from './monster.ts';
+import { EVADE_SPEED, TICK_RATE } from './movement.ts';
 import { projectOperation } from './operation.ts';
 import { heroSees, heroSeesPoint, memoryOf } from './perception.ts';
 import type { ActorState, SimState } from './state.ts';
@@ -67,10 +70,19 @@ function monsterWatches(monster: ActorState, hero: ActorState): boolean {
 
 /** Can the seat `slot` (team `team`) currently see `actor`? */
 function seatSees(state: SimState, map: MapDef, slot: SlotId, team: Team, actor: ActorState): boolean {
+  if (actor.dead && actor.brain) return false; // a routed monster is nowhere
   if (actor.team === team) return true;
+  // The dead are shown to their own side only: a ghost's whereabouts and a
+  // fallen Dark Hero are never sent to the enemy.
+  if (actor.dead) return false;
   const hero = heroOf(state, slot);
-  if (hero && heroSees(map, hero, actor)) return true;
-  if (hero && monsterWatches(actor, hero)) return true;
+  // D-033: a ghost gets no enemy positions at all, the most restrictive
+  // reading until its spirit senses are designed. A fallen Dark Hero keeps
+  // only what the monsters it owns report.
+  const eyes = hero && !hero.dead ? hero : undefined;
+  if (hero?.dead && team === 'light') return false;
+  if (eyes && heroSees(map, eyes, actor)) return true;
+  if (eyes && monsterWatches(actor, eyes)) return true;
   return team === 'dark' && ownedMonsterSees(state, slot, actor);
 }
 
@@ -84,7 +96,7 @@ function canSee(state: SimState, map: MapDef, viewer: Viewer, actor: ActorState)
   return seatSees(state, map, viewer.slot, viewer.team, actor);
 }
 
-function projectActor(viewer: Viewer, actor: ActorState, tick: number): ActorView {
+function projectActor(viewer: Viewer, actor: ActorState, tick: number, contest: boolean): ActorView {
   const view: ActorView = {
     id: actor.id,
     kind: actor.kind,
@@ -97,10 +109,12 @@ function projectActor(viewer: Viewer, actor: ActorState, tick: number): ActorVie
     moving: actor.moving,
     radius: actor.radius,
   };
+  if (contest) view.health = Math.max(0, Math.round((actor.hp / actor.maxHp) * 100) / 100);
+  if (actor.dead) view.ghost = true;
+  if (actor.actionMotion && tick - actor.actionMotion.tick <= 12) view.action = { ...actor.actionMotion };
   const brain = actor.brain;
   if (!brain) {
     if (actor.sneaking) view.sneaking = true;
-    if (actor.actionMotion && tick - actor.actionMotion.tick <= 12) view.action = actor.actionMotion;
     // A hero's pending order is its own business (team sharing is undecided).
     if (actor.intent.type === 'goto' && viewer && actor.slot === viewer.slot) {
       view.order = { x: actor.intent.x, z: actor.intent.z };
@@ -156,9 +170,77 @@ function projectSounds(state: SimState, visible: Set<number>, hero: ActorState |
     const volume = Math.ceil((1 - d / e.radius) * 5) / 5;
     const sound: SoundView = { kind: e.kind, volume: volume > 0 ? volume : 0.2 };
     if (visible.has(e.actorId)) sound.actorId = e.actorId;
+    // A ghost hears only what its own side does: no monster or enemy cues.
+    else if (hero.dead) continue;
     out.push(sound);
   }
   return out;
+}
+
+/** The viewer's own kit and condition. Never built for anyone else's hero. */
+function projectKit(state: SimState, map: MapDef, hero: ActorState): KitView {
+  const contest = state.contest!;
+  const weapon = weaponOf(hero.equipment);
+  const dead = hero.dead;
+  const ritual = contest.rituals.find((r) => r.heroId === hero.id);
+  const rescuing = contest.rescues.find((r) => r.rescuerId === hero.id);
+  const rescued = contest.rescues.find((r) => r.heroId === hero.id);
+  const seconds = (ticks: number) => Math.ceil(ticks / TICK_RATE);
+  let channel: KitView['channel'] = null;
+  if (ritual) channel = { kind: 'ritual', progress: ritual.progress / ritual.duration, seconds: seconds(ritual.duration - ritual.progress) };
+  else if (rescuing) channel = { kind: 'rescue', progress: rescuing.progress / CONTEST.rescueTicks, seconds: seconds(CONTEST.rescueTicks - rescuing.progress) };
+  else if (rescued) channel = { kind: 'rescued', progress: rescued.progress / CONTEST.rescueTicks, seconds: seconds(CONTEST.rescueTicks - rescued.progress) };
+  let interaction: KitView['interaction'] = null;
+  if (!channel && hero.team === 'light') {
+    if (dead) interaction = sanctuaryFor(contest, hero) ? 'ritual' : null;
+    else if (hero.intent.type === 'idle' && rescuableBody(state, map, hero)) interaction = 'rescue';
+  }
+  const kit: KitView = {
+    hp: Math.ceil(hero.hp),
+    maxHp: hero.maxHp,
+    dead: Boolean(dead),
+    deadSeconds: dead ? Math.floor((state.tick - dead.tick) / TICK_RATE) : 0,
+    equipment: { weapon: hero.equipment.weapon, boots: hero.equipment.boots, charm: hero.equipment.charm },
+    inventory: ITEM_IDS.flatMap((item) => (hero.inventory[item] ? [{ item, count: hero.inventory[item]! }] : [])),
+    quick: [...hero.quick],
+    attack: weapon ? { pattern: weapon.pattern, range: weapon.range, damage: weapon.damage } : null,
+    attackCooldown: Math.max(0, hero.attackReadyTick - state.tick),
+    evadeDistance: Math.round(evadeTicksOf(hero) * EVADE_SPEED / TICK_RATE * 10) / 10,
+    evadeCooldown: Math.max(0, hero.evadeReadyTick - state.tick),
+    salveHeal: salveHeal(hero.equipment),
+    interaction,
+    channel,
+    ritualLost: hero.ritualLostTick !== undefined && state.tick - hero.ritualLostTick < 8 * TICK_RATE,
+  };
+  if (dead?.returnTick !== undefined) kit.returnSeconds = seconds(dead.returnTick - state.tick);
+  return kit;
+}
+
+function projectPickups(state: SimState, viewer: Viewer): PickupView[] {
+  if (!viewer || viewer.team !== 'light') return [];
+  return state.contest!.pickups.filter((p) => !p.takenBy.includes(viewer.slot)).map((p) => ({ id: p.id, item: p.item, count: p.count, x: p.x, z: p.z }));
+}
+
+/** Bodies: Light always knows where its fallen lie; a Dark Hero must see the spot. */
+function projectBodies(state: SimState, map: MapDef, viewer: Viewer, hero: ActorState | undefined): BodyView[] {
+  if (!viewer) return [];
+  const out: BodyView[] = [];
+  for (const actor of state.actors) {
+    const body = actor.dead;
+    if (!body || actor.team !== 'light') continue;
+    if (viewer.team !== 'light' && !(hero && !hero.dead && heroSeesPoint(map, hero, body.x, body.z))) continue;
+    out.push({ heroId: actor.id, slot: actor.slot, x: body.x, z: body.z });
+  }
+  return out;
+}
+
+/** Sanctuary condition is landmark state, not enemy intelligence (D-030, D-039). */
+function projectSanctuaries(state: SimState, viewer: Viewer): SanctuaryView[] {
+  return state.contest!.sanctuaries.map((s) => {
+    const view: SanctuaryView = { id: s.id, name: s.name, x: s.x, z: s.z, corruption: Math.floor((s.corruption / CONTEST.corruptTicks) * 20) / 20, corrupted: s.corrupted };
+    if (viewer?.team === 'light') view.threatened = s.threatened;
+    return view;
+  });
 }
 
 export function projectSnapshot(state: SimState, viewer: Viewer): Snapshot {
@@ -190,6 +272,7 @@ export function projectSnapshot(state: SimState, viewer: Viewer): Snapshot {
       spotted,
       carried: hero?.carried ?? 0,
       whistleCooldown: hero ? Math.max(0, hero.whistleReadyTick - state.tick) : 0,
+      ...(state.contest && hero ? { kit: projectKit(state, map, hero) } : {}),
     };
   }
 
@@ -197,10 +280,15 @@ export function projectSnapshot(state: SimState, viewer: Viewer): Snapshot {
     tick: state.tick,
     you,
     slots: state.slots.map((s) => ({ id: s.id, team: s.team, occupant: s.occupant })),
-    actors: actors.map((a) => projectActor(viewer, a, state.tick)),
+    actors: actors.map((a) => projectActor(viewer, a, state.tick, Boolean(state.contest))),
     sites: state.operation ? [] : projectSites(state, map, viewer, hero),
     evidence: projectEvidence(state, viewer),
     sounds: projectSounds(state, visible, hero),
     ...(state.operation ? { operation: projectOperation(state.operation, map, hero) } : {}),
+    ...(state.contest ? {
+      pickups: projectPickups(state, viewer),
+      bodies: projectBodies(state, map, viewer, hero),
+      sanctuaries: projectSanctuaries(state, viewer),
+    } : {}),
   };
 }

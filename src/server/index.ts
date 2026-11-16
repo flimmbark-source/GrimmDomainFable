@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineRoom, defineServer } from 'colyseus';
 import { DEFAULT_SERVER_PORT, REGION_ROOMS, ROOM_NAME } from '../shared/protocol.ts';
+import { OPERATION } from '../shared/sim/operation.ts';
 import { ORCHARD_VALE } from '../shared/world/orchardVale.ts';
 import { MatchConfig, MatchRoom } from './MatchRoom.ts';
 
@@ -22,6 +23,11 @@ const mapId = process.env.GRIMM_MAP || undefined;
 const seed = process.env.GRIMM_SEED ? Number(process.env.GRIMM_SEED) : undefined;
 const bots = process.env.GRIMM_BOTS;
 const botSlots = bots === undefined ? undefined : bots === 'none' ? [] : bots.split(',').map(Number).filter(Number.isInteger);
+
+// Longer Orchard sessions for playtests and the scripted browser check: seconds
+// of relay output Dark needs (default 480). A server setting; clients cannot change it.
+const relayGoal = Number(process.env.GRIMM_RELAY_GOAL);
+if (Number.isFinite(relayGoal) && relayGoal > 0) OPERATION.productionGoal = relayGoal;
 
 const server = defineServer({
   rooms: {

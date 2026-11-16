@@ -23,7 +23,7 @@ function inRange(hero: ActorState, map: MapDef): boolean {
 
 function interrupted(sim: SimState, map: MapDef, hero: ActorState): boolean {
   return sim.actors.some((actor) => {
-    if (actor.team === hero.team || distance(actor.x, actor.z, hero.x, hero.z) > OPERATION.threatRange) return false;
+    if (actor.team === hero.team || actor.dead || distance(actor.x, actor.z, hero.x, hero.z) > OPERATION.threatRange) return false;
     if (actor.brain) {
       const memory = memoryOf(actor.brain, hero.id);
       return Boolean(memory?.confirmed && memory.visible);
@@ -34,7 +34,7 @@ function interrupted(sim: SimState, map: MapDef, hero: ActorState): boolean {
 
 function canWork(operation: OperationState, hero: ActorState, map: MapDef): boolean {
   const team: Team = operation.active ? 'light' : 'dark';
-  return !operation.result && hero.team === team && hero.intent.type === 'idle' && inRange(hero, map);
+  return !operation.result && !hero.dead && hero.team === team && hero.intent.type === 'idle' && inRange(hero, map);
 }
 
 export function workOperation(sim: SimState, map: MapDef, hero: ActorState): void {

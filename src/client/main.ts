@@ -199,14 +199,9 @@ async function start(): Promise<void> {
   const params = new URLSearchParams(location.search);
   const toggleCamera = () => input.setMode(rig.mode === 'rts' ? 'hero' : 'rts');
   const hud = new Hud(toggleCamera);
-  const playerHud = params.get('region') === 'orchard_operation' && params.get('spectate') !== '1' && params.get('team') !== 'dark'
-    ? new PlayerHud(params.get('hud') === 'preview', (action, target) => {
-      if (action === 'camera') toggleCamera();
-      else if (action === 'relay') {
-        if (actors.latest?.operation?.interaction) connection.send({ type: 'workOperation' });
-      } else if (action === 'stop') connection.send({ type: 'stop' });
-      else connection.send({ type: 'heroAction', action, target });
-    })
+  // The Orchard contest uses the player HUD for both teams.
+  const playerHud = params.get('region') === 'orchard_operation' && params.get('spectate') !== '1'
+    ? new PlayerHud({ send: (command) => connection.send(command), toggleCamera })
     : null;
   const canvas = document.getElementById('view') as HTMLCanvasElement;
 
@@ -281,7 +276,7 @@ async function start(): Promise<void> {
     const now = performance.now();
     actors.push(snapshot, now);
     hud.setSnapshot(snapshot);
-    playerHud?.setEnabled(Boolean(snapshot.operation && snapshot.you?.team === 'light'));
+    playerHud?.setEnabled(Boolean(snapshot.operation && snapshot.you?.kit));
     playerHud?.setSnapshot(snapshot);
     // Audio: world sounds this hero can hear, plus the local attention cue.
     for (const sound of snapshot.sounds) audio.play(sound);
@@ -320,10 +315,20 @@ async function start(): Promise<void> {
       hud.setMode(mode);
       playerHud?.setMode(mode === 'hero');
     },
-    ownedMonster: () => actors.latest?.actors.find((a) => a.kind === 'monster' && a.mode !== undefined)?.id ?? null,
-    workOperation: () => Boolean(actors.latest?.operation?.interaction),
+    // The monster that takes orders: the one selected in command view, else the first owned.
+    ownedMonster: () => {
+      const owned = actors.latest?.actors.filter((a) => a.kind === 'monster' && a.mode !== undefined) ?? [];
+      return (owned.find((a) => a.id === actors.selectedMonster) ?? owned[0])?.id ?? null;
+    },
+    selectMonsterNear: (x, z) => {
+      const near = actors.latest?.actors.find((a) => a.kind === 'monster' && a.mode !== undefined && Math.hypot(a.x - x, a.z - z) <= a.radius + 0.9);
+      if (near) actors.selectedMonster = near.id;
+      return Boolean(near);
+    },
+    interaction: () => (playerHud ? playerHud.interaction : actors.latest?.operation?.interaction ? { type: 'workOperation' } : null),
     handleUiKey: (event) => playerHud?.handleKey(event) ?? false,
     inventoryOpen: () => playerHud?.isOpen ?? false,
+    dismissedMenu: () => playerHud?.dismissedMenu ?? false,
     usesActionMenu: () => playerHud?.usesActionMenu ?? false,
     openActionMenu: (x, y, target) => playerHud?.openActions(x, y, target),
     ...(map.region ? { heightAt: world.heightAt } : {}),
@@ -361,7 +366,9 @@ async function start(): Promise<void> {
         rig.heroPitch = 1.05;
         rig.heroDistance = 12;
       }
-      if (params.get('cam') === 'hero' || (playerHud && params.get('cam') !== 'rts')) input.setMode('hero');
+      // Light starts beside the hero; a Dark commander starts in command view.
+      const startInHero = playerHud && actors.latest?.you?.team === 'light';
+      if (params.get('cam') === 'hero' || (startInHero && params.get('cam') !== 'rts')) input.setMode('hero');
       if (params.get('debug') === '1') {
         debugOverlay.visible = true;
         markers.debug.visible = true;

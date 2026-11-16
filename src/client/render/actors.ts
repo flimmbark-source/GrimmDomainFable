@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three';
 import type { ActorView, MonsterMood, Snapshot } from '../../shared/protocol.ts';
+import { ITEMS } from '../../shared/sim/items.ts';
 import { TICK_RATE } from '../../shared/sim/movement.ts';
 import type { AssetId, AssetLibrary } from './assets.ts';
 import { PALETTE as P } from './palette.ts';
@@ -29,7 +30,22 @@ interface ActorVisual {
   /** 0..1 fade-in after coming into view. */
   appear: number;
   xray?: THREE.Mesh;
+  /** Health bar, shown once the actor is hurt. */
+  bar?: { back: THREE.Sprite; fill: THREE.Sprite };
+  base: THREE.Mesh;
+  ghost: boolean;
+  /** Tick of the last attack already drawn. */
+  attackTick: number;
 }
+
+/** A short-lived ground mark showing where an attack reached. */
+interface AttackMark {
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  age: number;
+}
+
+const GHOST_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.42, depthWrite: false });
+const MARK_SECONDS = 0.4;
 
 /** Posture signs: the in-world cue for what a monster is doing (D-014). */
 const SIGNS: Record<MonsterMood, { text: string; color: string } | null> = {
@@ -76,6 +92,9 @@ export class ActorLayer {
   private readonly orderMarker: THREE.Mesh;
   private readonly monsterMarker: THREE.Mesh;
   private readonly ownedRing: THREE.Mesh;
+  private readonly marks: AttackMark[] = [];
+  /** Command view: the owned monster the player has selected for orders. */
+  selectedMonster: number | null = null;
 
   /**
    * @param heightAt  height of the walking surface (flat maps: always 0)
@@ -181,6 +200,21 @@ export class ActorLayer {
       visual.appear = Math.min(1, visual.appear + dt * 5);
       visual.model.scale.set(base, base * squash * (0.6 + 0.4 * visual.appear), base);
       this.updateSign(visual, actor, dt);
+      this.updateCondition(visual, actor);
+      if (actor.action?.kind === 'attack' && actor.action.tick > visual.attackTick) {
+        visual.attackTick = actor.action.tick;
+        this.addAttackMark(actor);
+      }
+    }
+    for (let i = this.marks.length - 1; i >= 0; i--) {
+      const mark = this.marks[i]!;
+      mark.age += dt;
+      mark.mesh.material.opacity = 0.7 * Math.max(0, 1 - mark.age / MARK_SECONDS);
+      if (mark.age < MARK_SECONDS) continue;
+      this.group.remove(mark.mesh);
+      mark.mesh.geometry.dispose();
+      mark.mesh.material.dispose();
+      this.marks.splice(i, 1);
     }
     for (const [id, visual] of this.visuals) {
       if (alive.has(id)) continue;
@@ -189,7 +223,8 @@ export class ActorLayer {
     }
 
     // A monster this player owns shows where it has been sent.
-    const owned = latest.snapshot.actors.find((a) => a.kind === 'monster' && a.mode !== undefined);
+    const mineMonsters = latest.snapshot.actors.filter((a) => a.kind === 'monster' && a.mode !== undefined);
+    const owned = mineMonsters.find((a) => a.id === this.selectedMonster) ?? mineMonsters[0];
     this.monsterMarker.visible = Boolean(owned?.order);
     if (owned?.order) this.monsterMarker.position.set(owned.order.x, this.heightAt(owned.order.x, owned.order.z) + 0.07, owned.order.z);
     const ownedVisual = owned ? this.visuals.get(owned.id) : undefined;
@@ -209,6 +244,74 @@ export class ActorLayer {
       this.orderMarker.position.set(order.x, this.heightAt(order.x, order.z) + 0.07, order.z);
       this.orderMarker.scale.setScalar(1 + Math.sin(now / 120) * 0.15);
     }
+  }
+
+  /** Health bar and ghost look, straight from what the server sent. */
+  private updateCondition(visual: ActorVisual, actor: ActorView): void {
+    const ghost = actor.ghost === true;
+    if (ghost !== visual.ghost) {
+      visual.ghost = ghost;
+      visual.base.visible = !ghost;
+      visual.model.traverse((node) => {
+        if (!(node instanceof THREE.Mesh) || node === visual.xray) return;
+        if (ghost) {
+          node.userData.solid = node.material;
+          node.material = GHOST_MATERIAL;
+        } else if (node.userData.solid) node.material = node.userData.solid as THREE.Material;
+        node.castShadow = !ghost;
+      });
+    }
+    const health = actor.health ?? 1;
+    const show = health < 1 && !ghost;
+    if (!show) {
+      if (visual.bar) visual.bar.back.visible = visual.bar.fill.visible = false;
+      return;
+    }
+    if (!visual.bar) {
+      const sprite = (color: number, order: number) => {
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ color, depthTest: false, transparent: true }));
+        s.renderOrder = order;
+        visual.root.add(s);
+        return s;
+      };
+      visual.bar = { back: sprite(0x1b1420, 30), fill: sprite(0xffffff, 31) };
+    }
+    const { back, fill } = visual.bar;
+    const y = actor.monster === 'brute' ? 4.0 : 2.75;
+    const width = 1.5;
+    back.visible = true;
+    back.position.y = fill.position.y = y;
+    back.scale.set(width + 0.1, 0.24, 1);
+    fill.visible = health > 0;
+    if (health > 0) {
+      // Keep the left edge fixed while the bar shortens.
+      fill.scale.set(width * health, 0.14, 1);
+      fill.center.set(0.5 / health, 0.5);
+      fill.material.color.setHex(health > 0.5 ? 0x8fd16a : health > 0.25 ? 0xf2c14a : 0xff5a3c);
+    }
+  }
+
+  /** Draw the reach of an attack on the ground: a wedge for a sweep, a streak for a shot. */
+  private addAttackMark(actor: ActorView): void {
+    const weapon = actor.action?.weapon ? ITEMS[actor.action.weapon].weapon : undefined;
+    const reach = (weapon?.range ?? 1.6) + 0.3;
+    let geometry: THREE.BufferGeometry;
+    if (weapon?.pattern === 'line') {
+      geometry = new THREE.PlaneGeometry(weapon.halfWidth * 2 + 0.1, reach);
+      geometry.rotateX(-Math.PI / 2);
+      geometry.translate(0, 0, reach / 2);
+    } else {
+      const half = Math.acos(weapon?.halfArcCos ?? 0.5);
+      geometry = new THREE.RingGeometry(actor.radius * 0.8, reach, 24, 1, Math.PI / 2 - half, half * 2);
+      geometry.rotateX(Math.PI / 2);
+    }
+    const color = actor.team === 'dark' ? 0xff6a8a : 0xfff0a8;
+    const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide }));
+    mesh.position.set(actor.x, this.heightAt(actor.x, actor.z) + 0.12, actor.z);
+    mesh.rotation.y = Math.atan2(actor.dirX, actor.dirZ);
+    mesh.renderOrder = 25;
+    this.group.add(mesh);
+    this.marks.push({ mesh, age: 0 });
   }
 
   /** A flat tint of the model drawn only where something is in front of it. */
@@ -277,7 +380,10 @@ export class ActorLayer {
         model.add(eye);
       }
     }
-    const visual: ActorVisual = { root, model, yaw: Math.atan2(actor.dirX, actor.dirZ), walkPhase: 0, signAge: 0, appear: 0 };
+    const visual: ActorVisual = {
+      root, model, yaw: Math.atan2(actor.dirX, actor.dirZ), walkPhase: 0, signAge: 0, appear: 0,
+      base, ghost: false, attackTick: actor.action?.tick ?? -1,
+    };
     this.visuals.set(actor.id, visual);
     this.group.add(root);
     return visual;

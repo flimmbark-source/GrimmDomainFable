@@ -4,22 +4,54 @@ The creator accepted the performance playtest and chose to build the game in Orc
 
 ## Play the relay contest
 
-Open `/?region=orchard_operation&bakedShadows=1` on the running game server. Light starts on the west road. Open the same URL with `&team=dark` for the Dark commander at the north road. The default setup reserves one human seat on each team and fills six seats with bots. When a human plays Light, Light bots take up positions along the approaches and leave sabotage to the player. Use `GRIMM_BOTS=none` at startup to test with humans only.
+Open `/?region=orchard_operation&bakedShadows=1` on the running game server. Light starts on the west road. Open the same URL with `&team=dark` for the Dark commander at the north road. The default setup reserves one human seat on each team and fills six seats with bots. When a human plays Light, Light bots take up positions along the approaches and leave sabotage to the player. Use `GRIMM_BOTS=none` at startup to test with humans only. `GRIMM_RELAY_GOAL=3600` gives a session long enough to try everything below; the default 480 ends in about four minutes if the relay is never sabotaged.
 
-- Light can take the bridge or the upstream ford to reach the relay just north of the bridge. Stop next to it and press **R** to sabotage. Keep it offline for 25 consecutive seconds to secure the Vale.
+- Light can take the bridge or the upstream ford to reach the relay just north of the bridge. Stop next to it and press **R** to sabotage. Keep it offline for 25 consecutive seconds to secure the Vale. Gear lies along the west road on the way.
 - Dark can post the Scout along the approach and move the Dark Hero to protect the relay. If it goes offline, stop next to it and press **R** to repair it. The Dark side holds the Vale if the relay delivers 480 output first. Reload after the result to join a fresh contest.
-- Moving, pressing **X**, or a nearby enemy with legitimate sight interrupts the attempt. A Scout must have confirmed the player before it interrupts. Repair restores production and resets the offline timer.
+- Moving, pressing **X**, taking damage, or a nearby enemy with legitimate sight interrupts the attempt. A Scout must have confirmed the player before it interrupts. Repair restores production and resets the offline timer.
 - Dark Energy continues accumulating while the relay is offline. Sabotage removes the relay's contribution to future production and leaves banked energy intact.
 
-The relay, interaction timings, interruption range, and local scoring are playtest proposals. They instantiate D-017 and D-019 through D-021. A local result ends this regional playtest. The kingdom match still ends under the separate castle and Dark Lord rules. The old M1 cache hunt is available through `/?region=orchard_vale`.
+The relay, interaction timings, interruption range, local scoring, and every gear, damage and revival number below are playtest proposals (P-20 to P-33 in the [decision register](../decisions.md)). They instantiate D-017 and D-019 through D-021. A local result ends this regional playtest. The kingdom match still ends under the separate castle and Dark Lord rules. The old M1 cache hunt is available through `/?region=orchard_vale`.
 
-## Goblin player interface
+## Controls in the contest
 
-The Light relay seat starts in an overhead hero view. Use the **arrow keys** to move in hero view or pan in strategy view. Drag with the left mouse button to turn the hero camera. **Tab** switches views, **I** opens inventory, and **Esc** dismisses the inventory or action menu. Detection follows the hero on screen.
+Both seats use the same hero controls and HUD. Light starts in hero view, Dark in command view. **Tab** switches.
 
-Right-click terrain to open the action menu, then left-click an option to walk to that location and perform the action on arrival. Press **A** for Attack, **S** to toggle Sneak, **E** to Evade forward, or **W** to Whistle at your current position. **X** stops movement and cancels a queued action. The server resolves the destination using normal pathfinding, including the nearest walkable point for blocked ground. Attack is a playtest swing without damage. Evade is a short forward move that respects terrain collision. Whistle uses the existing noise and cooldown rules.
+| Input | What it does |
+| --- | --- |
+| Left-click terrain | Move the hero there. Works in both views |
+| Left-drag | Turn the hero camera (hero view) |
+| Right-click terrain | Open the action menu at the cursor. Left-click an option and the hero walks to that point and performs the action on arrival |
+| **A** / **S** / **E** / **W** | Attack / Sneak / Evade / Whistle at once, where the hero stands |
+| **X** | Stop. Cancels a queued action, a relay attempt, a rescue or a ritual |
+| **1** to **3** | Use the item in that quick slot |
+| **I** | Inventory: equip, unequip, assign to a quick slot, drop. **Esc** closes it |
+| **R** | Sabotage or repair the relay, revive an ally at their body, or begin a ghost's ritual |
+| Arrow keys | Move in hero view, pan in the other view |
+| Dark, command view | Left-click one of your monsters to select it. **Right-click posts the selected monster.** **P** returns it to its assignment |
 
-Append `&hud=preview` to the Orchard operation URL to try the sample kit. Select a carried item to inspect it, equip or unequip a gear piece, drop one item from a stack, or assign a quick item to **1–3**. Outside assignment, those keys inspect the item. The kit resets on reload. Preview health and cargo are sample values. Item effects and acquiring real gear or heist cargo are pending gameplay rules.
+Hotkeys and action-menu orders run the same server rule, one now and one on arrival. A click on blocked ground sends the hero to the nearest point it can stand on. The server owns health, the bag, worn gear and quick slots; the HUD only shows what it was sent.
+
+## Equipment and items
+
+Every hero starts with a weapon. Light also starts with one salve in quick slot 1.
+
+- **Weapon** supplies Attack. The dagger is a close sweep. The **sling**, found near the west gate, is a slow straight shot with four times the reach that hits only the first enemy on its line and is stopped by cover. Swapping changes the attack mark drawn on the ground and the line under the portrait.
+- **Boots** change Evade. Evade and Sneak work with the slot empty. The **springheel boots** on the west road carry an Evade 4 m in place of 2.4 m. A wall or the river still stops it.
+- **Charm** is a passive. The **spiral charm** on the west road makes a salve restore 48 in place of 30. The figure under the portrait changes the moment the charm goes on or comes off.
+- **Salve** is the active item: two more lie on the west road. **Lavender** is a material stack: three on the ford lane, two near the relay. Nothing uses materials yet.
+
+Finds show as floating icons. Walk over one to collect it. Each Light Hero has their own share.
+
+## Fighting, death and recovery
+
+Scouts and Brutes now attack a hero they have caught, and can be fought. A beaten monster is out for 20 seconds and then walks back to its post. A fallen Dark Hero returns at the castle road after 12 seconds.
+
+A Light Hero who dies leaves a **body** where they fell and plays on as a **ghost**. The ghost can travel and nothing else. It is sent no enemy positions and the Dark side is never sent the ghost.
+
+- **At the body.** Another living Light Hero stands beside it, presses **R** and holds still for 4 seconds. Moving or taking a hit breaks it. The ghost cannot do this for itself.
+- **At a wayshrine.** Two stand in for sanctuaries: one south of the west road, one in the north orchard west of the relay. The ghost steps into the stone circle and presses **R**. The ritual takes 20 seconds for the newly dead and less the longer the hero has been dead, down to 6. Fighting nearby does not interrupt it.
+- **Corruption.** Dark monsters or a Dark Hero inside a wayshrine's precinct corrupt it; a Dark Hero in person is faster. Light sees an alert with the corruption level and no attacker. A ritual under way continues during the siege. If the wayshrine becomes fully corrupted first, the ritual ends and the ghost must reach the other one.
 
 ## Fog of war
 

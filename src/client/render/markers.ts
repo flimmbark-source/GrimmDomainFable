@@ -5,7 +5,9 @@
  *   - development-only sensor overlay, when the server streams debug data
  */
 import * as THREE from 'three';
-import type { DebugMessage, EvidenceKind, EvidenceView, Snapshot } from '../../shared/protocol.ts';
+import type { BodyView, DebugMessage, EvidenceKind, EvidenceView, PickupView, SanctuaryView, Snapshot } from '../../shared/protocol.ts';
+import { CONTEST } from '../../shared/sim/contest.ts';
+import { ITEMS } from '../../shared/sim/items.ts';
 import type { AssetLibrary } from './assets.ts';
 
 const EVIDENCE_STYLE: Record<EvidenceKind, { color: number; text: string; css: string }> = {
@@ -41,12 +43,23 @@ interface EvidenceVisual {
   sprite: THREE.Sprite;
 }
 
+interface SanctuaryVisual {
+  group: THREE.Group;
+  flame: THREE.Mesh<THREE.OctahedronGeometry, THREE.MeshBasicMaterial>;
+  beam: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshBasicMaterial>;
+  ring: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
+}
+
 export class MarkerLayer {
   readonly group = new THREE.Group();
   readonly debug = new THREE.Group();
   private readonly evidence = new Map<number, EvidenceVisual>();
   private readonly glyphs = new Map<EvidenceKind, THREE.Texture>();
   private readonly sites = new Map<number, { chest: THREE.Object3D; ring: THREE.Mesh; progress: THREE.Mesh }>();
+  private readonly sanctuaries = new Map<number, SanctuaryVisual>();
+  private readonly bodies = new Map<number, THREE.Group>();
+  private readonly pickups = new Map<number, { group: THREE.Group; sprite: THREE.Sprite }>();
+  private readonly icons = new Map<string, THREE.Texture>();
   private operation: { crystal: THREE.Mesh<THREE.OctahedronGeometry, THREE.MeshLambertMaterial>; ring: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial> } | null = null;
 
   constructor(private readonly assets: AssetLibrary, private readonly heightAt: (x: number, z: number) => number = () => 0) {
@@ -60,6 +73,126 @@ export class MarkerLayer {
     this.updateSites(snapshot, now);
     this.updateEvidence(snapshot, now);
     if (snapshot.operation) this.updateOperation(snapshot.operation, now);
+    for (const sanctuary of snapshot.sanctuaries ?? []) this.updateSanctuary(sanctuary, now);
+    this.sync(this.bodies, snapshot.bodies ?? [], (b) => b.heroId, (b) => this.createBody(b), (group) => group);
+    this.sync(this.pickups, snapshot.pickups ?? [], (p) => p.id, (p) => this.createPickup(p), (visual) => visual.group);
+    for (const { sprite } of this.pickups.values()) sprite.position.y = 1.1 + Math.sin(now / 380) * 0.12;
+  }
+
+  /** Keep one visual per item the server currently lists; drop the rest. */
+  private sync<T, V>(visuals: Map<number, V>, items: readonly T[], idOf: (item: T) => number, create: (item: T) => V, groupOf: (visual: V) => THREE.Object3D): void {
+    const listed = new Set<number>();
+    for (const item of items) {
+      const id = idOf(item);
+      listed.add(id);
+      if (visuals.has(id)) continue;
+      const visual = create(item);
+      visuals.set(id, visual);
+      this.group.add(groupOf(visual));
+    }
+    for (const [id, visual] of visuals) {
+      if (listed.has(id)) continue;
+      this.group.remove(groupOf(visual));
+      visuals.delete(id);
+    }
+  }
+
+  /**
+   * A wayshrine: a ring of low stones round a cairn with a column of light.
+   * It is drawn here, from contest data, and has no collider (provisional).
+   * The light dims and reddens as corruption rises and goes out when it falls.
+   */
+  private updateSanctuary(view: SanctuaryView, now: number): void {
+    let visual = this.sanctuaries.get(view.id);
+    if (!visual) {
+      const group = new THREE.Group();
+      group.name = `sanctuary:${view.id}`;
+      group.position.set(view.x, this.heightAt(view.x, view.z), view.z);
+      const stone = new THREE.MeshLambertMaterial({ color: 0xb9b4a6 });
+      for (let i = 0; i < 9; i++) {
+        const angle = (i / 9) * Math.PI * 2;
+        const x = Math.cos(angle) * CONTEST.sanctuaryRadius;
+        const z = Math.sin(angle) * CONTEST.sanctuaryRadius;
+        const block = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5 + (i % 3) * 0.22, 0.4), stone);
+        block.position.set(x, this.heightAt(view.x + x, view.z + z) - group.position.y + 0.25, z);
+        block.rotation.y = -angle + (i % 2 ? 0.3 : -0.2);
+        block.castShadow = true;
+        group.add(block);
+      }
+      const cairn = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.5, 1.3, 7), stone);
+      cairn.position.y = 0.65;
+      cairn.castShadow = true;
+      const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.3), new THREE.MeshBasicMaterial());
+      flame.position.y = 1.75;
+      const beam = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.9, 14, 12, 1, true),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }),
+      );
+      beam.position.y = 7;
+      const ringGeo = new THREE.RingGeometry(CONTEST.sanctuaryRadius - 0.14, CONTEST.sanctuaryRadius, 48);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.7, depthWrite: false }));
+      ring.position.y = 0.09;
+      group.add(cairn, flame, beam, ring);
+      this.group.add(group);
+      visual = { group, flame, beam, ring };
+      this.sanctuaries.set(view.id, visual);
+    }
+    const clean = new THREE.Color(0xf7e3a1);
+    const tainted = new THREE.Color(0x9a2fd0);
+    const color = clean.lerp(tainted, view.corrupted ? 1 : view.corruption * 0.85);
+    visual.ring.material.color.copy(color);
+    visual.flame.material.color.copy(color);
+    visual.flame.rotation.y = now * 0.001;
+    visual.flame.visible = !view.corrupted;
+    visual.beam.material.color.copy(color);
+    visual.beam.visible = !view.corrupted;
+    visual.beam.material.opacity = 0.2 + (view.corruption > 0 ? Math.abs(Math.sin(now / 260)) * 0.14 : 0);
+  }
+
+  /** A fallen hero: a pale figure lying where it fell, ringed at rescue range. */
+  private createBody(body: BodyView): THREE.Group {
+    const group = new THREE.Group();
+    group.name = `body:${body.heroId}`;
+    group.position.set(body.x, this.heightAt(body.x, body.z), body.z);
+    const figure = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 1.0, 4, 8), new THREE.MeshLambertMaterial({ color: 0xcfd8e6 }));
+    figure.rotation.z = Math.PI / 2;
+    figure.rotation.y = body.heroId * 1.7;
+    figure.position.y = 0.3;
+    figure.castShadow = true;
+    const ringGeo = new THREE.RingGeometry(CONTEST.rescueRange - 0.1, CONTEST.rescueRange, 40);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.55, depthWrite: false }));
+    ring.position.y = 0.08;
+    const sign = new THREE.Sprite(new THREE.SpriteMaterial({ map: glyph('†', '#cfe6ff'), depthTest: false, transparent: true }));
+    sign.position.y = 2.2;
+    sign.scale.set(1.3, 1.3, 1);
+    sign.renderOrder = 20;
+    group.add(figure, ring, sign);
+    return group;
+  }
+
+  /** A find: the item's own HUD icon floating over a gold ring. */
+  private createPickup(pickup: PickupView): { group: THREE.Group; sprite: THREE.Sprite } {
+    const group = new THREE.Group();
+    group.name = `pickup:${pickup.item}`;
+    group.position.set(pickup.x, this.heightAt(pickup.x, pickup.z), pickup.z);
+    const name = ITEMS[pickup.item].icon;
+    let texture = this.icons.get(name);
+    if (!texture) {
+      texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}art/player-hud/${name}.webp`);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      this.icons.set(name, texture);
+    }
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
+    sprite.scale.set(1.1, 1.1, 1);
+    sprite.position.y = 1.1;
+    const ringGeo = new THREE.RingGeometry(0.55, 0.7, 28);
+    ringGeo.rotateX(-Math.PI / 2);
+    const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xf3d27a, transparent: true, opacity: 0.85, depthWrite: false }));
+    ring.position.y = 0.07;
+    group.add(sprite, ring);
+    return { group, sprite };
   }
 
   private updateOperation(operation: NonNullable<Snapshot['operation']>, now: number): void {

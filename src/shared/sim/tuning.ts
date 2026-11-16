@@ -43,6 +43,10 @@ export interface MonsterProfile {
   raisesAlerts: boolean;
   /** Walks to confirmed-sighting alerts raised by other monsters. */
   respondsToAlerts: boolean;
+  /** Orchard contest only: health, and the bite it lands on a hero it has caught. */
+  hp: number;
+  attackDamage: number;
+  attackCooldownTicks: number;
 }
 
 export const TUNING = {
@@ -91,6 +95,9 @@ export const TUNING = {
       hearing: 1,
       raisesAlerts: true,
       respondsToAlerts: false,
+      hp: 70,
+      attackDamage: 9,
+      attackCooldownTicks: 30,
     },
     brute: {
       radius: 1.0,
@@ -102,6 +109,9 @@ export const TUNING = {
       hearing: 0.5,
       raisesAlerts: false,
       respondsToAlerts: true,
+      hp: 160,
+      attackDamage: 22,
+      attackCooldownTicks: 45,
     },
   } as Record<'scout' | 'brute', MonsterProfile>,
 
@@ -138,7 +148,7 @@ export const TUNING = {
     investigateTimeoutTicks: 450,
     /** While chasing a visible target, re-plan the path this often. */
     repathTicks: 8,
-    /** Stop this close to a caught target (no combat exists yet). */
+    /** Stop this close to a caught target. In the Orchard contest it then attacks. */
     catchDistance: 1.6,
     /** Give up walking to the last-seen position after this long. */
     lostTimeoutTicks: 300,

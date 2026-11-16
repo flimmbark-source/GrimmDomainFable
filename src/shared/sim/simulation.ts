@@ -10,10 +10,11 @@
  *  - The full SimState is server-only. Clients receive projection.ts output.
  */
 import { SLOT_COUNT, teamOfSlot, type ActorKind, type Command, type HeroAction, type SlotCommand, type SlotId, type Team } from '../protocol.ts';
+import { CONTEST, applyItemCommand, cancelRevive, createContest, evadeTicksOf, heroAttack, outfitHero, startRevive, updateContest } from './contest.ts';
 import { distance } from './geometry.ts';
 import { getMap, type MapDef, type Point } from './map.ts';
 import { applyOrder, thinkMonster } from './monster.ts';
-import { ARRIVE_EPS, EVADE_TICKS, moveActor, orderGoto, stopActor } from './movement.ts';
+import { ARRIVE_EPS, moveActor, orderGoto, stopActor } from './movement.ts';
 import { createOperation, updateOperation, workOperation } from './operation.ts';
 import { updatePerception } from './perception.ts';
 import { seedToState } from './rng.ts';
@@ -50,12 +51,15 @@ export function createSim(options: CreateOptions): SimState {
     evidence: [],
     noises: [],
     events: [],
-    ...(options.operation ? { operation: createOperation() } : {}),
+    ...(options.operation ? { operation: createOperation(), contest: createContest() } : {}),
   };
   for (let id = 0; id < SLOT_COUNT; id++) {
     state.slots.push({ id, team: teamOfSlot(id), occupant: 'empty', actorId: null });
   }
-  for (const spawn of map.monsters) {
+  // The contest gives the Dark commander's seat a second unit, so one player
+  // has a small force to post while fighting in person (placement provisional).
+  const spawns = options.operation ? [...map.monsters, { type: 'brute' as const, ownerSlot: 0, post: { x: 2, z: -31 } }] : map.monsters;
+  for (const spawn of spawns) {
     const profile = TUNING.monsters[spawn.type];
     const route = spawn.route === undefined ? undefined : map.patrolRoutes[spawn.route];
     const at = spawn.post ?? route?.[0];
@@ -63,6 +67,7 @@ export function createSim(options: CreateOptions): SimState {
     const assignment: Assignment =
       spawn.post || spawn.route === undefined ? { type: 'guard', x: at.x, z: at.z } : { type: 'patrol', route: spawn.route, waypoint: 0 };
     const monster = spawnActor(state, 'monster', 'dark', null, at, profile.walkSpeed, profile.radius);
+    monster.hp = monster.maxHp = profile.hp;
     monster.brain = {
       type: spawn.type,
       ownerSlot: spawn.ownerSlot,
@@ -116,6 +121,15 @@ function spawnActor(
     footstepTicks: 0,
     whistleReadyTick: 0,
     carried: 0,
+    hp: 1,
+    maxHp: 1,
+    attackReadyTick: 0,
+    evadeReadyTick: 0,
+    itemReadyTick: 0,
+    lastHitTick: -1,
+    inventory: {},
+    equipment: { weapon: null, boots: null, charm: null },
+    quick: [null, null, null],
     brain: null,
   };
   state.actors.push(actor);
@@ -140,6 +154,7 @@ export function occupySlot(state: SimState, slotId: SlotId, occupant: 'human' | 
   if (!spawn) return false;
   const hero = spawnActor(state, 'hero', slot.team, slotId, spawn, HERO_SPEED, HERO_RADIUS);
   hero.stealth = { ...(TUNING.stealthProfiles[profile] ?? TUNING.stealthProfiles.default!) };
+  if (state.contest) outfitHero(hero);
   slot.occupant = occupant;
   slot.actorId = hero.id;
   return true;
@@ -150,6 +165,11 @@ export function vacateSlot(state: SimState, slotId: SlotId): void {
   const slot = state.slots[slotId];
   if (!slot || slot.occupant === 'empty') return;
   state.actors = state.actors.filter((a) => a.id !== slot.actorId);
+  if (state.contest) {
+    const gone = (id: number) => id === slot.actorId;
+    state.contest.rescues = state.contest.rescues.filter((r) => !gone(r.rescuerId) && !gone(r.heroId));
+    state.contest.rituals = state.contest.rituals.filter((r) => !gone(r.heroId));
+  }
   slot.occupant = 'empty';
   slot.actorId = null;
 }
@@ -191,6 +211,7 @@ export function step(state: SimState, commands: readonly SlotCommand[]): SimStat
   for (const { slot, command } of commands) applyCommand(state, slot, command, map);
 
   for (const actor of state.actors) {
+    if (actor.dead && actor.brain) continue; // routed: out of play until it returns
     if (actor.brain) thinkMonster(state, actor, map);
     moveActor(actor, map);
     if (actor.kind === 'hero') {
@@ -198,13 +219,14 @@ export function step(state: SimState, commands: readonly SlotCommand[]): SimStat
       if (queued && actor.intent.type === 'idle') {
         delete actor.queuedAction;
         if (distance(actor.x, actor.z, queued.destination.x, queued.destination.z) <= ARRIVE_EPS) {
-          performHeroAction(state, actor, queued.kind);
+          performHeroAction(state, map, actor, queued.kind);
         }
       }
       footsteps(state, actor);
     }
   }
   updateSites(state, map);
+  updateContest(state, map);
   updatePerception(state, map);
   updateOperation(state, map);
 
@@ -215,6 +237,12 @@ export function step(state: SimState, commands: readonly SlotCommand[]): SimStat
 function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapDef): void {
   const actor = actorOfSlot(state, slot);
   if (!actor) return;
+  if (actor.dead) {
+    // A ghost may only travel and perform its ritual (D-033: no combat, no
+    // items, no physical interaction). A fallen Dark Hero waits to return.
+    const allowed = command.type === 'moveDir' || command.type === 'moveTo' || command.type === 'stop' || command.type === 'revive';
+    if (actor.team !== 'light' || !allowed) return;
+  }
   switch (command.type) {
     case 'moveDir': {
       delete actor.queuedAction;
@@ -236,10 +264,21 @@ function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapD
     case 'stop':
       delete actor.queuedAction;
       stopActor(actor);
+      cancelRevive(state, actor);
       if (state.operation?.worker === actor.id) {
         state.operation.worker = null;
         state.operation.progress = 0;
       }
+      break;
+    case 'revive':
+      startRevive(state, map, actor);
+      break;
+    case 'equip':
+    case 'unequip':
+    case 'assignQuick':
+    case 'useQuick':
+    case 'dropItem':
+      applyItemCommand(state, actor, command);
       break;
     case 'workOperation':
       workOperation(state, map, actor);
@@ -251,12 +290,14 @@ function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapD
       whistle(state, actor);
       break;
     case 'heroAction': {
-      if (!state.operation || actor.team !== 'light') break;
+      // Hotkeys (no target) and action-menu orders (target) share every rule:
+      // both end in performHeroAction, one now and one on arrival.
+      if (!state.contest) break;
       const { action, target } = command;
       if (action === 'whistle' && state.tick < actor.whistleReadyTick) break;
       if (actor.queuedAction && !target) stopActor(actor);
       delete actor.queuedAction;
-      if (!target) performHeroAction(state, actor, action);
+      if (!target) performHeroAction(state, map, actor, action);
       else if (orderGoto(actor, map, target.x, target.z) && actor.intent.type === 'goto') {
         actor.queuedAction = { kind: action, destination: { x: actor.intent.x, z: actor.intent.z } };
       }
@@ -273,30 +314,36 @@ function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapD
 }
 
 function setGait(actor: ActorState, sneak: boolean): void {
+  if (actor.dead) return;
   actor.sneaking = sneak;
   actor.speed = HERO_SPEED * (sneak ? TUNING.hero.sneakSpeedFactor : 1);
 }
 
 function whistle(state: SimState, actor: ActorState): void {
-  if (state.tick < actor.whistleReadyTick) return;
+  if (actor.dead || state.tick < actor.whistleReadyTick) return;
   actor.whistleReadyTick = state.tick + TUNING.hero.whistleCooldownTicks;
   const radius = TUNING.hero.whistleNoiseRadius * actor.stealth.noise;
   state.noises.push({ x: actor.x, z: actor.z, radius, team: actor.team });
   state.events.push({ kind: 'whistle', x: actor.x, z: actor.z, radius, actorId: actor.id });
 }
 
-function performHeroAction(state: SimState, actor: ActorState, action: HeroAction): void {
+function performHeroAction(state: SimState, map: MapDef, actor: ActorState, action: HeroAction): void {
+  if (actor.dead) return;
   switch (action) {
     case 'sneak': setGait(actor, !actor.sneaking); break;
     case 'whistle': whistle(state, actor); break;
     case 'attack':
-      actor.actionMotion = { kind: 'attack', tick: state.tick };
+      // The equipped weapon decides the pattern, reach and damage.
+      heroAttack(state, map, actor);
       break;
     case 'evade': {
-      if (actor.intent.type === 'evade') break;
+      if (actor.intent.type === 'evade' || state.tick < actor.evadeReadyTick) break;
       const after = actor.intent.type === 'dir' ? actor.intent : null;
       stopActor(actor);
-      actor.intent = { type: 'evade', ticks: EVADE_TICKS, after };
+      // Boots lengthen the dash; movement.ts still stops it at any collider.
+      const ticks = evadeTicksOf(actor);
+      actor.intent = { type: 'evade', ticks, after };
+      actor.evadeReadyTick = state.tick + ticks + CONTEST.evadeCooldownTicks;
       actor.actionMotion = { kind: 'evade', tick: state.tick };
       break;
     }
@@ -305,7 +352,7 @@ function performHeroAction(state: SimState, actor: ActorState, action: HeroActio
 
 /** Running is audible; sneaking and standing still are silent. */
 function footsteps(state: SimState, hero: ActorState): void {
-  if (!hero.moving || hero.sneaking) {
+  if (!hero.moving || hero.sneaking || hero.dead) {
     hero.footstepTicks = 0;
     return;
   }

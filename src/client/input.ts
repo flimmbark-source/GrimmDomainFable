@@ -18,20 +18,29 @@ export interface InputHost {
   ownedMonster(): number | null;
   /** Height of the walking surface; omitted on flat maps. */
   heightAt?(x: number, z: number): number;
-  workOperation?(): boolean;
+  /** The command R sends right now (relay work, a revival), or null. */
+  interaction?(): Command | null;
+  /** Command view: a click on one of the player's own monsters selects it. */
+  selectMonsterNear?(x: number, z: number): boolean;
   handleUiKey?(event: KeyboardEvent): boolean;
   inventoryOpen?(): boolean;
+  /** This press only closed the action menu; do nothing else with it. */
+  dismissedMenu?(): boolean;
   usesActionMenu?(): boolean;
   openActionMenu?(x: number, y: number, target: { x: number; z: number }): void;
 }
 
 const GROUND = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+/** Pointer travel that turns a left press into a camera drag instead of a click. */
+const DRAG_PIXELS = 6;
 
 export class InputController {
   private readonly keys = new Set<string>();
   private lastDir = { dx: 0, dz: 0 };
   private sneaking = false;
   private dragging = false;
+  /** Contest controls: a left press that has not yet become a drag. */
+  private press: { x: number; y: number; dragged: boolean } | null = null;
   private readonly raycaster = new THREE.Raycaster();
 
   constructor(private readonly host: InputHost) {
@@ -44,8 +53,19 @@ export class InputController {
     const canvas = host.canvas;
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
-    window.addEventListener('pointerup', () => (this.dragging = false));
+    window.addEventListener('pointerup', (e) => {
+      this.dragging = false;
+      const press = this.press;
+      this.press = null;
+      // A press released without dragging is a plain click on the ground.
+      if (press && !press.dragged && e.button === 0 && e.target === canvas) this.clickGround(e);
+    });
     window.addEventListener('pointermove', (e) => {
+      const press = this.press;
+      if (press && !press.dragged && Math.hypot(e.clientX - press.x, e.clientY - press.y) > DRAG_PIXELS) {
+        press.dragged = true;
+        this.dragging = true;
+      }
       if (this.dragging && host.rig.mode === 'hero') host.rig.orbitHero(-e.movementX * 0.006, e.movementY * 0.004);
     });
     canvas.addEventListener('wheel', (e) => {
@@ -87,7 +107,10 @@ export class InputController {
     }
     if (e.code === 'KeyX' && !e.repeat) this.host.send({ type: 'stop' });
     if (e.code === 'KeyF' && !e.repeat && !this.host.usesActionMenu?.()) this.host.send({ type: 'whistle' });
-    if (e.code === 'KeyR' && !e.repeat && this.host.workOperation?.()) this.host.send({ type: 'workOperation' });
+    if (e.code === 'KeyR' && !e.repeat) {
+      const command = this.host.interaction?.();
+      if (command) this.host.send(command);
+    }
     if (e.code === 'KeyP' && !e.repeat) {
       const monster = this.host.ownedMonster();
       if (monster !== null) this.host.send({ type: 'monsterOrder', actorId: monster, order: 'patrol' });
@@ -96,11 +119,57 @@ export class InputController {
     this.keys.add(e.code);
   }
 
+  /** The terrain point under the pointer, or null (sky, off the map). */
+  private groundPoint(e: { clientX: number; clientY: number }): THREE.Vector3 | null {
+    const rect = this.host.canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(ndc, this.host.rig.camera);
+    const hit = this.raycaster.ray.intersectPlane(GROUND, new THREE.Vector3());
+    if (!hit) return null;
+    const heightAt = this.host.heightAt;
+    if (heightAt) {
+      // The ground has relief: slide the hit along the ray until it lies on the surface.
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      for (let i = 0; i < 6; i++) {
+        plane.constant = -heightAt(hit.x, hit.z);
+        if (!this.raycaster.ray.intersectPlane(plane, hit)) return null;
+      }
+    }
+    return hit;
+  }
+
+  /**
+   * Contest controls, plain left click: move the hero there, in either view.
+   * In command view a click on one of your own monsters selects it instead.
+   */
+  private clickGround(e: PointerEvent): void {
+    const hit = this.groundPoint(e);
+    if (!hit) return;
+    if (this.host.rig.mode === 'rts' && this.host.selectMonsterNear?.(hit.x, hit.z)) return;
+    this.host.send({ type: 'moveTo', x: hit.x, z: hit.z });
+  }
+
   private onPointerDown(e: PointerEvent): void {
     if (this.host.inventoryOpen?.()) return;
     const rig = this.host.rig;
-    const usesMenu = this.host.usesActionMenu?.();
-    if (rig.mode === 'hero' && !(usesMenu && e.button === 2)) {
+    if (this.host.usesActionMenu?.()) {
+      if (this.host.dismissedMenu?.()) return;
+      // Left: click = move, drag (hero view) = turn the camera; resolved on release.
+      if (e.button === 0) {
+        this.press = { x: e.clientX, y: e.clientY, dragged: false };
+        return;
+      }
+      if (e.button !== 2) return;
+      const hit = this.groundPoint(e);
+      if (!hit) return;
+      // Right: in command view a Dark commander posts the selected monster
+      // there; everywhere else it opens the action menu at the cursor.
+      const monster = rig.mode === 'rts' ? this.host.ownedMonster() : null;
+      if (monster !== null) this.host.send({ type: 'monsterOrder', actorId: monster, order: 'guard', x: hit.x, z: hit.z });
+      else this.host.openActionMenu?.(e.clientX, e.clientY, { x: hit.x, z: hit.z });
+      return;
+    }
+    if (rig.mode === 'hero') {
       if (e.button !== 0) return;
       this.dragging = true;
       return;
@@ -108,24 +177,8 @@ export class InputController {
     if (e.button !== 0 && e.button !== 2) return;
     // RTS view: a click orders the hero to that ground point. For a Dark
     // player who owns a monster, the RIGHT button posts that monster there.
-    const rect = this.host.canvas.getBoundingClientRect();
-    const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
-    this.raycaster.setFromCamera(ndc, rig.camera);
-    const hit = this.raycaster.ray.intersectPlane(GROUND, new THREE.Vector3());
+    const hit = this.groundPoint(e);
     if (!hit) return;
-    const heightAt = this.host.heightAt;
-    if (heightAt) {
-      // The ground has relief: slide the hit along the ray until it lies on the surface.
-      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-      for (let i = 0; i < 6; i++) {
-        plane.constant = -heightAt(hit.x, hit.z);
-        if (!this.raycaster.ray.intersectPlane(plane, hit)) return;
-      }
-    }
-    if (usesMenu && e.button === 2) {
-      this.host.openActionMenu?.(e.clientX, e.clientY, { x: hit.x, z: hit.z });
-      return;
-    }
     const monster = e.button === 2 ? this.host.ownedMonster() : null;
     if (monster !== null) this.host.send({ type: 'monsterOrder', actorId: monster, order: 'guard', x: hit.x, z: hit.z });
     else this.host.send({ type: 'moveTo', x: hit.x, z: hit.z });
@@ -142,6 +195,7 @@ export class InputController {
     if (this.host.inventoryOpen?.()) {
       this.keys.clear();
       this.dragging = false;
+      this.press = null;
     }
     const usesMenu = this.host.usesActionMenu?.();
     // The Orchard action controls manage their gait through the server command.

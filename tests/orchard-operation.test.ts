@@ -12,6 +12,8 @@ function scenario() {
   const light = actorOfSlot(sim, LIGHT)!;
   const scout = sim.actors.find((actor) => actor.brain?.type === 'scout')!;
   post(scout, 40, -43, 0, -1);
+  // Stand the contest's relay guard down so these tests exercise the relay alone.
+  for (const actor of sim.actors) if (actor.brain?.type === 'brute') post(actor, 60, -50, 0, -1);
   return { sim, light, dark, scout, operation: sim.operation! };
 }
 
@@ -117,20 +119,24 @@ describe('Orchard Goblin action orders', () => {
     expect(light.x).toBeGreaterThan(target.x + 2);
 
     step(sim, [cmd(LIGHT, { type: 'moveDir', dx: -1, dz: 0 })]);
+    run(sim, 40); // Evade has a short recovery before it can be used again.
     step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'evade' })]);
     run(sim, 9);
     expect(light.intent.type).toBe('dir');
   });
 
-  it('validates destinations and scopes context actions to Light operation heroes', () => {
-    const { sim, dark } = scenario();
+  it('validates destinations and keeps context actions out of maps without the contest', () => {
     expect(parseCommand({ type: 'heroAction', action: 'attack', target: { x: Infinity, z: 5 } })).toBeNull();
     expect(parseCommand({ type: 'heroAction', action: 'evade', target: null })).toBeNull();
     expect(parseCommand({ type: 'heroAction', action: 'whistle', target: { x: 5, z: 8 } })).toEqual({
       type: 'heroAction', action: 'whistle', target: { x: 5, z: 8 },
     });
-    step(sim, [cmd(DARK_OWNER, { type: 'heroAction', action: 'evade' })]);
-    expect(dark.intent.type).toBe('idle');
-    expect(dark.actionMotion).toBeUndefined();
+    const plain = createSim({ seed: 7, mapId: ORCHARD_VALE.id });
+    occupySlot(plain, LIGHT, 'human');
+    const hero = actorOfSlot(plain, LIGHT)!;
+    step(plain, [cmd(LIGHT, { type: 'heroAction', action: 'evade' })]);
+    step(plain, [cmd(LIGHT, { type: 'heroAction', action: 'attack' })]);
+    expect(hero.intent.type).toBe('idle');
+    expect(hero.actionMotion).toBeUndefined();
   });
 });

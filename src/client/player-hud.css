@@ -5,7 +5,11 @@ body.has-player-hud {
 }
 body.has-player-hud #top { top: 14px; right: 14px; left: auto; z-index: 4; }
 body.has-player-hud #top:has(#status[data-kind='ok']),
-body.has-player-hud :is(#right, #objective, #controls, #attention, #reports) { display: none; }
+body.has-player-hud :is(#right, #objective, #controls, #attention) { display: none; }
+/* Dark keeps its report list (D-012 alerts); Light never has one. */
+body.has-player-hud #reports { top: 64px; right: 14px; z-index: 3; }
+body.has-player-hud:not([data-team='dark']) #reports { display: none !important; }
+body.has-player-hud #top { top: auto; bottom: calc(var(--ph-kit-height) + var(--ph-bottom) + 70px); right: 14px; }
 body.has-player-hud #debug { display: none; }
 body.has-player-hud.show-playtest-debug #debug { display: block; bottom: calc(var(--ph-kit-height) + var(--ph-bottom) + 8px); z-index: 3; }
 
@@ -344,3 +348,20 @@ button.ph-slot:hover:not(:disabled), .ph-slot[aria-pressed='true'] {
   #player-hud .ph-action { gap: 4px; padding-inline: 4px; }
   #player-hud .ph-action img { flex-basis: 24px; width: 24px; height: 24px; }
 }
+
+/* Contest additions: health, live kit stats, Dark Energy rate, situation line. */
+.ph-health-row { display: flex; align-items: center; gap: 7px; min-width: clamp(120px, 13vw, 190px); }
+.ph-health-text { font: 650 12px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#player-hud meter.ph-health { height: 9px; }
+#player-hud meter::-webkit-meter-suboptimum-value { background: #d9a441; }
+#player-hud meter::-webkit-meter-even-less-good-value { background: #c9543c; }
+.ph-stats { display: flex; flex-wrap: wrap; gap: 2px 9px; color: var(--ph-muted); font-size: 12px; }
+.ph-stats span + span::before { content: '·'; margin-right: 9px; color: var(--ph-gold); }
+#player-hud[data-dead='true'] .ph-portrait img { filter: grayscale(1) brightness(1.5) opacity(0.6); }
+#player-hud[data-dead='true'] :is(.ph-stats, .ph-quick, .ph-bag-toggle) { opacity: 0.4; }
+#player-hud[data-team='dark'] .ph-portrait img { filter: hue-rotate(250deg) saturate(0.7) brightness(0.8); }
+.ph-energy { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ph-energy::after { content: '·'; margin-left: 8px; color: var(--ph-gold); }
+.ph-energy[data-slowed='true'] { color: #b9d99a; }
+.ph-notice { margin-top: 6px; color: #ffd9a0; font: italic clamp(13px, 1.05vw, 17px)/1.25 var(--ph-display); }
+.ph-effect { color: #b9d99a; font-style: normal; font-size: clamp(12px, 1vw, 15px); }

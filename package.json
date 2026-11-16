@@ -21,6 +21,7 @@
     "verify:browser": "node scripts/browser-check.mjs",
     "verify:m1": "node scripts/browser-check-m1.mjs",
     "verify:orchard": "node scripts/browser-check-orchard-vale.mjs",
+    "verify:contest": "node scripts/browser-check-contest.mjs",
     "plot:region": "tsx scripts/plot-region.ts"
   },
   "dependencies": {

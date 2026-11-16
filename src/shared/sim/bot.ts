@@ -40,14 +40,56 @@ function nextRandom(memory: BotMemory): number {
 }
 
 export function botThink(memory: BotMemory, view: Snapshot, map: MapDef): Command | null {
-  if (!view.you || view.tick < memory.nextDecisionTick) return null;
+  if (!view.you || (!view.operation && view.tick < memory.nextDecisionTick)) return null;
   const me = view.actors.find((a) => a.id === view.you?.actorId);
   if (!me) return null;
 
   const operation = view.operation;
   if (operation) {
-    if (operation.result || operation.progress > 0) return null;
+    if (operation.result) return null;
+    // Fighting and recovery come from the same projected view and the same
+    // commands a human has. Bot skill and takeover timing are undecided.
+    const kit = view.you.kit;
+    if (kit) {
+      if (kit.channel) return null;
+      if (kit.interaction) return { type: 'revive' };
+      if (kit.dead) {
+        if (view.you.team !== 'light' || view.tick < memory.nextDecisionTick) return null;
+        memory.nextDecisionTick = view.tick + 30;
+        // The ghost's own route: the nearest sanctuary that is still eligible.
+        const open = (view.sanctuaries ?? []).filter((s) => !s.corrupted)
+          .sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z))[0];
+        return open && !me.order ? { type: 'moveTo', x: open.x, z: open.z } : null;
+      }
+      const salve = kit.quick.indexOf('salve');
+      if (salve !== -1 && kit.hp <= kit.maxHp - kit.salveHeal) return { type: 'useQuick', slot: salve };
+      const foes = view.actors.filter((a) => a.team !== me.team && !a.ghost);
+      const near = (range: number) => foes.find((a) => Math.hypot(a.x - me.x, a.z - me.z) <= range + a.radius - 0.2);
+      if (kit.attack && kit.attackCooldown === 0 && near(kit.attack.range)) return { type: 'heroAction', action: 'attack' };
+      if (operation.progress > 0 || view.tick < memory.nextDecisionTick) return null;
+      // Close with an enemy that has come near; otherwise carry on below.
+      const threat = kit.attack && foes.find((a) => Math.hypot(a.x - me.x, a.z - me.z) <= 8 && (a.kind === 'hero' || view.you!.spotted));
+      if (threat && !near(kit.attack!.range)) {
+        memory.nextDecisionTick = view.tick + 10;
+        return { type: 'moveTo', x: threat.x, z: threat.z };
+      }
+      // A fallen ally within reach is worth the walk (D-034).
+      const body = view.you.team === 'light' ? (view.bodies ?? []).find((b) => Math.hypot(b.x - me.x, b.z - me.z) <= 30) : undefined;
+      if (body && !threat) {
+        memory.nextDecisionTick = view.tick + 20;
+        return me.order ? null : { type: 'moveTo', x: body.x, z: body.z };
+      }
+    }
+    if (operation.progress > 0 || view.tick < memory.nextDecisionTick) return null;
     memory.nextDecisionTick = view.tick + 20 + Math.floor(nextRandom(memory) * 25);
+    // One Dark bot answers the shared sighting alert (D-012) in person; the
+    // others hold the castle road. Which bots respond is a placeholder.
+    const alert = view.you.team === 'dark' && view.you.slot === 1 && operation.active
+      ? view.evidence.filter((e) => e.kind === 'sighting' && e.id > memory.lastAlertId).at(-1) : undefined;
+    if (alert) {
+      memory.lastAlertId = alert.id;
+      return { type: 'moveTo', x: alert.x, z: alert.z };
+    }
     // When a Light player is present, reserve the opening sabotage for them.
     // Light bots take the approaches and stay available to screen the site.
     if (view.you.team === 'light' && view.slots.some((slot) => slot.team === 'light' && slot.occupant === 'human')) {

@@ -15,7 +15,7 @@ export const TICK_DT = 1 / TICK_RATE;
 const STUCK_TICKS = 20;
 export const ARRIVE_EPS = 0.05;
 export const EVADE_TICKS = 9;
-const EVADE_SPEED = 8;
+export const EVADE_SPEED = 8;
 
 export function stopActor(actor: ActorState): void {
   actor.intent = { type: 'idle' };

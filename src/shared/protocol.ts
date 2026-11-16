@@ -5,6 +5,8 @@
  * Nothing in this file may import rendering, DOM, Node or transport code.
  */
 
+import { isGearSlot, isItemId, type GearSlot, type ItemId } from './sim/items.ts';
+
 export const TEAMS = ['dark', 'light'] as const;
 export type Team = (typeof TEAMS)[number];
 
@@ -77,8 +79,21 @@ export type MonsterOrderCommand =
   | { type: 'monsterOrder'; actorId: number; order: 'guard'; x: number; z: number }
   | { type: 'monsterOrder'; actorId: number; order: 'patrol' };
 
+/**
+ * Inventory and equipment (Orchard contest). The client only ASKS: the server
+ * owns what a hero carries, wears and has in its quick slots.
+ */
+export type ItemCommand =
+  | { type: 'equip'; item: ItemId }
+  | { type: 'unequip'; slot: GearSlot }
+  | { type: 'assignQuick'; slot: number; item: ItemId | null }
+  | { type: 'useQuick'; slot: number }
+  | { type: 'dropItem'; item: ItemId };
+
 export type Command = MoveDirCommand | MoveToCommand | StopCommand | SetGaitCommand | WhistleCommand | HeroActionCommand | MonsterOrderCommand |
-  { type: 'workOperation' };
+  ItemCommand | { type: 'workOperation' } |
+  /** Living Light Hero beside a body: revive it. Ghost in a sanctuary: begin the ritual. */
+  { type: 'revive' };
 
 /** A command bound to the slot that issued it. The slot is assigned by the
  *  server from the connection; it is never read from the client payload. */
@@ -131,6 +146,20 @@ export function parseCommand(raw: unknown): Command | null {
     }
     case 'workOperation':
       return { type: 'workOperation' };
+    case 'revive':
+      return { type: 'revive' };
+    case 'equip':
+    case 'dropItem':
+      return isItemId(r.item) ? { type: r.type, item: r.item } : null;
+    case 'unequip':
+      return isGearSlot(r.slot) ? { type: 'unequip', slot: r.slot } : null;
+    case 'useQuick':
+    case 'assignQuick': {
+      if (typeof r.slot !== 'number' || !Number.isInteger(r.slot) || r.slot < 0 || r.slot > 2) return null;
+      if (r.type === 'useQuick') return { type: 'useQuick', slot: r.slot };
+      if (r.item !== null && !isItemId(r.item)) return null;
+      return { type: 'assignQuick', slot: r.slot, item: r.item };
+    }
     case 'monsterOrder': {
       if (typeof r.actorId !== 'number' || !Number.isInteger(r.actorId) || r.actorId < 0) return null;
       if (r.order === 'patrol') return { type: 'monsterOrder', actorId: r.actorId, order: 'patrol' };
@@ -174,7 +203,11 @@ export interface ActorView {
   /** Heroes: visibly sneaking. */
   sneaking?: boolean;
   /** A transient playtest motion on an already visible hero. */
-  action?: { kind: 'attack' | 'evade'; tick: number };
+  action?: { kind: 'attack' | 'evade'; tick: number; weapon?: ItemId };
+  /** Health as a fraction 0..1 (Orchard contest only). */
+  health?: number;
+  /** A Light Hero's ghost. Only ever sent to that hero's own team. */
+  ghost?: boolean;
   /** Monsters only. */
   monster?: MonsterType;
   mood?: MonsterMood;
@@ -225,7 +258,7 @@ export interface SiteView {
   progress?: number;
 }
 
-export type SoundKind = 'growl' | 'howl' | 'whistle' | 'cache';
+export type SoundKind = 'growl' | 'howl' | 'whistle' | 'cache' | 'hit' | 'heal' | 'pickup' | 'revive';
 
 /** Something the viewer's hero hears this tick. */
 export interface SoundView {
@@ -249,6 +282,72 @@ export interface YouView {
   carried: number;
   /** Ticks until you may whistle again. */
   whistleCooldown: number;
+  /** Your hero's kit and condition (Orchard contest only). Private to your seat. */
+  kit?: KitView;
+}
+
+/** What the current weapon makes Attack do; null with the weapon slot empty. */
+export interface AttackView {
+  pattern: 'arc' | 'line';
+  range: number;
+  damage: number;
+}
+
+export interface KitView {
+  hp: number;
+  maxHp: number;
+  /** You are a ghost (Light) or waiting to return (Dark). */
+  dead: boolean;
+  deadSeconds: number;
+  equipment: Record<GearSlot, ItemId | null>;
+  inventory: { item: ItemId; count: number }[];
+  quick: (ItemId | null)[];
+  /** Derived from what is worn right now. */
+  attack: AttackView | null;
+  attackCooldown: number;
+  /** Metres one Evade covers on open ground. */
+  evadeDistance: number;
+  evadeCooldown: number;
+  /** Health one salve restores. */
+  salveHeal: number;
+  /** A revival you could start now with R. */
+  interaction: 'rescue' | 'ritual' | null;
+  /** A revival in progress that involves you. */
+  channel: { kind: 'rescue' | 'ritual' | 'rescued'; progress: number; seconds: number } | null;
+  /** Your ritual was ended because the sanctuary fell (shown briefly). */
+  ritualLost: boolean;
+  /** Dark placeholder: seconds until you return. */
+  returnSeconds?: number;
+}
+
+/** A find lying in the world that this viewer has not collected. */
+export interface PickupView {
+  id: number;
+  item: ItemId;
+  count: number;
+  x: number;
+  z: number;
+}
+
+/** A fallen Light Hero's body (D-032). */
+export interface BodyView {
+  heroId: number;
+  slot: SlotId | null;
+  x: number;
+  z: number;
+}
+
+/** A Light sanctuary and its condition (D-030: condition, never attackers). */
+export interface SanctuaryView {
+  id: number;
+  name: string;
+  x: number;
+  z: number;
+  /** 0..1 in coarse steps. */
+  corruption: number;
+  corrupted: boolean;
+  /** Light viewers only: Dark forces are in the precinct. */
+  threatened?: boolean;
 }
 
 export interface Snapshot {
@@ -263,6 +362,10 @@ export interface Snapshot {
   sounds: SoundView[];
   /** Public playtest score and local interaction, never attacker locations. */
   operation?: OperationView;
+  /** Orchard contest only. */
+  pickups?: PickupView[];
+  bodies?: BodyView[];
+  sanctuaries?: SanctuaryView[];
 }
 
 export interface OperationView {

@@ -1,6 +1,6 @@
 # Grimm Dominion: Decision register
 
-**Last reviewed:** 2026-11-12
+**Last reviewed:** 2026-11-16 (engineering added P-20 to P-33; no confirmed decision changed)
 **Authority:** latest explicit creator decisions > approved production specifications > existing implementation > exploratory GDD.
 
 ## Confirmed decisions (creator approval, 2026-11-11)
@@ -124,7 +124,7 @@ Engineering had to pick something to make M1 run. Each is the most restrictive r
 | P-7 | Sneak (Shift): 45% speed, silent. Running is audible within 7 m. Whistle (F): audible within 16 m, 4 s cooldown | Sneak and whistle are new player verbs added so hearing has counterplay. They are proposals, not approved abilities |
 | P-8 | Scout chase speed 4.6 against hero 6.0 | Engineering tuning proposal, not confirmed canon. **Creator's M1 human playtest found the chase works great specifically because breaking line of sight allows escape.** Do not revive the engineer's old negative qualitative judgment without new playtest evidence |
 | P-9 | Caches: stand still 3 s to open, refill after 30 s, opening is audible within 9 m | Placeholder objective so the crossing has a purpose. Not the M2 economy |
-| P-10 | A caught hero suffers nothing: the Scout stops beside it | No combat or capture rule exists yet |
+| P-10 | A caught hero suffers nothing: the Scout stops beside it. **Orchard contest only:** the monster bites instead (P-21) | No combat or capture rule is approved; the contest's damage is a playtest proposal |
 | P-11 | Spectators receive only actors the opposing team can currently see | Spectator policy was never specified; this cannot leak |
 | P-12 | A commander order overrides whatever the Scout is doing, but does not blind it: it will chase again if it still sees a confirmed hero | "Subject to unit behavior rules" in the spec |
 
@@ -140,6 +140,28 @@ Orchard Vale itself is **candidate** regional direction (region prototype 01, fo
 | P-17 | Witness trees (1.7 m trunks) and hedges are full sight cover; marker stones, drystone and terrace walls, fences and young trees block feet only | Cover classes for these new prop kinds are proposals |
 | P-18 | The M1 caches are placed in the ruin and the mill yard so the hunt has destinations | Placeholder objective only, not an M2 economy or a ruin treasure |
 | P-19 | Server WebSocket heartbeat grace raised from about 6 s to about 20 s (4 s pings, 5 retries) so a slow region load does not drop the client | Engineering tolerance; real reconnect and bot-takeover policy is still unresolved rule 6 |
+
+## Provisional choices made while building the Orchard Vale contest slice (need creator review)
+Combat, equipment and recovery in the relay contest (`?region=orchard_operation`). Engineering picked the smallest rule that makes the slice playable. **Every number is a playtest setting, not tuning to keep.** Rules live in `src/shared/sim/contest.ts` and `items.ts`. The M1 crossing and the plain Orchard Vale hunt are unchanged: no health, no damage.
+
+| ID | Choice in the build | Why it needs a decision |
+| --- | --- | --- |
+| P-20 | Heroes have 100 health. The equipped weapon supplies Attack: pattern, reach, damage and recovery time. Sample weapons: dagger (close sweep), sling (long straight shot that cover stops), cleaver (Dark, wide sweep). No weapon, no Attack. Attack turns the hero to the nearest enemy it can see within reach | **Damage tuning is open.** Aiming, weapon list, whether Dark Heroes use the same gear rules, and friendly fire are undecided |
+| P-21 | A monster that has caught its confirmed target attacks it (Scout 9 per second, Brute 22 per 1.5 s). A monster hit by something it was not chasing turns to investigate the attacker's position | Replaces P-10 in the contest only. Monster combat stats are placeholders |
+| P-22 | A slain monster is routed: gone for 20 s, then it walks back in from the castle road and resumes its assignment | Monster death, reinforcement and D-073 logistics are undecided. Without this the Dark force is wiped in the first minute |
+| P-23 | A fallen **Dark** Hero waits 12 s and returns at the castle road with full health | **Final Dark victory rules and what Dark death means are open** (unresolved rule 4). Placeholder so the Dark seat stays playable |
+| P-24 | Three gear slots: weapon, boots, charm. Sample boots lengthen Evade (collision still stops it). Sample charm raises salve healing by 60%. Effects are read from what is worn on the tick they are used | D-043 confirms equipment, not these slots, items or effects. D-043 explicitly does not prescribe identical slots per character |
+| P-25 | Carried items are gear, actives (quick slots 1 to 3) or materials (stack, no use yet). The salve is the one active: 30 health, not consumed at full health | Item list, stack limits, weight and what materials are for are undecided |
+| P-26 | Finds lie at fixed spots on the Light approach and are collected by walking over them. **Each Light Hero collects their own share once**; Dark Heroes cannot collect or see them | Loot ownership, respawn and anti-farming are open under D-044 / D-046. Per-hero shares stop bots emptying the road before the player arrives |
+| P-27 | Evade has a one second recovery. Dark Heroes get Attack, Sneak, Evade and Whistle too | Evade had no recovery before; boots made spamming it a speed boost. Dark Hero verbs are undecided |
+| P-28 | Two wayshrines stand in for Light sanctuaries: one on the west road, one in the north orchard. They are drawn markers with no collider and no purification | D-022 says sanctuaries come from purified landmarks. None of that exists yet; these are stand-ins so D-032 to D-041 can be played |
+| P-29 | A sanctuary is corrupted by Dark presence inside 7 m: monsters alone 45 s, a Dark Hero alone 30 s, both 18 s. Progress decays at half speed when they leave. Full corruption is permanent in this slice | **The two-stage siege (wards, then ritual: D-026), ward repair (D-027 to D-029) and purification are not built.** One timer stands in for all of it |
+| P-30 | Body rescue: a living Light Hero within 2.2 m holds still for 4 s. Moving or being hit breaks it. The hero stands up at the body with half health | D-034 leaves timing, cost and interruption open |
+| P-31 | Sanctuary ritual: the ghost stands inside the 3.5 m circle and starts it (R). 20 s for the newly dead, one second less per five seconds dead, never under 6 s. The length locks when the ritual starts. Leaving the circle abandons it. Full health on return | D-040 leaves the curve, the limits and when the duration locks open |
+| P-32 | A ghost moves at 5 m/s over ordinary ground, is sent no enemy at all, hears no enemy cue, is never sent to the Dark side, and cannot be hurt. Sanctuary condition is sent to everyone; a ritual in progress is sent to nobody else | Most restrictive reading of D-033. Spirit senses, ghost paths and obstacles (D-035 to D-037) are not built. A body is visible to a Dark Hero who can see the spot; whether Dark can do anything to it is open |
+| P-33 | Bots fight what comes near, heal with a salve, revive a fallen ally within 30 m when unthreatened, and walk their own ghost to the nearest eligible wayshrine. One Dark bot answers shared sighting alerts in person | **Bot takeover timing and bot skill are open** (unresolved rule 6). This is enough behaviour to fill seats, not a bot design |
+
+The contest also gives Dark seat 0 a second monster (a Brute by the relay) so one player has a small force to command. In command view a left-click on an owned monster selects it for the next right-click order. Army assignment is still undecided (P-5).
 
 ## Unresolved rules (do NOT silently decide these as canon)
 1. **Core rule decided by D-015 to D-018:** Dark Lord starts dormant; Light can breach sanctum and kill him before awakening; Dark Energy accrues naturally over time, receives small one-time gains from evil deeds by Dark Heroes and minions, and accrues faster through corruption sources; awakening triggers Dark Lord + Dark Heroes vs Light Heroes final battle. **D-019/D-020 confirm** Light Heroes can slow awakening by sabotaging corruption sources, without directly reversing accumulated Dark Energy. **Unresolved:** meter formula/tiers, qualifying evil deeds, corruption/constructible source types, placement rules, source stacking and maintenance, boss abilities, pre-awakening sanctum vulnerability, post-awakening terminal rules, and whether sleeping influence exists.
