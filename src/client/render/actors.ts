@@ -188,7 +188,7 @@ export class ActorLayer {
         ? (older.snapshot.tick + (newer.snapshot.tick - older.snapshot.tick) * t - actor.action.tick) / TICK_RATE : -1;
       const attack = actor.action?.kind === 'attack' && actionAge >= 0 && actionAge < 0.36
         ? Math.sin(Math.PI * actionAge / 0.36) : 0;
-      visual.root.rotation.y = visual.yaw + attack * 0.9;
+      visual.root.rotation.y = visual.yaw + attack * 0.45;
 
       // Cosmetic walk cycle, driven by the simulated `moving` flag.
       const alarmed = actor.mood === 'alarmed';
@@ -196,7 +196,16 @@ export class ActorLayer {
       else visual.walkPhase = 0;
       const stride = Math.sin(visual.walkPhase);
       visual.model.position.y = actor.moving ? Math.abs(stride) * (actor.sneaking ? 0.04 : 0.14) : 0;
-      visual.model.rotation.z = actor.moving ? stride * 0.07 : 0;
+      visual.model.rotation.z = actor.moving ? stride * 0.05 : 0;
+      // Limbs: legs and arms swing in opposite pairs; the weapon arm leads an attack.
+      const swing = actor.moving ? stride * (actor.sneaking ? 0.35 : 0.75) : 0;
+      for (const limb of visual.model.children) {
+        const target = limb.name === 'legL' || limb.name === 'armR' ? swing : limb.name === 'legR' || limb.name === 'armL' ? -swing : null;
+        if (target === null) continue;
+        const arm = limb.name.startsWith('arm');
+        const reach = limb.name === 'armR' && attack > 0 && actor.kind === 'hero' ? -attack * 1.7 : 0;
+        limb.rotation.x += ((arm && actor.kind === 'hero' ? target * 0.6 : target) + reach - limb.rotation.x) * Math.min(1, dt * 18);
+      }
       // Posture: sneaking heroes crouch; a suspicious monster rears its head up,
       // an alarmed one drops low and forward.
       const evading = actor.action?.kind === 'evade' && actionAge >= 0 && actionAge < 0.3;

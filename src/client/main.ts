@@ -329,6 +329,7 @@ async function start(): Promise<void> {
     handleUiKey: (event) => playerHud?.handleKey(event) ?? false,
     inventoryOpen: () => playerHud?.isOpen ?? false,
     dismissedMenu: () => playerHud?.dismissedMenu ?? false,
+    wasdMoves: () => playerHud?.wasdMoves ?? false,
     usesActionMenu: () => playerHud?.usesActionMenu ?? false,
     openActionMenu: (x, y, target) => playerHud?.openActions(x, y, target),
     ...(map.region ? { heightAt: world.heightAt } : {}),

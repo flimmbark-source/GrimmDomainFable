@@ -74,7 +74,7 @@ export function botThink(memory: BotMemory, view: Snapshot, map: MapDef): Comman
         return { type: 'moveTo', x: threat.x, z: threat.z };
       }
       // A fallen ally within reach is worth the walk (D-034).
-      const body = view.you.team === 'light' ? (view.bodies ?? []).find((b) => Math.hypot(b.x - me.x, b.z - me.z) <= 30) : undefined;
+      const body = view.you.team === 'light' ? (view.bodies ?? []).find((b) => Math.hypot(b.x - me.x, b.z - me.z) <= 45) : undefined;
       if (body && !threat) {
         memory.nextDecisionTick = view.tick + 20;
         return me.order ? null : { type: 'moveTo', x: body.x, z: body.z };

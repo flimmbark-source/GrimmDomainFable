@@ -390,7 +390,7 @@ button.ph-slot:hover:not(:disabled), .ph-slot[aria-pressed='true'] {
 
 /* A ghost sees the same kingdom drained of colour and gone cold (D-036: same place, another layer). */
 canvas#view { transition: filter 0.8s; }
-body[data-ghost='true'] canvas#view { filter: grayscale(0.82) contrast(1.06) brightness(1.08) sepia(0.25) hue-rotate(165deg); }
+body[data-ghost='true'] canvas#view { filter: grayscale(0.7) brightness(0.72) contrast(1.12) sepia(0.3) hue-rotate(170deg) saturate(1.3); }
 #player-hud[data-dead='true'] .ph-character { border-color: #8fb4d6; box-shadow: inset 0 0 0 2px #0d141bc0, 0 0 18px #6fb2e455; }
 #player-hud[data-dead='true'] .ph-objective-title { color: #cfe6ff; }
 
@@ -413,3 +413,11 @@ button.ph-slot:hover:not(:disabled) { translate: 0 -1px; box-shadow: inset 0 0 0
 @keyframes ph-breathe { 50% { box-shadow: inset 0 0 0 2px #170f0bc0, 0 0 0 1px #e7b76f90, 0 6px 22px #e7b76f40; } }
 .ph-objective-title strong { text-shadow: 0 2px 3px #130c07, 0 0 14px #0c0805; }
 .ph-notice { padding: 3px 10px; border-radius: 4px; background: #1a120cb0; display: inline-block; }
+
+/* Key layout switch, under the view button. */
+#player-hud .ph-keys { position: absolute; top: calc(var(--ph-inset) + 46px); right: var(--ph-inset); display: flex; align-items: center; gap: 4px; padding: 5px 8px; pointer-events: auto; font-size: 12px; color: var(--ph-muted); }
+#player-hud .ph-keys span { margin-inline: 3px; }
+#player-hud .ph-keys:hover { border-color: var(--ph-gold); color: var(--ph-text); }
+body.has-player-hud #reports { top: 104px; }
+.ph-notice[data-urgent='true'] { color: #ffb19c; background: #3a120cd0; font-style: normal; font-weight: 650; animation: ph-breathe 1.4s ease-in-out infinite; }
+@media (max-width: 760px) { #player-hud .ph-keys span:last-child { display: none; } }

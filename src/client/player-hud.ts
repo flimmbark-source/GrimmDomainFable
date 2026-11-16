@@ -18,11 +18,28 @@ const itemIcon = (id: ItemId) => {
 const GEAR_LABEL: Record<GearSlot, string> = { weapon: 'Weapon', boots: 'Boots', charm: 'Charm' };
 
 const actions = [
-  { id: 'attack', art: 'strike', label: 'Attack', key: 'A' },
-  { id: 'evade', art: 'evade', label: 'Evade', key: 'E' },
-  { id: 'sneak', art: 'sneak', label: 'Sneak', key: 'S' },
-  { id: 'whistle', art: 'whistle', label: 'Whistle', key: 'W' },
+  { id: 'attack', art: 'strike', label: 'Attack', key: 'A', alt: 'F' },
+  { id: 'evade', art: 'evade', label: 'Evade', key: 'E', alt: 'Q' },
+  { id: 'sneak', art: 'sneak', label: 'Sneak', key: 'S', alt: 'C' },
+  { id: 'whistle', art: 'whistle', label: 'Whistle', key: 'W', alt: 'V' },
 ] as const;
+
+/**
+ * Two key layouts. `actions` is the brief's: A / S / E / W act and the hero
+ * moves by mouse or arrow keys. `wasd` is for players who steer with WASD:
+ * those keys move and the actions sit beside them on F / C / Q / V.
+ */
+export type KeyScheme = 'actions' | 'wasd';
+const SCHEME_KEY = 'grimm.keys';
+function savedScheme(): KeyScheme {
+  const asked = new URLSearchParams(location.search).get('keys');
+  if (asked === 'wasd' || asked === 'actions') return asked;
+  try {
+    return localStorage.getItem(SCHEME_KEY) === 'wasd' ? 'wasd' : 'actions';
+  } catch {
+    return 'actions';
+  }
+}
 
 type Action = HeroAction | 'interact' | 'stop' | 'camera';
 type GroundPoint = { x: number; z: number };
@@ -98,12 +115,13 @@ export class PlayerHud {
         <div class="ph-notice" role="status" hidden></div>
       </section>
       <button type="button" class="ph-view ph-surface" data-action="camera" aria-keyshortcuts="Tab"><span></span> <kbd>Tab</kbd></button>
+      <button type="button" class="ph-keys ph-surface" data-action="keys" title="Switch key layout"></button>
       <button type="button" class="ph-relay ph-surface" data-action="interact" hidden></button>
       <div class="ph-detection ph-surface" hidden><span class="ph-eye" aria-hidden="true"></span><span class="ph-detection-label"></span></div>
       <div class="ph-menu-anchor" aria-hidden="true" hidden></div>
       <div class="ph-actions ph-surface" role="group" aria-label="Actions at selected location" hidden>
-        ${actions.map(({ id, art, label, key }) => `<button type="button" class="ph-action" data-action="${id}" aria-keyshortcuts="${key}">
-          ${icon(art)}<span>${label}</span>${id === 'whistle' ? '<span class="ph-cooldown" hidden></span>' : ''}<kbd aria-hidden="true">${key}</kbd>
+        ${actions.map(({ id, art, label }) => `<button type="button" class="ph-action" data-action="${id}">
+          ${icon(art)}<span>${label}</span>${id === 'whistle' ? '<span class="ph-cooldown" hidden></span>' : ''}<kbd aria-hidden="true"></kbd>
         </button>`).join('')}
       </div>
       <section id="player-inventory" class="ph-bag ph-surface" aria-label="Inventory" hidden>
@@ -160,6 +178,7 @@ export class PlayerHud {
     this.healthText = this.element('.ph-health-text');
     this.stats = this.element('.ph-stats');
     this.setMode(false);
+    this.setScheme(savedScheme());
     this.root.addEventListener('click', (event) => this.click(event));
     this.actionMenu.addEventListener('contextmenu', (event) => event.preventDefault());
     window.addEventListener('pointerdown', (event) => {
@@ -173,6 +192,28 @@ export class PlayerHud {
     window.addEventListener('resize', () => this.closeActions());
     this.renderBag();
     this.renderQuick();
+  }
+
+  private scheme: KeyScheme = 'actions';
+  /** WASD moves the hero in this layout (the input layer asks). */
+  get wasdMoves(): boolean { return this.scheme === 'wasd'; }
+
+  private keyOf(action: (typeof actions)[number]): string {
+    return this.scheme === 'wasd' ? action.alt : action.key;
+  }
+
+  private setScheme(scheme: KeyScheme): void {
+    this.scheme = scheme;
+    try {
+      localStorage.setItem(SCHEME_KEY, scheme);
+    } catch { /* private window: the choice lasts for this page only */ }
+    for (const action of actions) {
+      const button = this.element<HTMLButtonElement>(`.ph-action[data-action="${action.id}"]`);
+      button.setAttribute('aria-keyshortcuts', this.keyOf(action));
+      button.querySelector('kbd')!.textContent = this.keyOf(action);
+    }
+    const keys = actions.map((action) => `<kbd>${this.keyOf(action)}</kbd>`).join('');
+    this.element('.ph-keys').innerHTML = scheme === 'wasd' ? `<span>Move</span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Act</span>${keys}` : `<span>Act</span>${keys}<span>Move: mouse, arrows</span>`;
   }
 
   private dismissed = false;
@@ -251,7 +292,7 @@ export class PlayerHud {
       return true;
     }
     if (!this.open) {
-      const action = actions.find(({ key }) => event.code === `Key${key}`);
+      const action = actions.find((candidate) => event.code === `Key${this.keyOf(candidate)}`);
       if (action) {
         // The server applies the same rules to a hotkey as to a menu order;
         // the HUD only avoids sending what it already knows will be refused.
@@ -277,7 +318,8 @@ export class PlayerHud {
       this.setMode(this.heroMode);
     }
     this.kit = kit;
-    this.interact = kit.interaction ? { type: 'revive' } : operation.interaction ? { type: 'workOperation' } : null;
+    const reviving = kit.interaction === 'rescue' || kit.interaction === 'ritual';
+    this.interact = reviving ? { type: 'revive' } : operation.interaction ? { type: 'workOperation' } : kit.interaction ? { type: 'revive' } : null;
 
     const kitKey = JSON.stringify([kit.equipment, kit.inventory, kit.quick, kit.attack, kit.evadeDistance, kit.salveHeal, kit.dead, kit.speed, kit.maxHp]);
     if (kitKey !== this.kitKey) {
@@ -291,7 +333,7 @@ export class PlayerHud {
     const sneaking = snapshot.actors.find((actor) => actor.id === you.actorId)?.sneaking === true;
     const notice = you.spotted ? 'Spotted' : you.attention > 0 ? 'Noticed' : 'Unseen';
     const seconds = Math.ceil(you.whistleCooldown / 30);
-    const threatened = (snapshot.sanctuaries ?? []).filter((s) => s.threatened || s.corrupted);
+    const threatened = (snapshot.sanctuaries ?? []).filter((s) => s.threatened || s.corrupted || s.ward < 1);
     const key = JSON.stringify([operation.active, operation.offlineSeconds, operation.production, operation.energy, operation.energyPerSecond,
       operation.productionGoal, operation.offlineGoal, operation.interaction, Math.floor(operation.progress * 100),
       operation.interrupted, operation.result, sneaking, notice, seconds, kit.hp, kit.dead, kit.interaction,
@@ -303,11 +345,11 @@ export class PlayerHud {
     this.detection.dataset.notice = notice;
     this.sneak.setAttribute('aria-pressed', String(sneaking));
     this.attack.disabled = !kit.attack;
-    this.attack.title = kit.attack ? 'Attack (A)' : 'No weapon equipped';
+    this.attack.title = kit.attack ? 'Attack' : 'No weapon equipped';
     this.whistle.disabled = seconds > 0;
     this.cooldown.hidden = seconds === 0;
     this.cooldown.textContent = `${seconds}s`;
-    this.whistle.title = seconds ? `Whistle ready in ${seconds}s` : 'Whistle (W)';
+    this.whistle.title = seconds ? `Whistle ready in ${seconds}s` : 'Whistle';
 
     this.heroName.textContent = kit.dead ? (this.team === 'light' ? 'Ghost' : 'Fallen') : this.team === 'light' ? 'Goblin Outlaw' : 'Dark Hero';
     this.root.dataset.dead = String(kit.dead);
@@ -352,8 +394,14 @@ export class PlayerHud {
         'Travel to an uncorrupted wayshrine, or wait for a living ally at your body.');
     } else if (kit.dead && kit.returnSeconds !== undefined) lines.push(`Returning at the castle road in ${kit.returnSeconds}s`);
     if (light) {
-      for (const s of threatened) lines.push(s.corrupted ? `${s.name} is corrupted` : `${s.name} is under attack · corruption ${Math.round(s.corruption * 100)}%`);
+      // D-031: a quiet warning while the wards hold, an urgent one once they are breached.
+      for (const s of threatened) {
+        const wards = `wards ${Math.round(s.ward * 100)}%`;
+        lines.push(s.corrupted ? `${s.name} is corrupted` : s.ward <= 0 ? `${s.name}: WARDS BREACHED · corruption ${Math.round(s.corruption * 100)}%` :
+          s.threatened ? `${s.name} is under attack · ${wards}` : `${s.name}: ${wards}`);
+      }
     }
+    this.notice.dataset.urgent = String(light && threatened.some((s) => !s.corrupted && s.threatened && s.ward <= 0));
     this.notice.hidden = lines.length === 0 || Boolean(op.result);
     this.notice.textContent = lines.join(' · ');
 
@@ -365,9 +413,14 @@ export class PlayerHud {
     if (op.result) html = '';
     else if (channel?.kind === 'ritual') [html, stop] = [`<span>Resurrection ritual ${percent(channel.progress)} · ${channel.seconds}s</span><span>Abandon <kbd>X</kbd></span>`, true];
     else if (channel?.kind === 'rescue') [html, stop] = [`<span>Reviving ally ${percent(channel.progress)}</span><span>Cancel <kbd>X</kbd></span>`, true];
+    else if (channel?.kind === 'mend') [html, stop] = [`<span>Mending the wards ${percent(channel.progress)}</span><span>Cancel <kbd>X</kbd></span>`, true];
+    else if (channel?.kind === 'purify') [html, stop] = [`<span>Purifying the wayshrine ${percent(channel.progress)} · ${channel.seconds}s</span><span>Cancel <kbd>X</kbd></span>`, true];
     else if (channel?.kind === 'rescued') [html, disabled] = [`An ally is reviving you · ${channel.seconds}s`, true];
     else if (kit.interaction === 'ritual') html = '<span>Begin the resurrection ritual</span><kbd>R</kbd>';
     else if (kit.interaction === 'rescue') html = '<span>Revive your ally</span><kbd>R</kbd>';
+    else if (op.interaction && op.progress === 0) html = `<span>${op.interrupted ? 'Retry' : ''} ${op.interaction === 'repair' ? 'Repair' : 'Sabotage'} relay</span><kbd>R</kbd>`;
+    else if (kit.interaction === 'purify' && op.progress === 0) html = '<span>Purify the wayshrine</span><kbd>R</kbd>';
+    else if (kit.interaction === 'mend' && op.progress === 0) html = '<span>Mend the wards with lavender</span><kbd>R</kbd>';
     else if (op.progress > 0) [html, stop] = [`<span>${light ? 'Sabotaging' : 'Repairing'} ${percent(op.progress)}</span><span>Cancel <kbd>X</kbd></span>`, true];
     else if (op.interaction) html = `<span>${op.interrupted ? 'Retry' : ''} ${op.interaction === 'repair' ? 'Repair' : 'Sabotage'} relay</span><kbd>R</kbd>`;
     else if (op.interrupted) [html, disabled] = ['Interrupted by a nearby threat', true];
@@ -416,6 +469,10 @@ export class PlayerHud {
       this.updateSelection();
     } else if (quick !== undefined) this.useSlot(Number(quick));
     else if (action === 'bag') this.setOpen(!this.open);
+    else if (action === 'keys') {
+      this.setScheme(this.scheme === 'wasd' ? 'actions' : 'wasd');
+      button.blur();
+    }
     else if (action === 'assign') {
       this.assigning = !this.assigning;
       this.renderDetails();

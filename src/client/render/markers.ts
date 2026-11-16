@@ -125,6 +125,7 @@ interface SanctuaryVisual {
   ring: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
   halo: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
   light: THREE.PointLight;
+  ward: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
 }
 
 export class MarkerLayer {
@@ -242,9 +243,14 @@ export class MarkerLayer {
       halo.position.y = 0.07;
       const light = new THREE.PointLight(0xffe2a0, 9, 11, 1.6);
       light.position.y = 2;
-      group.add(flame, beam, ring, halo, light);
+      // The wards: a faint dome over the precinct that thins as they are worn down.
+      const ward = new THREE.Mesh(
+        new THREE.SphereGeometry(CONTEST.siegeRadius, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false }),
+      );
+      group.add(flame, beam, ring, halo, light, ward);
       this.group.add(group);
-      visual = { group, flame, beam, ring, halo, light };
+      visual = { group, flame, beam, ring, halo, light, ward };
       this.sanctuaries.set(view.id, visual);
     }
     const clean = new THREE.Color(0xffe6a3);
@@ -263,6 +269,8 @@ export class MarkerLayer {
     visual.beam.material.color.copy(color);
     visual.beam.visible = !view.corrupted;
     visual.beam.material.opacity = 0.14 + pulse * 0.16;
+    visual.ward.visible = !view.corrupted && view.ward > 0;
+    visual.ward.material.opacity = (0.03 + view.ward * 0.07) * (view.threatened ? 1.3 + Math.sin(now / 130) * 0.5 : 1);
     visual.light.color.copy(color);
     visual.light.intensity = view.corrupted ? 2 : 9 + pulse * 5;
   }

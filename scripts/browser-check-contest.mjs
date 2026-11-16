@@ -125,9 +125,12 @@ async function part(name, fn) {
   }
 }
 
+// One page at a time: two software-rendered pages building the region together
+// can stall long enough for the server to drop the first connection.
 const light = await open('', { width: 1280, height: 720 });
+await ready(light);
 const dark = await open('&team=dark', { width: 960, height: 540 });
-await Promise.all([ready(light), ready(dark)]);
+await ready(dark);
 const lightId = (await state(light)).you.actorId;
 const darkId = (await state(dark)).you.actorId;
 
@@ -277,6 +280,27 @@ try {
     await light.keyboard.press('Space');
     await light.keyboard.press('Tab');
     await until(light, () => window.__grimm.mode() === 'hero', null, 10000);
+
+    // The other key layout: WASD moves, the actions sit on F / C / Q / V.
+    await idle(light);
+    await light.click('.ph-keys');
+    before = await state(light);
+    await light.keyboard.down('KeyD');
+    await sleep(1500);
+    await light.keyboard.up('KeyD');
+    await idle(light);
+    const steered = await state(light);
+    await until(light, () => window.__grimm.snapshot().you.kit.attackCooldown === 0, null, 5000);
+    await light.keyboard.press('KeyF');
+    const altAttack = await until(light, () => { const s = window.__grimm.snapshot(); return s.actors.find((a) => a.id === s.you.actorId)?.action?.kind === 'attack'; }, null, 3000);
+    await light.click('.ph-keys');
+    await sleep(300);
+    const back = await state(light);
+    await light.keyboard.down('KeyD');
+    await sleep(700);
+    await light.keyboard.up('KeyD');
+    check('the WASD layout can be switched on: D steers the hero and F attacks; switched off, D does nothing', dist(steered.me, before.me) > 1.5 && altAttack && dist((await state(light)).me, back.me) < 0.05,
+      `moved ${dist(steered.me, before.me).toFixed(1)} m with D held`);
   });
 
   await part('Finds, weapon swap, boots and charm', async () => {
@@ -532,7 +556,7 @@ try {
     check('the ghost reaches the wayshrine under attack and may begin its ritual there', inCircle, await text(light, '.ph-relay') ?? '');
     const alerted = await until(light, () => window.__grimm.snapshot().sanctuaries[0].threatened, null, 20000);
     const alert = await text(light, '.ph-notice');
-    check('Light is alerted that the wayshrine is under attack, with its corruption level and no attacker', alerted && /West road wayshrine is under attack · corruption \d+%/.test(alert ?? ''), alert ?? '');
+    check('Light is alerted that the wayshrine is under attack, with its ward or corruption level and no attacker', alerted && /West road wayshrine(: WARDS BREACHED · corruption| is under attack · wards) \d+%/.test(alert ?? ''), alert ?? '');
     // Start once the takeover is far enough along that it will finish first.
     await until(light, () => window.__grimm.snapshot().sanctuaries[0].corruption >= 0.6, null, 60000);
     await light.keyboard.press('KeyR');

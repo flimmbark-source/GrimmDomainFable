@@ -26,6 +26,8 @@ export interface InputHost {
   inventoryOpen?(): boolean;
   /** This press only closed the action menu; do nothing else with it. */
   dismissedMenu?(): boolean;
+  /** Contest controls: the player chose the layout in which WASD moves the hero. */
+  wasdMoves?(): boolean;
   usesActionMenu?(): boolean;
   openActionMenu?(x: number, y: number, target: { x: number; z: number }): void;
 }
@@ -204,8 +206,9 @@ export class InputController {
       this.sneaking = sneak;
       this.host.send({ type: 'setGait', sneak });
     }
-    const right = usesMenu ? this.axis(['ArrowRight'], ['ArrowLeft']) : this.axis(['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']);
-    const forward = usesMenu ? this.axis(['ArrowUp'], ['ArrowDown']) : this.axis(['KeyW', 'ArrowUp'], ['KeyS', 'ArrowDown']);
+    const arrowsOnly = usesMenu && !this.host.wasdMoves?.();
+    const right = arrowsOnly ? this.axis(['ArrowRight'], ['ArrowLeft']) : this.axis(['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']);
+    const forward = arrowsOnly ? this.axis(['ArrowUp'], ['ArrowDown']) : this.axis(['KeyW', 'ArrowUp'], ['KeyS', 'ArrowDown']);
 
     if (rig.mode === 'rts') {
       if (right || forward) rig.panRts(right, -forward, dt);

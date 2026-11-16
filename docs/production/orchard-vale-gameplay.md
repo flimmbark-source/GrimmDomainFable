@@ -21,8 +21,9 @@ Both seats use the same hero controls and HUD. Light starts in hero view, Dark i
 | --- | --- |
 | Left-click terrain | Move the hero there. Works in both views |
 | Left-drag | Turn the hero camera (hero view) |
-| Right-click terrain | Open the action menu at the cursor. Left-click an option and the hero walks to that point and performs the action on arrival |
+| Right-click terrain | Open the action menu at the cursor. Left-click an option and the hero walks to that point and performs the action on arrival. Attack stops as soon as the point is within weapon reach and strikes towards it, so click on the enemy |
 | **A** / **S** / **E** / **W** | Attack / Sneak / Evade / Whistle at once, where the hero stands |
+| Key layout button (top right) | Switches to **WASD** movement with the actions on **F** / **C** / **Q** / **V**. The choice is remembered; `&keys=wasd` in the URL also selects it |
 | **X** | Stop. Cancels a queued action, a relay attempt, a rescue or a ritual |
 | **1** to **3** | Use the item in that quick slot |
 | **I** | Inventory: equip, unequip, assign to a quick slot, drop. **Esc** closes it |
@@ -72,7 +73,15 @@ A Light Hero who dies leaves a **body** where they fell and plays on as a **ghos
 
 - **At the body.** Another living Light Hero stands beside it, presses **R** and holds still for 4 seconds. Moving or taking a hit breaks it. The ghost cannot do this for itself.
 - **At a wayshrine.** Two stand in for sanctuaries: one south of the west road, one in the north orchard west of the relay. The ghost steps into the stone circle and presses **R**. The ritual takes 20 seconds for the newly dead and less the longer the hero has been dead, down to 6. Fighting nearby does not interrupt it.
-- **Corruption.** Dark monsters or a Dark Hero inside a wayshrine's precinct corrupt it; a Dark Hero in person is faster. Light sees an alert with the corruption level and no attacker. A ritual under way continues during the siege. If the wayshrine becomes fully corrupted first, the ritual ends and the ghost must reach the other one.
+
+## Wayshrine sieges
+
+A wayshrine has **wards**, drawn as a faint dome. Dark monsters or a Dark Hero inside the precinct wear the wards down first. Only when they are breached does **corruption** begin. A Dark Hero in person speeds both stages.
+
+- Light sees each wayshrine's ward and corruption level at the top of the screen: a quiet line while the wards hold, an urgent one once they are breached. It never names or locates an attacker.
+- Corruption fades if Dark leaves. Ward damage does not. A living Light Hero standing in the circle with **lavender** presses **R** to mend about a third of the wards.
+- A ritual under way continues through both stages and ends only if the wayshrine becomes fully corrupted. The ghost must then reach the other one.
+- A corrupted wayshrine can be **purified**: a living Light Hero stands in the circle and presses **R** for 8 seconds. It makes no progress while Dark forces are still in the precinct. The wayshrine comes back Light-held with half its wards.
 
 ## Fog of war
 
@@ -94,7 +103,7 @@ GRIMM_RELAY_GOAL=3600 npm start
 4. **Dark, command.** In command view right-click the road west of the square to post the Scout. Left-click the Brute, then right-click to post it. Walk the Dark Hero to the Light hero and press **A**. The Scout stays on its post.
 5. **Light, quick slot.** After taking a hit, press the salve's number. Health rises and the count drops.
 6. **Pursuit.** Walk the Light hero toward the posted Scout until the eye shows Spotted, then leave the road north behind the hedge and cross the ford. The Dark window shows a timed `Hero SIGHTED` report, then `Lost sight here`.
-7. **Death at a wayshrine.** Have the Dark Hero kill the Light hero near the west wayshrine (south of the west road), then stand inside the stone ring. As the ghost, walk into the ring and press **R** once corruption is past about 60%. The ritual runs during the siege and ends when the wayshrine falls. Walk the ghost to the north wayshrine (north orchard, west of the relay) and press **R** there.
+7. **Death at a wayshrine.** Have the Dark Hero kill the Light hero near the west wayshrine (south of the west road), then stand inside the stone ring. The wards fall first, then corruption climbs. As the ghost, walk into the ring and press **R** once corruption is past about 60%. The ritual runs during the siege and ends when the wayshrine falls. Walk the ghost to the north wayshrine (north orchard, west of the relay) and press **R** there.
 8. **Rescue at the body.** Die within about 30 m of the Light bots near the relay and wait. A bot walks to the body and revives you. With two Light humans, stand by the body and press **R**.
 9. **Sabotage.** Stand by the relay north of the bridge and press **R**. `Dark Energy … (+3/s)` at the top of both windows drops to `(+1/s)` and the total keeps its value. A Dark repair puts it back.
 
@@ -110,15 +119,13 @@ Not verified: frame rate and feel on real graphics hardware (the run draws about
 
 ## Known gaps
 
-- **Balance is untuned.** Three Light bots usually beat the relay's two monsters, and a hero who stands still next to a Scout and a Dark Hero dies in seconds. Damage, health and timers are first guesses.
-- **The default contest is short.** With the relay never sabotaged Dark wins in about four minutes, which is not enough to try the gear. Use `GRIMM_RELAY_GOAL`.
-- **Sanctuaries are stand-ins.** No wards, no two-stage siege, no repair, no purification. A corrupted wayshrine stays corrupted. With both corrupted, only a rescue at the body can bring a hero back.
+- **Balance is a first pass, measured only against bots.** In 200-second bot contests the Dark monsters now stand about 82% of the time (before, they were dead most of it) and a hero standing still beside a Scout and a Dark Hero lasts a little over four seconds, up from two. No human has played these numbers.
+- **The default contest is short.** With the relay never sabotaged Dark wins in about four minutes. Use `GRIMM_RELAY_GOAL`.
+- **Sanctuary pieces not built:** restoration that continues unattended, a destructible ritual anchor, defences and upgrades, and anything a sanctuary offers besides resurrection.
 - **Ghosts have no spirit layer** beyond a colour wash: no ghost paths, obstacles or senses (D-035 to D-037).
 - **Dark death, monster death and bot behaviour are placeholders.** Final Dark victory rules and bot takeover timing are still open in the decision register.
-- **An action-menu Attack walks onto the clicked point.** Click beside an enemy, not on it. Whether Attack should stop at weapon reach is a design question.
-- **A, S, E and W are actions**, so movement is the mouse or the arrow keys. Players used to WASD will trip on it.
-- **Art.** Heroes, monsters and wayshrines are original low-poly stand-ins built in code. Several items share an icon. No animation beyond bob, lean and swing.
-- Materials have no use. Dropped items vanish. Heroes still pass through each other.
+- **Art.** Heroes, monsters and wayshrines are original low-poly stand-ins built in code, with a simple walk and weapon-arm swing. Fourteen items still share a painted icon with another and are told apart by colour. Proper character models, animation and item icons need an artist or licensed assets.
+- Lavender mends wards; the other materials have no use. Dropped items vanish. Heroes still pass through each other.
 
 ## From regional contest to kingdom match
 
