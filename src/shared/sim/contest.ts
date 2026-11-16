@@ -24,7 +24,7 @@ import type { ActorState, ContestState, SanctuaryState, SimState } from './state
 import { TUNING } from './tuning.ts';
 
 export const CONTEST = {
-  heroHp: 100,
+  heroHp: 150,
   /** Walk this close to a find to collect it. */
   pickupRadius: 1.4,
   evadeCooldownTicks: 30,
@@ -51,8 +51,18 @@ export const CONTEST = {
   sanctuaryRadius: 3.5,
   /** Dark forces inside this circle corrupt the sanctuary. */
   siegeRadius: 7,
-  /** Corruption needed for a full takeover, in rate-ticks. */
-  corruptTicks: 1350,
+  /** D-026 stage one: ward strength, in rate-ticks of Dark presence. */
+  wardTicks: 750,
+  /** D-026 stage two: corruption needed for a full takeover once the wards are breached. */
+  corruptTicks: 900,
+  /** Mending: one lavender, held still this long, restores this share of the wards (D-028). */
+  mendTicks: 90,
+  mendFraction: 0.35,
+  /** Purifying a corrupted wayshrine (D-022): held still this long with no Dark force present. */
+  purifyTicks: 240,
+  purifiedWardFraction: 0.5,
+  /** true: a find is taken by the first human Light Hero to reach it. false: every Light Hero has a share. */
+  sharedFinds: false,
   monsterCorruptRate: 1,
   /** D-024: a Dark Hero in person makes the takeover more effective. */
   heroCorruptRate: 1.5,
@@ -112,9 +122,10 @@ export const CONTEST = {
 export function createContest(): ContestState {
   return {
     pickups: CONTEST.pickups.map((p) => ({ ...p, takenBy: [] })),
-    sanctuaries: CONTEST.sanctuaries.map((s) => ({ ...s, corruption: 0, corrupted: false, threatened: false })),
+    sanctuaries: CONTEST.sanctuaries.map((s) => ({ ...s, ward: CONTEST.wardTicks, corruption: 0, corrupted: false, threatened: false })),
     rescues: [],
     rituals: [],
+    works: [],
   };
 }
 
@@ -252,7 +263,7 @@ function collectPickups(state: SimState, contest: ContestState): void {
   for (const hero of state.actors) {
     if (hero.kind !== 'hero' || hero.team !== 'light' || hero.slot === null || !alive(hero)) continue;
     for (const pickup of contest.pickups) {
-      if (pickup.takenBy.includes(hero.slot)) continue;
+      if (pickup.takenBy.includes(hero.slot) || (CONTEST.sharedFinds && (pickup.takenBy.length > 0 || state.slots[hero.slot]?.occupant !== 'human'))) continue;
       if (distance(hero.x, hero.z, pickup.x, pickup.z) > CONTEST.pickupRadius) continue;
       pickup.takenBy.push(hero.slot);
       give(hero, pickup.item, pickup.count);
@@ -274,26 +285,32 @@ export function evadeTicksOf(hero: ActorState): number {
  * Attack with the equipped weapon from where the hero stands. Returns false
  * when nothing happened (no weapon, dead, or still recovering from a swing).
  */
-export function heroAttack(state: SimState, map: MapDef, hero: ActorState): boolean {
+export function heroAttack(state: SimState, map: MapDef, hero: ActorState, aim?: { x: number; z: number }): boolean {
   const gear = gearStats(hero.equipment);
   const weapon = gear.weapon;
   if (!state.contest || !weapon || !alive(hero) || state.tick < hero.attackReadyTick) return false;
   const inReach = (target: ActorState, d: number) => d <= weapon.range + target.radius && !sightBlocked(map, hero.x, hero.z, target.x, target.z);
   const enemies = state.actors.filter((a) => a.team !== hero.team && alive(a));
 
-  // Turn to the nearest enemy the hero can reach and see, if there is one.
+  // Turn to an enemy the hero can reach and see: the one nearest the point
+  // the player clicked, else the one nearest the hero. With nobody in reach
+  // an aimed attack still faces the clicked point.
+  const from = aim ?? hero;
   let nearest: ActorState | undefined;
-  let nearestD = Infinity;
+  let nearestScore = Infinity;
   for (const target of enemies) {
     const d = distance(hero.x, hero.z, target.x, target.z);
-    if (d < nearestD && d > 1e-6 && inReach(target, d)) {
+    const score = distance(from.x, from.z, target.x, target.z);
+    if (score < nearestScore && d > 1e-6 && inReach(target, d)) {
       nearest = target;
-      nearestD = d;
+      nearestScore = score;
     }
   }
-  if (nearest) {
-    hero.dirX = (nearest.x - hero.x) / nearestD;
-    hero.dirZ = (nearest.z - hero.z) / nearestD;
+  const face = nearest ?? aim;
+  const faceD = face ? distance(hero.x, hero.z, face.x, face.z) : 0;
+  if (face && faceD > 1e-6) {
+    hero.dirX = (face.x - hero.x) / faceD;
+    hero.dirZ = (face.z - hero.z) / faceD;
   }
 
   const hits: ActorState[] = [];
@@ -462,8 +479,15 @@ export function startRevive(state: SimState, map: MapDef, actor: ActorState): vo
     return;
   }
   if (actor.intent.type !== 'idle' || contest.rescues.some((r) => r.rescuerId === actor.id)) return;
+  if (contest.works.some((w) => w.heroId === actor.id)) return;
   const fallen = rescuableBody(state, map, actor);
-  if (fallen) contest.rescues.push({ rescuerId: actor.id, heroId: fallen.id, progress: 0, startTick: state.tick });
+  if (fallen) {
+    contest.rescues.push({ rescuerId: actor.id, heroId: fallen.id, progress: 0, startTick: state.tick });
+    return;
+  }
+  // No body to tend: mend or purify the wayshrine the hero stands in.
+  const work = shrineWorkFor(state, actor);
+  if (work) contest.works.push({ heroId: actor.id, sanctuaryId: work.sanctuary.id, kind: work.kind, progress: 0, startTick: state.tick });
 }
 
 /** Stop / X: abandon a rescue or a ritual in progress. */
@@ -472,8 +496,15 @@ export function cancelRevive(state: SimState, actor: ActorState): void {
   if (!contest) return;
   contest.rescues = contest.rescues.filter((r) => r.rescuerId !== actor.id);
   contest.rituals = contest.rituals.filter((r) => r.heroId !== actor.id);
+  contest.works = contest.works.filter((w) => w.heroId !== actor.id);
 }
 
+/**
+ * D-026 two-stage siege. Dark forces in the precinct first wear down the
+ * wards; only once they are breached does the corruption ritual advance.
+ * D-024: a Dark Hero in person is more effective at both. D-027: ward damage
+ * stays until Light mends it, while ritual progress decays when Dark leaves.
+ */
 function updateSanctuaries(state: SimState, contest: ContestState): void {
   for (const sanctuary of contest.sanctuaries) {
     let rate = 0;
@@ -488,7 +519,9 @@ function updateSanctuaries(state: SimState, contest: ContestState): void {
     if (monsters) rate += CONTEST.monsterCorruptRate;
     sanctuary.threatened = rate > 0 && !sanctuary.corrupted;
     if (sanctuary.corrupted) continue;
-    sanctuary.corruption = rate > 0 ? sanctuary.corruption + rate : Math.max(0, sanctuary.corruption - CONTEST.decayRate);
+    if (rate > 0 && sanctuary.ward > 0) sanctuary.ward = Math.max(0, sanctuary.ward - rate);
+    else if (rate > 0) sanctuary.corruption += rate;
+    else sanctuary.corruption = Math.max(0, sanctuary.corruption - CONTEST.decayRate);
     if (sanctuary.corruption < CONTEST.corruptTicks) continue;
     // D-041: full corruption, and only full corruption, ends a ritual here.
     sanctuary.corruption = CONTEST.corruptTicks;
@@ -499,6 +532,44 @@ function updateSanctuaries(state: SimState, contest: ContestState): void {
       if (ghost) ghost.ritualLostTick = state.tick;
     }
     contest.rituals = contest.rituals.filter((r) => r.sanctuaryId !== sanctuary.id);
+    contest.works = contest.works.filter((w) => w.sanctuaryId !== sanctuary.id);
+  }
+}
+
+/** What a living Light Hero standing in a wayshrine's circle could do for it right now. */
+export function shrineWorkFor(state: SimState, hero: ActorState): { sanctuary: SanctuaryState; kind: 'mend' | 'purify' } | undefined {
+  const contest = state.contest;
+  if (!contest || hero.kind !== 'hero' || hero.team !== 'light' || !alive(hero)) return undefined;
+  const sanctuary = contest.sanctuaries.find((s) => distance(hero.x, hero.z, s.x, s.z) <= CONTEST.sanctuaryRadius);
+  if (!sanctuary || contest.works.some((w) => w.sanctuaryId === sanctuary.id && w.heroId !== hero.id)) return undefined;
+  if (sanctuary.corrupted) return { sanctuary, kind: 'purify' };
+  if (sanctuary.ward < CONTEST.wardTicks && hero.inventory.herb) return { sanctuary, kind: 'mend' };
+  return undefined;
+}
+
+function updateShrineWork(state: SimState, contest: ContestState): void {
+  for (const work of [...contest.works]) {
+    const hero = state.actors.find((a) => a.id === work.heroId);
+    const sanctuary = contest.sanctuaries.find((s) => s.id === work.sanctuaryId);
+    const possible = hero && shrineWorkFor(state, hero);
+    // Moving off, being hit, or the work no longer applying ends the attempt.
+    if (!hero || !sanctuary || possible?.kind !== work.kind || hero.intent.type !== 'idle' || hero.lastHitTick >= work.startTick) {
+      contest.works = contest.works.filter((w) => w !== work);
+      continue;
+    }
+    // A wayshrine cannot be cleansed while Dark forces still hold it.
+    if (work.kind === 'purify' && state.actors.some((a) => a.team === 'dark' && alive(a) && distance(a.x, a.z, sanctuary.x, sanctuary.z) <= CONTEST.siegeRadius)) continue;
+    if (++work.progress < (work.kind === 'purify' ? CONTEST.purifyTicks : CONTEST.mendTicks)) continue;
+    if (work.kind === 'purify') {
+      sanctuary.corrupted = false;
+      sanctuary.corruption = 0;
+      sanctuary.ward = CONTEST.wardTicks * CONTEST.purifiedWardFraction;
+    } else {
+      take(hero, 'herb');
+      sanctuary.ward = Math.min(CONTEST.wardTicks, sanctuary.ward + CONTEST.wardTicks * CONTEST.mendFraction);
+    }
+    state.events.push({ kind: 'revive', x: sanctuary.x, z: sanctuary.z, radius: 12, actorId: hero.id });
+    contest.works = contest.works.filter((w) => w !== work);
   }
 }
 
@@ -544,6 +615,7 @@ export function updateContest(state: SimState, map: MapDef): void {
   collectPickups(state, contest);
   monsterAttacks(state);
   updateSanctuaries(state, contest);
+  updateShrineWork(state, contest);
   updateRecovery(state, map, contest);
   // A draught wearing off changes speed without any command.
   for (const hero of state.actors) if (hero.hasteUntilTick === state.tick) refresh(state, hero);

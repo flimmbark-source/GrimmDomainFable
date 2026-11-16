@@ -11,7 +11,7 @@
  */
 import { SLOT_COUNT, teamOfSlot, type ActorKind, type Command, type HeroAction, type SlotCommand, type SlotId, type Team } from '../protocol.ts';
 import { CONTEST, applyItemCommand, heroSpeed, noiseFactorOf, cancelRevive, createContest, evadeTicksOf, heroAttack, outfitHero, startRevive, updateContest } from './contest.ts';
-import { distance } from './geometry.ts';
+import { distance, sightBlocked } from './geometry.ts';
 import { gearStats } from './items.ts';
 import { getMap, type MapDef, type Point } from './map.ts';
 import { applyOrder, thinkMonster } from './monster.ts';
@@ -172,6 +172,7 @@ export function vacateSlot(state: SimState, slotId: SlotId): void {
     const gone = (id: number) => id === slot.actorId;
     state.contest.rescues = state.contest.rescues.filter((r) => !gone(r.rescuerId) && !gone(r.heroId));
     state.contest.rituals = state.contest.rituals.filter((r) => !gone(r.heroId));
+    state.contest.works = state.contest.works.filter((w) => !gone(w.heroId));
   }
   slot.occupant = 'empty';
   slot.actorId = null;
@@ -219,10 +220,19 @@ export function step(state: SimState, commands: readonly SlotCommand[]): SimStat
     moveActor(actor, map);
     if (actor.kind === 'hero') {
       const queued = actor.queuedAction;
-      if (queued && actor.intent.type === 'idle') {
+      // An Attack order stops as soon as the clicked point is within the
+      // weapon's reach and in the open, rather than walking onto it.
+      const reach = queued?.kind === 'attack' && queued.aim ? gearStats(actor.equipment).weapon?.range : undefined;
+      if (queued?.aim && reach !== undefined && actor.intent.type === 'goto' &&
+        distance(actor.x, actor.z, queued.aim.x, queued.aim.z) <= reach * 0.85 && !sightBlocked(map, actor.x, actor.z, queued.aim.x, queued.aim.z)) {
+        delete actor.queuedAction;
+        stopActor(actor);
+        heroAttack(state, map, actor, queued.aim);
+      } else if (queued && actor.intent.type === 'idle') {
         delete actor.queuedAction;
         if (distance(actor.x, actor.z, queued.destination.x, queued.destination.z) <= ARRIVE_EPS) {
-          performHeroAction(state, map, actor, queued.kind);
+          if (queued.kind === 'attack') heroAttack(state, map, actor, queued.aim);
+          else performHeroAction(state, map, actor, queued.kind);
         }
       }
       footsteps(state, actor);
@@ -302,7 +312,7 @@ function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapD
       delete actor.queuedAction;
       if (!target) performHeroAction(state, map, actor, action);
       else if (orderGoto(actor, map, target.x, target.z) && actor.intent.type === 'goto') {
-        actor.queuedAction = { kind: action, destination: { x: actor.intent.x, z: actor.intent.z } };
+        actor.queuedAction = { kind: action, destination: { x: actor.intent.x, z: actor.intent.z }, ...(action === 'attack' ? { aim: { x: target.x, z: target.z } } : {}) };
       }
       break;
     }

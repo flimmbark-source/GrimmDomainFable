@@ -109,9 +109,9 @@ const LIST: ItemDef[] = [
     description: 'A slow, straight shot that hits the first enemy in its path. Cover stops it.' },
   { id: 'hand_crossbow', name: 'Hand crossbow', icon: 'rope', hue: 200, kind: 'gear', slot: 'weapon', weapon: line(13, 0.25, 30, 66),
     description: 'A hard-hitting bolt at long range, and a long time to reload.' },
-  { id: 'cleaver', name: 'Cleaver', icon: 'strike', kind: 'gear', slot: 'weapon', weapon: arc(2.4, 0.34, 26, 22),
+  { id: 'cleaver', name: 'Cleaver', icon: 'strike', kind: 'gear', slot: 'weapon', weapon: arc(2.4, 0.34, 20, 22),
     description: 'A heavy chop with a wide swing.' },
-  { id: 'javelin', name: 'Javelin', icon: 'dagger', hue: 290, kind: 'gear', slot: 'weapon', weapon: line(8, 0.3, 20, 40),
+  { id: 'javelin', name: 'Javelin', icon: 'dagger', hue: 290, kind: 'gear', slot: 'weapon', weapon: line(8, 0.3, 18, 40),
     description: 'A thrown spear. Straight, strong, and stopped by cover.' },
 
   // ---- Boots ---------------------------------------------------------------
@@ -153,7 +153,7 @@ const LIST: ItemDef[] = [
     description: 'Run much faster for a few seconds.' },
 
   // ---- Materials -----------------------------------------------------------
-  { id: 'herb', name: 'Lavender', icon: 'herb', kind: 'material', description: 'A carried material. Nothing uses it yet.' },
+  { id: 'herb', name: 'Lavender', icon: 'herb', kind: 'material', description: 'Bound into a wayshrine\'s wards to mend them.' },
   { id: 'coin', name: 'Coin', icon: 'purse', kind: 'material', description: 'Personal gold. Nothing sells yet.' },
   { id: 'scroll', name: 'Sealed scroll', icon: 'scroll', kind: 'material', description: 'A message under ribbon. Carried, not yet read.' },
   { id: 'lockpicks', name: 'Lockpicks', icon: 'picks', kind: 'material', description: 'Two slender steel picks. Nothing is locked yet.' },
@@ -245,5 +245,6 @@ export function effectText(def: ItemDef): string {
   if (def.use === 'smoke') return 'Breaks pursuit · unseen for 3 s';
   if (def.use === 'lure') return 'Noise 9 m ahead';
   if (def.use === 'haste') return 'Speed +35% for 6 s';
+  if (def.id === 'herb') return 'Mends wayshrine wards';
   return 'Material';
 }

@@ -277,24 +277,48 @@ describe('Orchard contest: equipment drives the hero actions', () => {
 });
 
 describe('Orchard contest: hotkeys and arrival orders share the server rules', () => {
-  it('an action-menu Attack walks to the point and strikes there; the hotkey strikes at once', () => {
+  it('an action-menu Attack walks until the clicked point is in reach and strikes from there; the hotkey strikes at once', () => {
     const c = contest(ARENA.id);
-    const { sim, light, scout } = c;
+    const { sim, light, scout, guard } = c;
+    const reach = ITEMS.dagger.weapon!.range;
     place(light, -10, 0, 1, 0);
     post(scout, -3.6, 0, 1, 0);
     const hp = scout.hp;
-    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'attack', target: { x: -5, z: 0 } })]);
-    expect(scout.hp).toBe(hp); // nothing until arrival
+    // The player clicks on the enemy itself.
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'attack', target: { x: scout.x, z: scout.z } })]);
+    expect(scout.hp).toBe(hp); // nothing until in reach
     expect(runUntil(sim, () => scout.hp < hp, 120)).toBeGreaterThan(5);
-    expect(light.x).toBeCloseTo(-5, 1);
     expect(scout.hp).toBe(hp - ITEMS.dagger.weapon!.damage);
+    // It stopped short, at striking distance, and did not walk into the monster.
+    expect(light.intent.type).toBe('idle');
+    expect(scout.x - light.x).toBeGreaterThan(reach * 0.6);
+    expect(scout.x - light.x).toBeLessThanOrEqual(reach * 0.85 + 0.21);
     // Same cooldown either way.
     step(sim, [attack(LIGHT)]);
     expect(scout.hp).toBe(hp - ITEMS.dagger.weapon!.damage);
     run(sim, ITEMS.dagger.weapon!.cooldownTicks);
-    post(scout, -3.6, 0, 1, 0);
     step(sim, [attack(LIGHT)]);
     expect(scout.hp).toBe(hp - 2 * ITEMS.dagger.weapon!.damage);
+
+    // With two enemies in reach the one the player clicked is the one faced. A long weapon stops farther off.
+    light.inventory.sling = 1;
+    step(sim, [cmd(LIGHT, { type: 'equip', item: 'sling' })]);
+    run(sim, 40);
+    place(light, -20, 20, 1, 0);
+    post(scout, -14, 20, 1, 0);
+    post(guard, -20, 14, 1, 0);
+    const before = { scout: scout.hp, guard: guard.hp };
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'attack', target: { x: guard.x, z: guard.z } })]);
+    run(sim, 3);
+    expect(guard.hp).toBe(before.guard - ITEMS.sling.weapon!.damage);
+    expect(scout.hp).toBe(before.scout);
+    expect(Math.hypot(light.x + 20, light.z - 20)).toBeLessThan(0.5); // already in range: no walking
+    // An aimed attack at empty ground still swings towards the point.
+    run(sim, 40);
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'attack', target: { x: -26, z: 26 } })]);
+    run(sim, 3);
+    expect(light.dirX).toBeLessThan(-0.6);
+    expect(light.dirZ).toBeGreaterThan(0.6);
   });
 
   it('an order onto blocked ground resolves to the nearest standable point and still acts; X cancels a queued action', () => {
@@ -665,6 +689,7 @@ describe('Orchard contest: revival eligibility', () => {
     const c = fallen();
     const { sim, light, mate, dark, scout } = c;
     const shrine = sim.contest!.sanctuaries[0]!;
+    shrine.ward = 0; // the wards were breached earlier; the corruption ritual is what remains
     place(light, shrine.x + 1, shrine.z);
     step(sim, [revive(LIGHT)]);
     const ritual = sim.contest!.rituals[0]!;
@@ -686,7 +711,7 @@ describe('Orchard contest: revival eligibility', () => {
     expect(view(sim, LIGHT).actors.filter((a) => a.team === 'dark')).toEqual([]);
     // Dark is told the sanctuary's condition, never whether a ritual is under way there.
     expect(view(sim, DARK_OWNER).sanctuaries!.find((s) => s.id === shrine.id)).not.toHaveProperty('threatened');
-    expect(Object.keys(view(sim, DARK_OWNER).sanctuaries![0]!).sort()).toEqual(['corrupted', 'corruption', 'id', 'name', 'x', 'z']);
+    expect(Object.keys(view(sim, DARK_OWNER).sanctuaries![0]!).sort()).toEqual(['corrupted', 'corruption', 'id', 'name', 'ward', 'x', 'z']);
     expect(JSON.stringify(view(sim, DARK_OWNER))).not.toContain('"ritual"');
     expect(view(sim, DARK_OWNER).you!.kit!.channel).toBeNull();
 
@@ -713,30 +738,110 @@ describe('Orchard contest: revival eligibility', () => {
     expect(light.dead).toBeUndefined();
   });
 
-  it('a Dark Hero in person corrupts faster than monsters alone, and an abandoned takeover decays', () => {
+  it('the siege has two stages: wards first, then corruption; a Dark Hero in person speeds both', () => {
     const fill = (withHero: boolean) => {
       const c = contest();
       const shrine = c.sim.contest!.sanctuaries[1]!;
       post(c.scout, shrine.x + 3, shrine.z, 1, 0);
       if (withHero) place(c.dark, shrine.x - 3, shrine.z);
-      return { c, shrine, ticks: runUntil(c.sim, () => shrine.corrupted, CONTEST.corruptTicks + 10) };
+      const breached = runUntil(c.sim, () => shrine.ward === 0, CONTEST.wardTicks + 10);
+      expect(shrine.corruption).toBeLessThanOrEqual(CONTEST.heroCorruptRate + CONTEST.monsterCorruptRate); // nothing before the breach
+      return { breached, fallen: breached + runUntil(c.sim, () => shrine.corrupted, CONTEST.corruptTicks + 10) };
     };
     const alone = fill(false);
     const joined = fill(true);
-    expect(alone.ticks).toBeGreaterThan(0);
-    expect(joined.ticks).toBeGreaterThan(0);
-    expect(joined.ticks).toBeLessThan(alone.ticks);
+    expect(alone.breached).toBe(CONTEST.wardTicks);
+    expect(alone.fallen).toBeGreaterThan(alone.breached + CONTEST.corruptTicks - 5);
+    expect(joined.breached).toBeLessThan(alone.breached);
+    expect(joined.fallen).toBeLessThan(alone.fallen);
+    // A ghost may still begin its ritual while the wards are under attack or breached.
+    const c = contest();
+    const shrine = c.sim.contest!.sanctuaries[0]!;
+    place(c.light, shrine.x + 6, shrine.z + 8);
+    place(c.mate, -84, 12);
+    slay(c, c.light);
+    post(c.scout, shrine.x - 4, shrine.z, -1, 0);
+    run(c.sim, CONTEST.wardTicks + 100);
+    const seen = view(c.sim, LIGHT).sanctuaries![0]!;
+    expect(seen).toMatchObject({ ward: 0, threatened: true, corrupted: false });
+    expect(seen.corruption).toBeGreaterThan(0);
+    place(c.light, shrine.x + 1, shrine.z);
+    step(c.sim, [cmd(LIGHT, { type: 'revive' })]);
+    expect(c.sim.contest!.rituals).toHaveLength(1);
+  });
 
-    const { sim, scout } = contest();
+  it('ward damage stays until mended with lavender, while an abandoned corruption ritual decays', () => {
+    const { sim, light, scout } = contest();
     const shrine = sim.contest!.sanctuaries[1]!;
     post(scout, shrine.x + 3, shrine.z, 1, 0);
-    run(sim, 300);
+    run(sim, CONTEST.wardTicks + 200);
     const reached = shrine.corruption;
+    expect(reached).toBeGreaterThan(150);
     post(scout, 80, -60, 1, 0);
     run(sim, 100);
     expect(shrine.corruption).toBeLessThan(reached);
-    expect(shrine.corrupted).toBe(false);
+    expect(shrine.ward).toBe(0); // D-027: the wards do not come back by themselves
     expect(view(sim, LIGHT).sanctuaries![1]!.threatened).toBe(false);
+
+    // No lavender: nothing to do. With it: hold still, one sprig is used, the wards return in part.
+    place(light, shrine.x + 1, shrine.z);
+    step(sim, []);
+    expect(kit(sim, LIGHT).interaction).toBeNull();
+    light.inventory.herb = 2;
+    step(sim, []);
+    expect(kit(sim, LIGHT).interaction).toBe('mend');
+    step(sim, [cmd(LIGHT, { type: 'revive' })]);
+    expect(kit(sim, LIGHT).channel).toMatchObject({ kind: 'mend' });
+    run(sim, CONTEST.mendTicks);
+    expect(shrine.ward).toBe(CONTEST.wardTicks * CONTEST.mendFraction);
+    expect(count(sim, LIGHT, 'herb')).toBe(1);
+    // Walking off abandons a mend and keeps the sprig.
+    step(sim, [cmd(LIGHT, { type: 'revive' })]);
+    step(sim, [cmd(LIGHT, { type: 'moveTo', x: shrine.x + 2, z: shrine.z })]);
+    run(sim, CONTEST.mendTicks + 20);
+    expect(count(sim, LIGHT, 'herb')).toBe(1);
+    // Mended wards must be worn down again before corruption can resume.
+    post(scout, shrine.x + 3, shrine.z, 1, 0);
+    const corruption = shrine.corruption;
+    run(sim, 60);
+    expect(shrine.corruption).toBe(corruption);
+    expect(shrine.ward).toBeLessThan(CONTEST.wardTicks * CONTEST.mendFraction);
+  });
+
+  it('a corrupted wayshrine can be purified by a living Light Hero once Dark forces have left, and is eligible again', () => {
+    const c = contest();
+    const { sim, light, mate, dark, scout } = c;
+    const shrine = sim.contest!.sanctuaries[0]!;
+    shrine.ward = 0;
+    shrine.corruption = CONTEST.corruptTicks;
+    post(scout, shrine.x + 4, shrine.z, 1, 0);
+    step(sim, []);
+    expect(shrine.corrupted).toBe(true);
+    // A Dark Hero cannot purify. A Light Hero can begin, but makes no progress while Dark holds the precinct.
+    place(dark, shrine.x - 1, shrine.z);
+    step(sim, [cmd(DARK_OWNER, { type: 'revive' })]);
+    expect(sim.contest!.works).toEqual([]);
+    place(dark, 80, -40);
+    place(mate, shrine.x + 1, shrine.z);
+    scout.brain!.targets = [];
+    post(scout, shrine.x + 6, shrine.z, 1, 0); // looking away, still inside the precinct
+    step(sim, []);
+    expect(kit(sim, LIGHT_MATE).interaction).toBe('purify');
+    step(sim, [cmd(LIGHT_MATE, { type: 'revive' })]);
+    run(sim, 60);
+    expect(sim.contest!.works[0]?.progress ?? -1).toBe(0);
+    post(scout, 80, -60, 1, 0);
+    run(sim, CONTEST.purifyTicks - 1);
+    expect(shrine.corrupted).toBe(true);
+    run(sim, 2);
+    expect(shrine).toMatchObject({ corrupted: false, corruption: 0, ward: CONTEST.wardTicks * CONTEST.purifiedWardFraction });
+    expect(view(sim, DARK_OWNER).sanctuaries![0]).toMatchObject({ corrupted: false });
+    // A ghost can use it again.
+    place(light, shrine.x + 20, shrine.z - 9);
+    slay(c, light);
+    place(light, shrine.x - 1, shrine.z);
+    step(sim, [cmd(LIGHT, { type: 'revive' })]);
+    expect(sim.contest!.rituals[0]?.sanctuaryId).toBe(shrine.id);
   });
 });
 

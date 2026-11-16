@@ -318,9 +318,9 @@ export interface KitView {
   /** Seconds of quickening draught left. */
   hasteSeconds: number;
   /** A revival you could start now with R. */
-  interaction: 'rescue' | 'ritual' | null;
+  interaction: 'rescue' | 'ritual' | 'mend' | 'purify' | null;
   /** A revival in progress that involves you. */
-  channel: { kind: 'rescue' | 'ritual' | 'rescued'; progress: number; seconds: number } | null;
+  channel: { kind: 'rescue' | 'ritual' | 'rescued' | 'mend' | 'purify'; progress: number; seconds: number } | null;
   /** Your ritual was ended because the sanctuary fell (shown briefly). */
   ritualLost: boolean;
   /** Dark placeholder: seconds until you return. */
@@ -350,7 +350,9 @@ export interface SanctuaryView {
   name: string;
   x: number;
   z: number;
-  /** 0..1 in coarse steps. */
+  /** Ward strength 1..0 in coarse steps (D-030: every Light Hero can see it). */
+  ward: number;
+  /** Corruption 0..1 in coarse steps; rises only after the wards are breached. */
   corruption: number;
   corrupted: boolean;
   /** Light viewers only: Dark forces are in the precinct. */

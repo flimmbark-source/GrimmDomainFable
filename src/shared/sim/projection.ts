@@ -30,7 +30,7 @@
  * never report what they can see.
  */
 import type { ActorView, BodyView, EvidenceView, KitView, PickupView, SanctuaryView, SiteView, SlotId, Snapshot, SoundView, Team } from '../protocol.ts';
-import { CONTEST, evadeTicksOf, heroSpeed, rescuableBody, sanctuaryFor } from './contest.ts';
+import { CONTEST, evadeTicksOf, heroSpeed, rescuableBody, sanctuaryFor, shrineWorkFor } from './contest.ts';
 import { distance } from './geometry.ts';
 import { ITEM_IDS, salveHeal, weaponOf } from './items.ts';
 import { getMap, type MapDef } from './map.ts';
@@ -186,15 +186,18 @@ function projectKit(state: SimState, map: MapDef, hero: ActorState): KitView {
   const ritual = contest.rituals.find((r) => r.heroId === hero.id);
   const rescuing = contest.rescues.find((r) => r.rescuerId === hero.id);
   const rescued = contest.rescues.find((r) => r.heroId === hero.id);
+  const work = contest.works.find((w) => w.heroId === hero.id);
+  const workTicks = work?.kind === 'purify' ? CONTEST.purifyTicks : CONTEST.mendTicks;
   const seconds = (ticks: number) => Math.ceil(ticks / TICK_RATE);
   let channel: KitView['channel'] = null;
   if (ritual) channel = { kind: 'ritual', progress: ritual.progress / ritual.duration, seconds: seconds(ritual.duration - ritual.progress) };
   else if (rescuing) channel = { kind: 'rescue', progress: rescuing.progress / CONTEST.rescueTicks, seconds: seconds(CONTEST.rescueTicks - rescuing.progress) };
+  else if (work) channel = { kind: work.kind, progress: work.progress / workTicks, seconds: seconds(workTicks - work.progress) };
   else if (rescued) channel = { kind: 'rescued', progress: rescued.progress / CONTEST.rescueTicks, seconds: seconds(CONTEST.rescueTicks - rescued.progress) };
   let interaction: KitView['interaction'] = null;
   if (!channel && hero.team === 'light') {
     if (dead) interaction = sanctuaryFor(contest, hero) ? 'ritual' : null;
-    else if (hero.intent.type === 'idle' && rescuableBody(state, map, hero)) interaction = 'rescue';
+    else if (hero.intent.type === 'idle') interaction = rescuableBody(state, map, hero) ? 'rescue' : shrineWorkFor(state, hero)?.kind ?? null;
   }
   const kit: KitView = {
     hp: Math.ceil(hero.hp),
@@ -240,7 +243,7 @@ function projectBodies(state: SimState, map: MapDef, viewer: Viewer, hero: Actor
 /** Sanctuary condition is landmark state, not enemy intelligence (D-030, D-039). */
 function projectSanctuaries(state: SimState, viewer: Viewer): SanctuaryView[] {
   return state.contest!.sanctuaries.map((s) => {
-    const view: SanctuaryView = { id: s.id, name: s.name, x: s.x, z: s.z, corruption: Math.floor((s.corruption / CONTEST.corruptTicks) * 20) / 20, corrupted: s.corrupted };
+    const view: SanctuaryView = { id: s.id, name: s.name, x: s.x, z: s.z, ward: Math.ceil((s.ward / CONTEST.wardTicks) * 20) / 20, corruption: Math.floor((s.corruption / CONTEST.corruptTicks) * 20) / 20, corrupted: s.corrupted };
     if (viewer?.team === 'light') view.threatened = s.threatened;
     return view;
   });

@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineRoom, defineServer } from 'colyseus';
 import { DEFAULT_SERVER_PORT, REGION_ROOMS, ROOM_NAME } from '../shared/protocol.ts';
+import { CONTEST } from '../shared/sim/contest.ts';
 import { OPERATION } from '../shared/sim/operation.ts';
 import { ORCHARD_VALE } from '../shared/world/orchardVale.ts';
 import { MatchConfig, MatchRoom } from './MatchRoom.ts';
@@ -28,6 +29,14 @@ const botSlots = bots === undefined ? undefined : bots === 'none' ? [] : bots.sp
 // of relay output Dark needs (default 480). A server setting; clients cannot change it.
 const relayGoal = Number(process.env.GRIMM_RELAY_GOAL);
 if (Number.isFinite(relayGoal) && relayGoal > 0) OPERATION.productionGoal = relayGoal;
+
+// The slice's placeholder rules, exposed so a playtest can change them without code
+// (see P-22, P-23 and P-26 in docs/decisions.md). Seconds; GRIMM_SHARED_FINDS=1 makes
+// each find go to the first human Light Hero to reach it.
+const seconds = (name: string) => { const v = Number(process.env[name]); return Number.isFinite(v) && v >= 0 ? Math.round(v * 30) : undefined; };
+CONTEST.monsterReturnTicks = seconds('GRIMM_MONSTER_RETURN') ?? CONTEST.monsterReturnTicks;
+CONTEST.darkReturnTicks = seconds('GRIMM_DARK_RETURN') ?? CONTEST.darkReturnTicks;
+CONTEST.sharedFinds = process.env.GRIMM_SHARED_FINDS === '1';
 
 const server = defineServer({
   rooms: {

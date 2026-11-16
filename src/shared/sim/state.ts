@@ -88,7 +88,8 @@ export interface ActorState {
   stealth: StealthProfile;
   footstepTicks: number;
   whistleReadyTick: number;
-  queuedAction?: { kind: HeroAction; destination: Point };
+  /** `aim` is the point the player clicked; an Attack is made towards it from weapon reach. */
+  queuedAction?: { kind: HeroAction; destination: Point; aim?: Point };
   actionMotion?: { kind: 'attack' | 'evade'; tick: number; weapon?: ItemId };
   carried: number;
   /** Health. Damage is only ever applied in the Orchard contest. */
@@ -200,7 +201,9 @@ export interface SanctuaryState {
   name: string;
   x: number;
   z: number;
-  /** Corruption in tick units, 0 .. CONTEST.corruptTicks. */
+  /** Protective wards in tick units, CONTEST.wardTicks .. 0. Damage stays until mended (D-027). */
+  ward: number;
+  /** Corruption in tick units, 0 .. CONTEST.corruptTicks. Only rises once the wards are breached (D-026). */
   corruption: number;
   /** Fully corrupted: no longer eligible for resurrection (D-039). */
   corrupted: boolean;
@@ -225,11 +228,21 @@ export interface RitualState {
   duration: number;
 }
 
+/** A living Light Hero mending a wayshrine's wards or purifying a corrupted one. */
+export interface ShrineWork {
+  heroId: number;
+  sanctuaryId: number;
+  kind: 'mend' | 'purify';
+  progress: number;
+  startTick: number;
+}
+
 export interface ContestState {
   pickups: PickupState[];
   sanctuaries: SanctuaryState[];
   rescues: RescueState[];
   rituals: RitualState[];
+  works: ShrineWork[];
 }
 
 export interface OperationState {
