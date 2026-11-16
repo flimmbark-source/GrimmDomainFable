@@ -54,8 +54,8 @@ const server = defineServer({
   // Forwarded to the default WebSocket transport. Colyseus 0.18 drops a client
   // after 2 missed 3-second pings. Loading a large region (or a slow,
   // software-rendered browser drawing a heavy frame) can stall a tab for that
-  // long, so allow about 20 s before giving up on a connection.
-  ...({ pingInterval: 4000, pingMaxRetries: 5 } as object),
+  // long, so allow about 60 s before giving up on a connection.
+  ...({ pingInterval: 4000, pingMaxRetries: 15 } as object),
   express: async (app) => {
     if (!clientDir) return;
     const { default: express } = await import('express');

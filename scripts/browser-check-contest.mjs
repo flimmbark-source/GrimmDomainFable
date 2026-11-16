@@ -439,7 +439,8 @@ try {
     await shot(dark, 'dark-hero-fights-scout-holds-post');
     const scout = await scoutNow();
     check('the Dark Hero fights in person: both heroes take damage from the other\'s weapon', hurt.kit.hp < hp0 && darkHurt.kit.hp < darkHp0, `Light ${hp0} -> ${hurt.kit.hp}, Dark ${darkHp0} -> ${darkHurt.kit.hp}`);
-    check('meanwhile the Scout holds its assignment at the post', atPost && scout && scout.mode === 'patrol' && dist(scout, post) < 1.5, scout ? `Scout ${scout.mode} at ${fmt(scout)}` : 'Scout not in view');
+    void atPost;
+    check('meanwhile the Scout holds its assignment at the post', scout && scout.mode === 'patrol' && !scout.moving && dist(scout, post) < 1.5, scout ? `Scout ${scout.mode} at ${fmt(scout)}` : 'Scout not in view');
 
     // Quick slot: health up, count down.
     const before = await state(light);
@@ -461,6 +462,8 @@ try {
       await send(dark, { type: 'monsterOrder', actorId: (await scoutNow()).id, order: 'guard', x: post.x, z: post.z });
       await until(dark, ([x, z]) => window.__grimm.snapshot().actors.some((a) => a.monster === 'scout' && a.mode === 'patrol' && !a.moving && Math.hypot(a.x - x, a.z - z) < 1.5), [post.x, post.z], 90000);
     }
+    // The Dark Hero withdraws west, well beyond its own sight of what happens next.
+    await walk(dark, -72, 12.3, 60000);
     // What the Scout's owner is sent at the moment of confirmation, captured as it happens.
     const ownerSees = dark.waitForFunction((id) => {
       const s = window.__grimm.snapshot();

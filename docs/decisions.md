@@ -139,7 +139,7 @@ Orchard Vale itself is **candidate** regional direction (region prototype 01, fo
 | P-16 | The Scout patrols the square and bridge; a Brute (Dark slot 1) guards the castle road | Unit placement for a region is a stand-in for commander choices and future logistics |
 | P-17 | Witness trees (1.7 m trunks) and hedges are full sight cover; marker stones, drystone and terrace walls, fences and young trees block feet only | Cover classes for these new prop kinds are proposals |
 | P-18 | The M1 caches are placed in the ruin and the mill yard so the hunt has destinations | Placeholder objective only, not an M2 economy or a ruin treasure |
-| P-19 | Server WebSocket heartbeat grace raised from about 6 s to about 20 s (4 s pings, 5 retries) so a slow region load does not drop the client | Engineering tolerance; real reconnect and bot-takeover policy is still unresolved rule 6 |
+| P-19 | Server WebSocket heartbeat grace raised from about 6 s to about 60 s (4 s pings, 15 retries; 20 s still dropped clients on a loaded machine) so a slow region load does not drop the client | Engineering tolerance; real reconnect and bot-takeover policy is still unresolved rule 6 |
 
 ## Provisional choices made while building the Orchard Vale contest slice (need creator review)
 Combat, equipment and recovery in the relay contest (`?region=orchard_operation`). Engineering picked the smallest rule that makes the slice playable. **Every number is a playtest setting, not tuning to keep.** Rules live in `src/shared/sim/contest.ts` and `items.ts`. The M1 crossing and the plain Orchard Vale hunt are unchanged: no health, no damage.
