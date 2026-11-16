@@ -97,6 +97,10 @@ export interface ActorState {
   attackReadyTick: number;
   evadeReadyTick: number;
   itemReadyTick: number;
+  /** Quickening draught: runs faster until this tick. */
+  hasteUntilTick: number;
+  /** Smoke pot: no monster can see this hero until this tick. */
+  hiddenUntilTick: number;
   /** Tick of the last damage taken (interrupts channels). */
   lastHitTick: number;
   /** PRIVATE to the owning seat: carried items by id, worn gear and quick slots. */

@@ -10,7 +10,9 @@ import { describe, expect, it } from 'vitest';
 import { parseCommand, type Snapshot } from '../src/shared/protocol.ts';
 import { Match } from '../src/server/match.ts';
 import { CONTEST, ritualTicks } from '../src/shared/sim/contest.ts';
-import { ITEMS } from '../src/shared/sim/items.ts';
+import { isBlocked } from '../src/shared/sim/geometry.ts';
+import { ITEMS, ITEM_IDS, effectText, type ItemId } from '../src/shared/sim/items.ts';
+import { findPath } from '../src/shared/sim/nav.ts';
 import { registerMap, type MapDef } from '../src/shared/sim/map.ts';
 import { EVADE_SPEED, EVADE_TICKS, TICK_DT } from '../src/shared/sim/movement.ts';
 import { OPERATION } from '../src/shared/sim/operation.ts';
@@ -766,5 +768,203 @@ describe('Orchard contest: bots and determinism', () => {
     expect(a.hash).toBe(b.hash);
     expect(a.deaths).toBeGreaterThan(0);
     expect(a.rituals + a.rescues).toBeGreaterThan(0);
+  });
+});
+
+describe('Orchard contest: the wider catalogue', () => {
+  const wear = (c: Contest, slot: number, hero: ActorState, item: ItemId) => {
+    hero.inventory[item] = 1;
+    step(c.sim, [cmd(slot, { type: 'equip', item })]);
+  };
+
+  it('every item is obtainable, and every find lies on ground a Light Hero can walk to', () => {
+    const obtainable = new Set<string>([...CONTEST.pickups.map((p) => p.item), 'dagger', 'salve', 'cleaver', 'javelin']);
+    for (const id of ITEM_IDS) expect(obtainable.has(id), id).toBe(true);
+    expect(new Set(CONTEST.pickups.map((p) => p.id)).size).toBe(CONTEST.pickups.length);
+    const spawn = ORCHARD_VALE.spawns[LIGHT]!;
+    for (const find of CONTEST.pickups) {
+      expect(isBlocked(ORCHARD_VALE, find.x, find.z, 0.5), `${find.item} is on blocked ground`).toBe(false);
+      const path = findPath(ORCHARD_VALE, 0.5, spawn, find);
+      expect(path && Math.hypot(path.at(-1)!.x - find.x, path.at(-1)!.z - find.z) < CONTEST.pickupRadius, `${find.item} cannot be reached`).toBe(true);
+    }
+    for (const id of ITEM_IDS) expect(effectText(ITEMS[id]).length, id).toBeGreaterThan(3);
+  });
+
+  it('each weapon has its own reach, rate and shape; the cudgel knocks back and a wall stops the shove', () => {
+    const c = contest(ARENA.id);
+    const { sim, light, scout } = c;
+    const strike = (item: ItemId, distance: number) => {
+      wear(c, LIGHT, light, item);
+      run(sim, 80);
+      place(light, -10, -10, 1, 0);
+      post(scout, -10 + distance, -10, 1, 0);
+      scout.hp = scout.maxHp = 1000;
+      step(sim, [attack(LIGHT)]);
+      return 1000 - scout.hp;
+    };
+    for (const id of ITEM_IDS) {
+      const w = ITEMS[id].weapon;
+      if (!w) continue;
+      expect(strike(id, w.range - 0.3), `${id} in reach`).toBe(w.damage);
+      expect(strike(id, w.range + 1.4), `${id} out of reach`).toBe(0);
+    }
+    // Hatchet: also what stands beside you. Billhook: only what is straight ahead.
+    const beside = (item: ItemId) => {
+      wear(c, LIGHT, light, item);
+      run(sim, 80);
+      place(light, -10, -10, 1, 0);
+      post(scout, -10, -11.4, 1, 0);
+      post(c.guard, -9, -10, 1, 0); // nearest: the hero turns to this one
+      scout.hp = scout.maxHp = 1000;
+      step(sim, [attack(LIGHT)]);
+      return 1000 - scout.hp;
+    };
+    expect(beside('hatchet')).toBe(ITEMS.hatchet.weapon!.damage);
+    expect(beside('billhook')).toBe(0);
+    post(c.guard, -36, 36, 1, 0);
+
+    wear(c, LIGHT, light, 'cudgel');
+    run(sim, 80);
+    place(light, -10, -10, 1, 0);
+    post(scout, -8.6, -10, 1, 0);
+    step(sim, [attack(LIGHT)]);
+    expect(scout.x).toBeCloseTo(-8.6 + ITEMS.cudgel.weapon!.knockback!, 5);
+    // Against the wall (north face at z = 10.5) the shove does not happen.
+    run(sim, 80);
+    place(light, 0, 13.2, 0, -1);
+    post(scout, 0, 11.6, 0, 1);
+    step(sim, [attack(LIGHT)]);
+    expect(scout.z).toBe(11.6);
+  });
+
+  it('boots change sneaking, running, noise and Evade recovery, and stop when taken off', () => {
+    const c = contest(ARENA.id);
+    const { sim, light } = c;
+    const base = TUNING.hero.speed;
+    wear(c, LIGHT, light, 'courier_boots');
+    expect(light.speed).toBeCloseTo(base * 1.1, 6);
+    expect(kit(sim, LIGHT).speed).toBeCloseTo(base * 1.1, 1);
+    wear(c, LIGHT, light, 'softsole_boots');
+    expect(light.speed).toBe(base);
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'sneak' })]);
+    expect(light.speed).toBeCloseTo(base * 0.7, 6);
+    step(sim, [cmd(LIGHT, { type: 'unequip', slot: 'boots' })]);
+    expect(light.speed).toBeCloseTo(base * TUNING.hero.sneakSpeedFactor, 6);
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'sneak' })]);
+
+    wear(c, LIGHT, light, 'tumbler_boots');
+    place(light, -10, -10, 1, 0);
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'evade' })]);
+    const quick = light.evadeReadyTick - sim.tick;
+    step(sim, [cmd(LIGHT, { type: 'unequip', slot: 'boots' })]);
+    run(sim, 60);
+    step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'evade' })]);
+    expect(quick).toBeLessThan(light.evadeReadyTick - sim.tick);
+  });
+
+  it('catspaw boots halve how far running carries to a listening monster', () => {
+    const heard = (boots: boolean) => {
+      const c = contest(ARENA.id);
+      const { sim, light, scout } = c;
+      if (boots) wear(c, LIGHT, light, 'catspaw_boots');
+      // Behind the Scout, 5 m away: inside normal earshot (7 m), outside half of it.
+      post(scout, -10, -10, 1, 0);
+      place(light, -15, -10, 0, 1);
+      step(sim, [cmd(LIGHT, { type: 'moveTo', x: -15, z: -4 })]);
+      run(sim, 25);
+      return scout.brain!.mode;
+    };
+    expect(heard(false)).toBe('investigate');
+    expect(heard(true)).toBe('patrol');
+  });
+
+  it('charms: more health, slower to be noticed, harder hits, and thorns', () => {
+    const c = contest(ARENA.id);
+    const { sim, light, dark, scout } = c;
+    wear(c, LIGHT, light, 'ironbark_charm');
+    expect(kit(sim, LIGHT).maxHp).toBe(CONTEST.heroHp + ITEMS.ironbark_charm.maxHpBonus!);
+    light.hp = light.maxHp;
+    step(sim, [cmd(LIGHT, { type: 'unequip', slot: 'charm' })]);
+    expect(kit(sim, LIGHT)).toMatchObject({ hp: CONTEST.heroHp, maxHp: CONTEST.heroHp });
+
+    wear(c, LIGHT, light, 'whetstone_charm');
+    place(light, -10, -10, 1, 0);
+    post(scout, -8.6, -10, 1, 0);
+    const hp = scout.hp;
+    step(sim, [attack(LIGHT)]);
+    expect(hp - scout.hp).toBe(Math.round(ITEMS.dagger.weapon!.damage * 1.25));
+    post(scout, -36, 36, 1, 0);
+
+    wear(c, LIGHT, light, 'thorn_charm');
+    place(light, 20, -20, 1, 0);
+    place(dark, 21.5, -20, -1, 0);
+    step(sim, [attack(DARK_OWNER)]);
+    expect(dark.hp).toBe(dark.maxHp - ITEMS.thorn_charm.thorns!);
+    // A thrown javelin from range is not answered.
+    dark.equipment.weapon = 'javelin';
+    run(sim, 60);
+    place(dark, 27, -20, -1, 0);
+    step(sim, [attack(DARK_OWNER)]);
+    expect(dark.hp).toBe(dark.maxHp - ITEMS.thorn_charm.thorns!);
+
+    const noticed = (charm: boolean) => {
+      const w = contest(ARENA.id);
+      if (charm) wear(w, LIGHT, w.light, 'dusk_charm');
+      post(w.scout, -10, -10, 1, 0);
+      place(w.light, -2, -10, -1, 0);
+      return runUntil(w.sim, () => w.scout.brain!.mode === 'chase', 600);
+    };
+    expect(noticed(true)).toBeGreaterThan(noticed(false) * 1.2);
+  });
+
+  it('actives: food heals, a smoke pot breaks pursuit, a stone lures, a draught speeds you up and wears off', () => {
+    const c = contest(ARENA.id);
+    const { sim, light, scout } = c;
+    Object.assign(light.inventory, { apple: 1, cheese: 1, smoke: 1, stone: 1, tonic: 1 });
+    const use = (item: ItemId) => {
+      run(sim, CONTEST.itemCooldownTicks);
+      step(sim, [cmd(LIGHT, { type: 'assignQuick', slot: 2, item })]);
+      step(sim, [cmd(LIGHT, { type: 'useQuick', slot: 2 })]);
+    };
+    light.hp = 20;
+    use('apple');
+    expect(light.hp).toBe(20 + ITEMS.apple.heal!);
+    use('cheese');
+    expect(light.hp).toBe(20 + ITEMS.apple.heal! + ITEMS.cheese.heal!);
+    expect(count(sim, LIGHT, 'apple') + count(sim, LIGHT, 'cheese')).toBe(0);
+
+    // Stone: the Scout, facing away, goes to look where it landed, not at the hero.
+    place(light, 10, -10, 1, 0);
+    post(scout, 19, -16, 1, 0);
+    use('stone');
+    expect(scout.brain!.mode).toBe('investigate');
+    const lead = scout.brain!.investigate!;
+    expect(Math.hypot(lead.x - (10 + CONTEST.lureDistance), lead.z + 10)).toBeLessThan(4);
+    expect(view(sim, DARK_OWNER).evidence.at(-1)!.kind).toBe('noise');
+
+    // Smoke: a Scout in full chase loses the hero and is left with the last place it saw them.
+    post(scout, 6, -10, 1, 0);
+    scout.brain!.investigate = null;
+    place(light, 10, -10, 1, 0);
+    expect(runUntil(sim, () => scout.brain!.mode === 'chase', 300)).toBeGreaterThan(0);
+    use('smoke');
+    expect(view(sim, LIGHT).actors.find((a) => a.id === light.id)?.smoked).toBe(true);
+    place(light, 10, -10.5);
+    run(sim, 5);
+    expect(view(sim, LIGHT).you!.spotted).toBe(false);
+    expect(view(sim, DARK_OWNER).actors.some((a) => a.id === light.id)).toBe(false);
+    expect(view(sim, DARK_OWNER).evidence.some((e) => e.kind === 'lastSeen')).toBe(true);
+    post(scout, -36, 36, 1, 0);
+
+    use('tonic');
+    expect(light.speed).toBeCloseTo(TUNING.hero.speed * CONTEST.hasteFactor, 6);
+    expect(kit(sim, LIGHT).hasteSeconds).toBeGreaterThan(0);
+    run(sim, CONTEST.hasteTicks + 1);
+    expect(light.speed).toBe(TUNING.hero.speed);
+    // A material cannot be used or assigned; it is only carried.
+    light.inventory.coin = 5;
+    step(sim, [cmd(LIGHT, { type: 'assignQuick', slot: 0, item: 'coin' })]);
+    expect(kit(sim, LIGHT).quick[0]).not.toBe('coin');
+    expect(count(sim, LIGHT, 'coin')).toBe(5);
   });
 });

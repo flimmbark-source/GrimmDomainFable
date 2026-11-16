@@ -86,6 +86,9 @@ export class AudioCues {
       case 'heal':
         this.tone('sine', 520, 780, 0.3, 0.2 * v);
         break;
+      case 'smoke':
+        this.tone('sawtooth', 240, 60, 0.5, 0.18 * v);
+        break;
       case 'revive':
         this.tone('sine', 392, 784, 0.6, 0.25 * v);
         this.tone('sine', 588, 1176, 0.6, 0.15 * v, 0.12);

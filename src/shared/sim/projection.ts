@@ -30,7 +30,7 @@
  * never report what they can see.
  */
 import type { ActorView, BodyView, EvidenceView, KitView, PickupView, SanctuaryView, SiteView, SlotId, Snapshot, SoundView, Team } from '../protocol.ts';
-import { CONTEST, evadeTicksOf, rescuableBody, sanctuaryFor } from './contest.ts';
+import { CONTEST, evadeTicksOf, heroSpeed, rescuableBody, sanctuaryFor } from './contest.ts';
 import { distance } from './geometry.ts';
 import { ITEM_IDS, salveHeal, weaponOf } from './items.ts';
 import { getMap, type MapDef } from './map.ts';
@@ -111,6 +111,7 @@ function projectActor(viewer: Viewer, actor: ActorState, tick: number, contest: 
   };
   if (contest) view.health = Math.max(0, Math.round((actor.hp / actor.maxHp) * 100) / 100);
   if (actor.dead) view.ghost = true;
+  if (tick < actor.hiddenUntilTick) view.smoked = true;
   if (actor.actionMotion && tick - actor.actionMotion.tick <= 12) view.action = { ...actor.actionMotion };
   const brain = actor.brain;
   if (!brain) {
@@ -208,6 +209,8 @@ function projectKit(state: SimState, map: MapDef, hero: ActorState): KitView {
     evadeDistance: Math.round(evadeTicksOf(hero) * EVADE_SPEED / TICK_RATE * 10) / 10,
     evadeCooldown: Math.max(0, hero.evadeReadyTick - state.tick),
     salveHeal: salveHeal(hero.equipment),
+    speed: Math.round(heroSpeed({ ...hero, sneaking: false }, state.tick) * 10) / 10,
+    hasteSeconds: Math.max(0, Math.ceil((hero.hasteUntilTick - state.tick) / TICK_RATE)),
     interaction,
     channel,
     ritualLost: hero.ritualLostTick !== undefined && state.tick - hero.ritualLostTick < 8 * TICK_RATE,

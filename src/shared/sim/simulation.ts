@@ -10,8 +10,9 @@
  *  - The full SimState is server-only. Clients receive projection.ts output.
  */
 import { SLOT_COUNT, teamOfSlot, type ActorKind, type Command, type HeroAction, type SlotCommand, type SlotId, type Team } from '../protocol.ts';
-import { CONTEST, applyItemCommand, cancelRevive, createContest, evadeTicksOf, heroAttack, outfitHero, startRevive, updateContest } from './contest.ts';
+import { CONTEST, applyItemCommand, heroSpeed, noiseFactorOf, cancelRevive, createContest, evadeTicksOf, heroAttack, outfitHero, startRevive, updateContest } from './contest.ts';
 import { distance } from './geometry.ts';
+import { gearStats } from './items.ts';
 import { getMap, type MapDef, type Point } from './map.ts';
 import { applyOrder, thinkMonster } from './monster.ts';
 import { ARRIVE_EPS, moveActor, orderGoto, stopActor } from './movement.ts';
@@ -126,6 +127,8 @@ function spawnActor(
     attackReadyTick: 0,
     evadeReadyTick: 0,
     itemReadyTick: 0,
+    hasteUntilTick: 0,
+    hiddenUntilTick: 0,
     lastHitTick: -1,
     inventory: {},
     equipment: { weapon: null, boots: null, charm: null },
@@ -278,13 +281,13 @@ function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapD
     case 'assignQuick':
     case 'useQuick':
     case 'dropItem':
-      applyItemCommand(state, actor, command);
+      applyItemCommand(state, map, actor, command);
       break;
     case 'workOperation':
       workOperation(state, map, actor);
       break;
     case 'setGait':
-      setGait(actor, command.sneak);
+      setGait(state, actor, command.sneak);
       break;
     case 'whistle':
       whistle(state, actor);
@@ -313,10 +316,10 @@ function applyCommand(state: SimState, slot: SlotId, command: Command, map: MapD
   }
 }
 
-function setGait(actor: ActorState, sneak: boolean): void {
+function setGait(state: SimState, actor: ActorState, sneak: boolean): void {
   if (actor.dead) return;
   actor.sneaking = sneak;
-  actor.speed = HERO_SPEED * (sneak ? TUNING.hero.sneakSpeedFactor : 1);
+  actor.speed = heroSpeed(actor, state.tick);
 }
 
 function whistle(state: SimState, actor: ActorState): void {
@@ -330,7 +333,7 @@ function whistle(state: SimState, actor: ActorState): void {
 function performHeroAction(state: SimState, map: MapDef, actor: ActorState, action: HeroAction): void {
   if (actor.dead) return;
   switch (action) {
-    case 'sneak': setGait(actor, !actor.sneaking); break;
+    case 'sneak': setGait(state, actor, !actor.sneaking); break;
     case 'whistle': whistle(state, actor); break;
     case 'attack':
       // The equipped weapon decides the pattern, reach and damage.
@@ -343,7 +346,7 @@ function performHeroAction(state: SimState, map: MapDef, actor: ActorState, acti
       // Boots lengthen the dash; movement.ts still stops it at any collider.
       const ticks = evadeTicksOf(actor);
       actor.intent = { type: 'evade', ticks, after };
-      actor.evadeReadyTick = state.tick + ticks + CONTEST.evadeCooldownTicks;
+      actor.evadeReadyTick = state.tick + ticks + Math.round(CONTEST.evadeCooldownTicks * gearStats(actor.equipment).evadeRecoveryFactor);
       actor.actionMotion = { kind: 'evade', tick: state.tick };
       break;
     }
@@ -358,7 +361,7 @@ function footsteps(state: SimState, hero: ActorState): void {
   }
   if (++hero.footstepTicks < TUNING.hero.footstepIntervalTicks) return;
   hero.footstepTicks = 0;
-  state.noises.push({ x: hero.x, z: hero.z, radius: TUNING.hero.runNoiseRadius * hero.stealth.noise, team: hero.team });
+  state.noises.push({ x: hero.x, z: hero.z, radius: TUNING.hero.runNoiseRadius * hero.stealth.noise * noiseFactorOf(hero), team: hero.team });
 }
 
 /** A Light hero standing still at a cache opens it after a few seconds. */

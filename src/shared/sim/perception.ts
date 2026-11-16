@@ -7,6 +7,7 @@
  */
 import type { MonsterType } from '../protocol.ts';
 import { clamp, distance, exposure, sightBlocked } from './geometry.ts';
+import { gearStats } from './items.ts';
 import type { MapDef } from './map.ts';
 import { addEvidence, startChase, startInvestigate } from './monster.ts';
 import { clampToMap } from './movement.ts';
@@ -53,7 +54,8 @@ function updateSight(state: SimState, map: MapDef, monster: ActorState, brain: M
   brain.targets = brain.targets.filter((t) => enemies.some((e) => e.id === t.actorId));
 
   for (const hero of enemies) {
-    const seen = monsterExposure(map, monster, brain.type, hero);
+    // A smoke pot hides the hero outright for a few seconds.
+    const seen = state.tick < hero.hiddenUntilTick ? 0 : monsterExposure(map, monster, brain.type, hero);
     let memory = memoryOf(brain, hero.id);
     if (seen > 0) {
       if (!memory) {
@@ -62,7 +64,7 @@ function updateSight(state: SimState, map: MapDef, monster: ActorState, brain: M
       }
       const d = distance(monster.x, monster.z, hero.x, hero.z);
       const byDistance = 1 - (1 - P.farRateFactor) * clamp(d / profile.viewRange, 0, 1);
-      const rate = (seen * hero.stealth.visibility * byDistance) / P.detectTicksClose;
+      const rate = (seen * hero.stealth.visibility * gearStats(hero.equipment).visibilityFactor * byDistance) / P.detectTicksClose;
       memory.attention = memory.confirmed ? 1 : Math.min(1, memory.attention + rate);
       memory.visible = true;
     } else if (memory) {

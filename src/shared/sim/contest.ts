@@ -13,11 +13,11 @@
  * Deterministic: + - * / sqrt only, no randomness of its own.
  */
 import type { Command } from '../protocol.ts';
-import { distance, sightBlocked } from './geometry.ts';
-import { ITEMS, QUICK_SLOTS, evadeBonusTicks, salveHeal, weaponOf, type ItemId } from './items.ts';
+import { distance, segmentWalkable, sightBlocked } from './geometry.ts';
+import { ITEMS, QUICK_SLOTS, evadeBonusTicks, gearStats, salveHeal, type ItemId } from './items.ts';
 import type { MapDef } from './map.ts';
 import { addEvidence, startInvestigate, startReturn } from './monster.ts';
-import { EVADE_TICKS, stopActor } from './movement.ts';
+import { EVADE_TICKS, clampToMap, stopActor } from './movement.ts';
 import { nearestWalkable } from './nav.ts';
 import { memoryOf } from './perception.ts';
 import type { ActorState, ContestState, SanctuaryState, SimState } from './state.ts';
@@ -31,6 +31,15 @@ export const CONTEST = {
   itemCooldownTicks: 20,
   /** A swing or shot is audible this far. */
   attackNoiseRadius: 6,
+  /** Smoke pot: monsters this close lose the hero, who then cannot be seen for a while. */
+  smokeRadius: 12,
+  smokeTicks: 90,
+  /** Throwing stone: lands this far ahead and is heard this far from there. */
+  lureDistance: 9,
+  lureNoiseRadius: 12,
+  /** Quickening draught. */
+  hasteFactor: 1.35,
+  hasteTicks: 180,
 
   /** Body rescue (D-034): stand this close, hold still this long. */
   rescueRange: 2.2,
@@ -65,12 +74,38 @@ export const CONTEST = {
   ],
   /** Finds on the Light approach. Each Light Hero collects their own share once. */
   pickups: [
+    // The west road: the Light approach.
     { id: 0, item: 'sling', count: 1, x: -78, z: 12 },
     { id: 1, item: 'salve', count: 2, x: -66, z: 12.5 },
     { id: 2, item: 'herb', count: 3, x: -64, z: -2 },
     { id: 3, item: 'springheel_boots', count: 1, x: -48, z: 12 },
     { id: 4, item: 'spiral_charm', count: 1, x: -30, z: 12 },
     { id: 5, item: 'herb', count: 2, x: -12, z: -30 },
+    { id: 6, item: 'apple', count: 2, x: -82, z: 13 },
+    { id: 7, item: 'stone', count: 3, x: -72, z: 11.5 },
+    { id: 8, item: 'softsole_boots', count: 1, x: -58, z: 12.5 },
+    // The ford lane and the north bank.
+    { id: 9, item: 'twin_knives', count: 1, x: -70, z: -6 },
+    { id: 10, item: 'smoke', count: 2, x: -66, z: -22 },
+    { id: 11, item: 'dusk_charm', count: 1, x: -52, z: -30 },
+    // The village and the terraces.
+    { id: 12, item: 'billhook', count: 1, x: 2, z: 4 },
+    { id: 13, item: 'cheese', count: 2, x: 6, z: 12 },
+    { id: 14, item: 'coin', count: 5, x: 30, z: 14 },
+    { id: 15, item: 'ironbark_charm', count: 1, x: 3, z: 37.5 },
+    { id: 16, item: 'hatchet', count: 1, x: -40, z: 30 },
+    { id: 17, item: 'tonic', count: 2, x: 40, z: 36 },
+    // The mill and the east road.
+    { id: 18, item: 'catspaw_boots', count: 1, x: 50, z: 12 },
+    { id: 19, item: 'hand_crossbow', count: 1, x: 69, z: 13.2 },
+    // The old road, the ruin and the castle road.
+    { id: 20, item: 'thorn_charm', count: 1, x: -43.6, z: -54.6 },
+    { id: 21, item: 'scroll', count: 1, x: -30, z: -50 },
+    { id: 22, item: 'cudgel', count: 1, x: -10, z: -45 },
+    { id: 23, item: 'lockpicks', count: 1, x: 10, z: -34 },
+    { id: 24, item: 'whetstone_charm', count: 1, x: 20, z: -20 },
+    { id: 25, item: 'courier_boots', count: 1, x: 30, z: -30 },
+    { id: 26, item: 'tumbler_boots', count: 1, x: 60, z: -40 },
   ] as { id: number; item: ItemId; count: number; x: number; z: number }[],
 };
 
@@ -91,12 +126,31 @@ export function outfitHero(hero: ActorState): void {
     hero.equipment = { weapon: 'dagger', boots: null, charm: null };
     hero.quick = ['salve', null, null];
   } else {
-    hero.inventory = { cleaver: 1 };
+    hero.inventory = { cleaver: 1, javelin: 1 };
     hero.equipment = { weapon: 'cleaver', boots: null, charm: null };
   }
 }
 
 const alive = (actor: ActorState): boolean => !actor.dead && actor.hp > 0;
+
+/** Running or sneaking speed for the hero's boots and any draught in effect. */
+export function heroSpeed(hero: ActorState, tick: number): number {
+  const gear = gearStats(hero.equipment);
+  const gait = hero.sneaking ? gear.sneakFactor ?? TUNING.hero.sneakSpeedFactor : 1;
+  return TUNING.hero.speed * gear.speedFactor * gait * (tick < hero.hasteUntilTick ? CONTEST.hasteFactor : 1);
+}
+
+export function noiseFactorOf(hero: ActorState): number {
+  return gearStats(hero.equipment).noiseFactor;
+}
+
+/** Re-derive what depends on worn gear. Called whenever gear or a timed effect changes. */
+function refresh(state: SimState, hero: ActorState): void {
+  if (hero.kind !== 'hero' || hero.dead) return;
+  hero.maxHp = CONTEST.heroHp + gearStats(hero.equipment).maxHpBonus;
+  if (hero.hp > hero.maxHp) hero.hp = hero.maxHp;
+  hero.speed = heroSpeed(hero, state.tick);
+}
 
 // ---------------------------------------------------------------------------
 // Items
@@ -126,17 +180,19 @@ function take(hero: ActorState, item: ItemId): void {
 type ItemCommand = Extract<Command, { type: 'equip' | 'unequip' | 'assignQuick' | 'useQuick' | 'dropItem' }>;
 
 /** Inventory and equipment changes. The hero must be alive; every rule is checked here. */
-export function applyItemCommand(state: SimState, hero: ActorState, command: ItemCommand): void {
+export function applyItemCommand(state: SimState, map: MapDef, hero: ActorState, command: ItemCommand): void {
   if (!state.contest || hero.kind !== 'hero' || !alive(hero)) return;
   switch (command.type) {
     case 'equip': {
       const def = ITEMS[command.item];
       if (def.kind !== 'gear' || !def.slot || !hero.inventory[command.item]) return;
       hero.equipment[def.slot] = command.item;
+      refresh(state, hero);
       return;
     }
     case 'unequip':
       hero.equipment[command.slot] = null;
+      refresh(state, hero);
       return;
     case 'assignQuick': {
       if (command.slot >= QUICK_SLOTS) return;
@@ -153,12 +209,31 @@ export function applyItemCommand(state: SimState, hero: ActorState, command: Ite
     case 'useQuick': {
       const item = hero.quick[command.slot];
       if (!item || !hero.inventory[item] || state.tick < hero.itemReadyTick) return;
+      const def = ITEMS[item];
       // Only a use that does something consumes the item.
-      if (item !== 'salve' || hero.hp >= hero.maxHp) return;
-      hero.hp = Math.min(hero.maxHp, hero.hp + salveHeal(hero.equipment));
+      if (def.heal) {
+        if (hero.hp >= hero.maxHp) return;
+        const amount = item === 'salve' ? salveHeal(hero.equipment) : def.heal;
+        hero.hp = Math.min(hero.maxHp, hero.hp + amount);
+        state.events.push({ kind: 'heal', x: hero.x, z: hero.z, radius: 4, actorId: hero.id });
+      } else if (def.use === 'smoke') {
+        hero.hiddenUntilTick = state.tick + CONTEST.smokeTicks;
+        // Monsters nearby lose the hero. A chaser is left with only where it last saw them.
+        for (const monster of state.actors) {
+          if (!monster.brain || distance(monster.x, monster.z, hero.x, hero.z) > CONTEST.smokeRadius) continue;
+          monster.brain.targets = monster.brain.targets.filter((t) => t.actorId !== hero.id);
+        }
+        state.events.push({ kind: 'smoke', x: hero.x, z: hero.z, radius: 14, actorId: hero.id });
+      } else if (def.use === 'lure') {
+        const at = clampToMap(map, hero.x + hero.dirX * CONTEST.lureDistance, hero.z + hero.dirZ * CONTEST.lureDistance, 0.3);
+        state.noises.push({ x: at.x, z: at.z, radius: CONTEST.lureNoiseRadius, team: hero.team });
+        state.events.push({ kind: 'cache', x: at.x, z: at.z, radius: CONTEST.lureNoiseRadius, actorId: hero.id });
+      } else if (def.use === 'haste') {
+        hero.hasteUntilTick = state.tick + CONTEST.hasteTicks;
+        refresh(state, hero);
+      } else return;
       hero.itemReadyTick = state.tick + CONTEST.itemCooldownTicks;
       take(hero, item);
-      state.events.push({ kind: 'heal', x: hero.x, z: hero.z, radius: 4, actorId: hero.id });
       return;
     }
     case 'dropItem': {
@@ -167,6 +242,7 @@ export function applyItemCommand(state: SimState, hero: ActorState, command: Ite
       // Worn gear must be taken off before the last one can be dropped.
       if (def.slot && hero.equipment[def.slot] === command.item && hero.inventory[command.item] === 1) return;
       take(hero, command.item);
+      refresh(state, hero);
       return;
     }
   }
@@ -199,7 +275,8 @@ export function evadeTicksOf(hero: ActorState): number {
  * when nothing happened (no weapon, dead, or still recovering from a swing).
  */
 export function heroAttack(state: SimState, map: MapDef, hero: ActorState): boolean {
-  const weapon = weaponOf(hero.equipment);
+  const gear = gearStats(hero.equipment);
+  const weapon = gear.weapon;
   if (!state.contest || !weapon || !alive(hero) || state.tick < hero.attackReadyTick) return false;
   const inReach = (target: ActorState, d: number) => d <= weapon.range + target.radius && !sightBlocked(map, hero.x, hero.z, target.x, target.z);
   const enemies = state.actors.filter((a) => a.team !== hero.team && alive(a));
@@ -240,14 +317,28 @@ export function heroAttack(state: SimState, map: MapDef, hero: ActorState): bool
 
   hero.attackReadyTick = state.tick + weapon.cooldownTicks;
   hero.actionMotion = { kind: 'attack', tick: state.tick, weapon: hero.equipment.weapon! };
-  const radius = CONTEST.attackNoiseRadius * hero.stealth.noise;
+  const radius = CONTEST.attackNoiseRadius * hero.stealth.noise * gear.noiseFactor;
   state.noises.push({ x: hero.x, z: hero.z, radius, team: hero.team });
-  for (const target of hits) damage(state, target, weapon.damage, hero);
+  for (const target of hits) {
+    damage(state, target, Math.round(weapon.damage * gear.damageFactor), hero);
+    // A heavy blow shoves a survivor back, as far as the ground allows.
+    if (weapon.knockback && alive(target)) {
+      const to = clampToMap(map, target.x + hero.dirX * weapon.knockback, target.z + hero.dirZ * weapon.knockback, target.radius);
+      if (segmentWalkable(map, target.x, target.z, to.x, to.z, target.radius)) {
+        target.x = to.x;
+        target.z = to.z;
+        if (target.kind === 'hero') stopActor(target);
+      }
+    }
+  }
   return true;
 }
 
-export function damage(state: SimState, target: ActorState, amount: number, source: ActorState): void {
+export function damage(state: SimState, target: ActorState, amount: number, source: ActorState, reflected = false): void {
   if (!state.contest || !alive(target)) return;
+  // Thorns: a close attacker is hurt in return (never a reflection of a reflection).
+  const thorns = reflected || target.kind !== 'hero' ? 0 : gearStats(target.equipment).thorns;
+  if (thorns && distance(source.x, source.z, target.x, target.z) <= 3.2) damage(state, source, thorns, target, true);
   target.hp -= amount;
   target.lastHitTick = state.tick;
   state.events.push({ kind: 'hit', x: target.x, z: target.z, radius: 12, actorId: target.id });
@@ -317,7 +408,9 @@ function restore(state: SimState, hero: ActorState, x: number, z: number, hp: nu
   delete hero.ritualLostTick;
   stopActor(hero);
   hero.sneaking = false;
-  if (hero.kind === 'hero') hero.speed = TUNING.hero.speed;
+  hero.hasteUntilTick = 0;
+  hero.hiddenUntilTick = 0;
+  if (hero.kind === 'hero') hero.speed = heroSpeed(hero, state.tick);
   contest.rescues = contest.rescues.filter((r) => r.heroId !== hero.id);
   contest.rituals = contest.rituals.filter((r) => r.heroId !== hero.id);
   state.events.push({ kind: 'revive', x, z, radius: 12, actorId: hero.id });
@@ -452,4 +545,6 @@ export function updateContest(state: SimState, map: MapDef): void {
   monsterAttacks(state);
   updateSanctuaries(state, contest);
   updateRecovery(state, map, contest);
+  // A draught wearing off changes speed without any command.
+  for (const hero of state.actors) if (hero.hasteUntilTick === state.tick) refresh(state, hero);
 }

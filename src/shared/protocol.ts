@@ -149,8 +149,9 @@ export function parseCommand(raw: unknown): Command | null {
     case 'revive':
       return { type: 'revive' };
     case 'equip':
+      return isItemId(r.item) ? { type: 'equip', item: r.item } : null;
     case 'dropItem':
-      return isItemId(r.item) ? { type: r.type, item: r.item } : null;
+      return isItemId(r.item) ? { type: 'dropItem', item: r.item } : null;
     case 'unequip':
       return isGearSlot(r.slot) ? { type: 'unequip', slot: r.slot } : null;
     case 'useQuick':
@@ -206,6 +207,8 @@ export interface ActorView {
   action?: { kind: 'attack' | 'evade'; tick: number; weapon?: ItemId };
   /** Health as a fraction 0..1 (Orchard contest only). */
   health?: number;
+  /** Wrapped in smoke-pot smoke (drawn as a puff). */
+  smoked?: boolean;
   /** A Light Hero's ghost. Only ever sent to that hero's own team. */
   ghost?: boolean;
   /** Monsters only. */
@@ -258,7 +261,7 @@ export interface SiteView {
   progress?: number;
 }
 
-export type SoundKind = 'growl' | 'howl' | 'whistle' | 'cache' | 'hit' | 'heal' | 'pickup' | 'revive';
+export type SoundKind = 'growl' | 'howl' | 'whistle' | 'cache' | 'hit' | 'heal' | 'pickup' | 'revive' | 'smoke';
 
 /** Something the viewer's hero hears this tick. */
 export interface SoundView {
@@ -310,6 +313,10 @@ export interface KitView {
   evadeCooldown: number;
   /** Health one salve restores. */
   salveHeal: number;
+  /** Current running speed, metres per second. */
+  speed: number;
+  /** Seconds of quickening draught left. */
+  hasteSeconds: number;
   /** A revival you could start now with R. */
   interaction: 'rescue' | 'ritual' | null;
   /** A revival in progress that involves you. */

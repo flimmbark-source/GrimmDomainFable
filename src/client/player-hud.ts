@@ -5,11 +5,16 @@
  * every change is a request the server may refuse.
  */
 import type { Command, HeroAction, KitView, OperationView, SanctuaryView, Snapshot, Team } from '../shared/protocol.ts';
-import { GEAR_SLOTS, ITEMS, type GearSlot, type ItemId } from '../shared/sim/items.ts';
+import { GEAR_SLOTS, ITEMS, effectText, type GearSlot, type ItemId } from '../shared/sim/items.ts';
 import './player-hud.css';
 
 const ICON_ROOT = `${import.meta.env.BASE_URL}art/player-hud/`;
 const icon = (name: string) => `<img src="${ICON_ROOT}${name}.webp" alt="" draggable="false">`;
+/** An item's icon; items that share painted art are told apart by a colour shift. */
+const itemIcon = (id: ItemId) => {
+  const def = ITEMS[id];
+  return `<img src="${ICON_ROOT}${def.icon}.webp" alt="" draggable="false"${def.hue ? ` style="filter: hue-rotate(${def.hue}deg) saturate(1.25)"` : ''}>`;
+};
 const GEAR_LABEL: Record<GearSlot, string> = { weapon: 'Weapon', boots: 'Boots', charm: 'Charm' };
 
 const actions = [
@@ -272,7 +277,7 @@ export class PlayerHud {
     this.kit = kit;
     this.interact = kit.interaction ? { type: 'revive' } : operation.interaction ? { type: 'workOperation' } : null;
 
-    const kitKey = JSON.stringify([kit.equipment, kit.inventory, kit.quick, kit.attack, kit.evadeDistance, kit.salveHeal, kit.dead]);
+    const kitKey = JSON.stringify([kit.equipment, kit.inventory, kit.quick, kit.attack, kit.evadeDistance, kit.salveHeal, kit.dead, kit.speed, kit.maxHp]);
     if (kitKey !== this.kitKey) {
       this.kitKey = kitKey;
       if (this.selected && !kit.inventory.some((entry) => entry.item === this.selected)) this.selected = null;
@@ -444,26 +449,20 @@ export class PlayerHud {
     return slot && this.kit?.equipment[slot] === item ? slot : null;
   }
 
-  /** What the item does right now, with the numbers the server reported. */
+  /** What the item does, in numbers; the salve line uses the figure the server reported. */
   private effect(item: ItemId): string {
-    const def = ITEMS[item];
-    const kit = this.kit;
-    if (def.weapon) {
-      const w = def.weapon;
-      return w.pattern === 'arc' ? `Sweep · reach ${w.range} m · ${w.damage} damage` : `Straight shot · range ${w.range} m · ${w.damage} damage`;
-    }
-    if (item === 'salve' && kit) return `Restores ${kit.salveHeal} health`;
-    return def.kind === 'material' ? 'Material' : '';
+    if (item === 'salve' && this.kit) return `Restores ${this.kit.salveHeal} health`;
+    return effectText(ITEMS[item]);
   }
 
   private itemButton(item: ItemId, label: string, count: number): string {
-    return `<button type="button" class="ph-slot" data-item="${item}" aria-label="${label}" title="${label}" aria-pressed="false">${icon(ITEMS[item].icon)}${count > 1 ? `<span class="ph-count">${count}</span>` : ''}</button>`;
+    return `<button type="button" class="ph-slot" data-item="${item}" aria-label="${label}" title="${label}" aria-pressed="false">${itemIcon(item)}${count > 1 ? `<span class="ph-count">${count}</span>` : ''}</button>`;
   }
 
   private renderStats(kit: KitView): void {
     const weapon = kit.equipment.weapon ? ITEMS[kit.equipment.weapon].name : null;
     const attack = kit.attack ? `${weapon} · ${kit.attack.pattern === 'arc' ? 'sweep' : 'shot'} ${kit.attack.range} m · ${kit.attack.damage}` : 'No weapon';
-    this.stats.innerHTML = `<span data-stat="attack">${attack}</span><span data-stat="evade">Evade ${kit.evadeDistance} m</span><span data-stat="salve">Salve +${kit.salveHeal}</span>`;
+    this.stats.innerHTML = `<span data-stat="attack">${attack}</span><span data-stat="evade">Evade ${kit.evadeDistance} m</span><span data-stat="salve">Salve +${kit.salveHeal}</span><span data-stat="speed">Speed ${kit.speed}</span>`;
   }
 
   private renderBag(): void {
@@ -499,7 +498,7 @@ export class PlayerHud {
     const quickSlot = (this.kit?.quick.indexOf(item.id) ?? -1) + 1;
     const effect = this.effect(item.id);
     const canDrop = !(worn && this.countOf(item.id) === 1);
-    this.details.innerHTML = `${icon(item.icon)}<div class="ph-description"><strong>${item.name}</strong><span>${item.description}</span>${effect ? `<em class="ph-effect">${effect}</em>` : ''}</div>
+    this.details.innerHTML = `${itemIcon(item.id)}<div class="ph-description"><strong>${item.name}</strong><span>${item.description}</span>${effect ? `<em class="ph-effect">${effect}</em>` : ''}</div>
       <div class="ph-item-actions">
         ${item.kind === 'active' ? `<button type="button" data-action="assign" aria-pressed="${this.assigning}">${this.assigning ? 'Choose 1–3' : 'Assign'} ${!this.assigning && quickSlot ? `<kbd>${quickSlot}</kbd>` : ''}</button>` : ''}
         ${item.kind === 'gear' ? (worn ? `<button type="button" data-action="unequip" data-slot="${worn}">Unequip</button>` : '<button type="button" data-action="equip">Equip</button>') : ''}
@@ -515,7 +514,7 @@ export class PlayerHud {
       const contents = `${id ?? ''}|${count}`;
       if (button.dataset.contents !== contents) {
         button.dataset.contents = contents;
-        button.innerHTML = `<kbd>${key}</kbd>${id ? `${icon(ITEMS[id].icon)}<span class="ph-count">${count}</span>` : ''}`;
+        button.innerHTML = `<kbd>${key}</kbd>${id ? `${itemIcon(id)}<span class="ph-count">${count}</span>` : ''}`;
       }
       const name = id ? ITEMS[id].name : '';
       button.setAttribute('aria-label', `Quick slot ${key}${id ? `: ${name}, ${count}` : ': empty'}`);
