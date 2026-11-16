@@ -30,7 +30,7 @@
  * never report what they can see.
  */
 import type { ActorView, BodyView, EvidenceView, KitView, PickupView, SanctuaryView, SiteView, SlotId, Snapshot, SoundView, Team } from '../protocol.ts';
-import { CONTEST, evadeTicksOf, heroSpeed, rescuableBody, sanctuaryFor, shrineWorkFor } from './contest.ts';
+import { CONTEST, evadeTicksOf, heroSpeed, rescuableBody, sanctuaryFor, shrineWorkFor, shrineWorkTicks } from './contest.ts';
 import { distance } from './geometry.ts';
 import { ITEM_IDS, salveHeal, weaponOf } from './items.ts';
 import { getMap, type MapDef } from './map.ts';
@@ -187,13 +187,13 @@ function projectKit(state: SimState, map: MapDef, hero: ActorState): KitView {
   const rescuing = contest.rescues.find((r) => r.rescuerId === hero.id);
   const rescued = contest.rescues.find((r) => r.heroId === hero.id);
   const work = contest.works.find((w) => w.heroId === hero.id);
-  const workTicks = work?.kind === 'purify' ? CONTEST.purifyTicks : CONTEST.mendTicks;
+  const workTicks = work ? shrineWorkTicks(hero, work.kind) : 1;
   const seconds = (ticks: number) => Math.ceil(ticks / TICK_RATE);
   let channel: KitView['channel'] = null;
   if (ritual) channel = { kind: 'ritual', progress: ritual.progress / ritual.duration, seconds: seconds(ritual.duration - ritual.progress) };
-  else if (rescuing) channel = { kind: 'rescue', progress: rescuing.progress / CONTEST.rescueTicks, seconds: seconds(CONTEST.rescueTicks - rescuing.progress) };
+  else if (rescuing) channel = { kind: 'rescue', progress: rescuing.progress / rescuing.duration, seconds: seconds(rescuing.duration - rescuing.progress) };
   else if (work) channel = { kind: work.kind, progress: work.progress / workTicks, seconds: seconds(workTicks - work.progress) };
-  else if (rescued) channel = { kind: 'rescued', progress: rescued.progress / CONTEST.rescueTicks, seconds: seconds(CONTEST.rescueTicks - rescued.progress) };
+  else if (rescued) channel = { kind: 'rescued', progress: rescued.progress / rescued.duration, seconds: seconds(rescued.duration - rescued.progress) };
   let interaction: KitView['interaction'] = null;
   if (!channel && hero.team === 'light') {
     if (dead) interaction = sanctuaryFor(contest, hero) ? 'ritual' : null;

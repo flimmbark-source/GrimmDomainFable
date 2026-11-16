@@ -35,35 +35,17 @@ Hotkeys and action-menu orders run the same server rule, one now and one on arri
 
 ## Equipment and items
 
-Every hero starts with a weapon. Light also starts with one salve in quick slot 1. Dark starts with a cleaver equipped and a javelin in the bag. The catalogue has 29 items. Each Light Hero collects their own share of every find by walking over it. Finds glow gold for gear, green for usable items and grey for materials.
+The catalogue has **100 items**, each with its own icon and its own effect: 27 weapons, 20 boots, 27 charms, 20 usable items and 6 materials. The full list with every effect and where each one lies is in the [item catalogue](orchard-vale-items.md), which is generated from the game data.
 
-| Slot | Item | What it does | Where |
-| --- | --- | --- | --- |
-| Weapon | Dagger | Close sweep, 16 damage, quick | Starting |
-| | Twin knives | Very fast light cuts, short reach | Ford lane |
-| | Hatchet | Wide sweep that also hits beside you | South-west terrace |
-| | Cudgel | Heavy blow that knocks the enemy back 1.8 m | Old road, north |
-| | Billhook | Narrow thrust with 3.4 m reach, slow | Village, south of the bridge |
-| | Sling | Straight 9 m shot; hits the first enemy, cover stops it | West gate |
-| | Hand crossbow | 13 m bolt, 30 damage, long reload | Mill yard |
-| | Cleaver, Javelin | Dark Hero's sweep and thrown spear | Dark starting kit |
-| Boots | Springheel | Evade travels 4 m in place of 2.4 m | West road |
-| | Softsole | Sneak at 70% of running speed | West road |
-| | Catspaw | Running and fighting are heard half as far | East road |
-| | Courier | Run 10% faster | Castle road |
-| | Tumbler | Evade recovers in a third of the time | North-east |
-| Charm | Spiral | Salves heal 48 in place of 30 | West road |
-| | Ironbark | Maximum health +30 | Upper terrace |
-| | Thorn | A close attacker takes 5 damage back | The ruin |
-| | Dusk | Monsters take about 40% longer to notice you | North bank |
-| | Whetstone | Weapon damage +25% | North of the bridge |
-| Active | Salve, Apple, Cheese | Restore 30, 10 and 18 health | West road, west gate, village |
-| | Smoke pot | Monsters within 12 m lose you and cannot see you for 3 s | Ford, north bank |
-| | Throwing stone | Clatters 9 m ahead and draws monsters there | West road |
-| | Quickening draught | Run 35% faster for 6 s | South-east terrace |
-| Material | Lavender, Coin, Sealed scroll, Lockpicks | Carried stacks. Nothing uses them yet | Ford lane, east road, old road, junction |
+Every hero starts with a weapon. Light also starts with one salve in quick slot 1. Dark starts with a cleaver equipped and a javelin in the bag. Finds are spread over the whole Vale and glow gold for gear, green for usable items and grey for materials. Walk over one to collect it. Each Light Hero has their own share.
 
-Evade and Sneak work with the boots slot empty, and a wall or the river still stops any Evade. Gear effects are read from what is worn when the action happens, so the line under the portrait and the inventory text change the moment you equip, swap or unequip. Icons are shared between related items and told apart by colour until they have art of their own.
+- **Weapons** differ in reach, width, speed and damage, and many carry one property: bleed, slow, stun, knockback, pull, lifesteal, piercing, silence, or extra damage from behind, against the wounded, the unhurt, monsters or heroes.
+- **Boots** change Evade (distance, recovery, or what it does: hide, hurt, heal, shove), sneaking, running, noise, or grant an immunity.
+- **Charms** are passives: health, armour, regeneration, damage, attack speed, stealth, kill rewards, and helpers for wards, rescues and rituals.
+- **Usable items** go in quick slots 1 to 3: food and medicine, smoke and a veil, lures, draughts, a fire pot, flash powder, caltrops, a throwing knife, a war horn and blessed water.
+- **Materials** each have a rule: lavender, salt and ward scrolls mend wayshrine wards by rising amounts, a candle halves a purification, lockpicks speed sabotage while carried, and a lucky coin turns one death aside.
+
+Evade and Sneak work with the boots slot empty, and a wall or the river still stops any Evade. Effects are read from what is worn when the action happens, so the line under the portrait and the inventory text change the moment you equip, swap or unequip.
 
 ## Fighting, death and recovery
 
@@ -112,7 +94,7 @@ GRIMM_RELAY_GOAL=3600 npm start
 Run on 2026-11-16 in a Linux container, Node 22, software-rendered Chromium.
 
 - `npm run typecheck` and `npm run build`: clean.
-- `npm test`: **152 tests pass** in 10 files. 31 are in `tests/orchard-contest.test.ts`: weapon patterns and each gear and item effect, hotkey and arrival orders sharing one rule, an aimed Attack stopping at reach, blocked ground, cancel, the Dark Hero fighting while monsters hold orders, Scout report privacy, the ghost's view, revival eligibility, ritual length by time dead, the two-stage siege, mending, purification, a ritual ending at full corruption, and a seeded bot contest that reproduces exactly.
+- `npm test`: **158 tests pass** in 10 files. 37 are in `tests/orchard-contest.test.ts`: weapon patterns and each gear and item effect, hotkey and arrival orders sharing one rule, an aimed Attack stopping at reach, blocked ground, cancel, the Dark Hero fighting while monsters hold orders, Scout report privacy, the ghost's view, revival eligibility, ritual length by time dead, the two-stage siege, mending, purification, a ritual ending at full corruption, and a seeded bot contest that reproduces exactly, and the 100-item catalogue: every item obtainable on reachable ground, 100 distinct effect texts and icon files, and each new weapon property, boot, charm, usable item and material rule.
 - `npm run verify:contest`: the live run with one browser per side, real mouse and keyboard, and six bots. The last complete run, before two small script corrections, passed **47 of 49 checks**. Both misses were the script's own positioning, not game rules. That run covered click-to-move, drag, the action menu, both key layouts, cancel, blocked ground, finds, weapon swap, boots, charm, quick slots, army orders, the duel, pursuit and escape, the ghost's view, a ritual through a siege and its loss to full corruption, resurrection at the second wayshrine, a bot rescuing the hero at the body, and sabotage and repair changing the Dark Energy rate. Runs after it were stopped or invalid, so **the final code has no clean full run**.
 
 The live script is unreliable in this container and should not be treated as a pass/fail gate. It renders two pages in software at about two frames a second while six bots fight, so scripted scenes are regularly disturbed. Twice a page was dropped by the server while it was still building the region, and the page kept showing "Connected". That second part is a real client defect: a dropped connection is not reported to the player. The server's heartbeat grace was raised from 20 to 60 seconds, which is untested. Screenshots from the 47-of-49 run are in `docs/evidence/contest-*.png`.
@@ -127,8 +109,9 @@ Not verified: frame rate and feel on real graphics hardware (the run draws about
 - **Ghosts have no spirit layer** beyond a colour wash: no ghost paths, obstacles or senses (D-035 to D-037).
 - **Dark death, monster death and bot behaviour are placeholders.** Final Dark victory rules and bot takeover timing are still open in the decision register.
 - **A dropped connection is silent.** If the server drops a client during a long load, the page still says Connected and stops updating. Reload to rejoin.
-- **Art.** Heroes, monsters and wayshrines are original low-poly stand-ins built in code, with a simple walk and weapon-arm swing. Fourteen items still share a painted icon with another and are told apart by colour. Proper character models, animation and item icons need an artist or licensed assets.
-- Lavender mends wards; the other materials have no use. Dropped items vanish. Heroes still pass through each other.
+- **Art.** Heroes, monsters and wayshrines are original low-poly stand-ins built in code, with a simple walk and weapon-arm swing. All 100 item icons are distinct vector drawings generated in code, not painted art. Any icon can be replaced by dropping a file into `public/art/items`.
+- **The 100 items are untuned and unplayed.** Each effect is covered by a test that it works, not that it is fair or fun. Bots do not use most of them. The live two-browser script was not run against this catalogue.
+- Dropped items vanish. Afflictions (bleeding, slowed, stunned) and timed boons have no HUD indicator yet. Heroes still pass through each other.
 
 ## From regional contest to kingdom match
 

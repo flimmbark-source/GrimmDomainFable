@@ -6,6 +6,7 @@
  * Numbers come from CONTEST / ITEMS / TUNING and are provisional; the tests
  * assert the rules, not the tuning.
  */
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseCommand, type Snapshot } from '../src/shared/protocol.ts';
 import { Match } from '../src/server/match.ts';
@@ -62,6 +63,7 @@ function contest(mapId = ORCHARD_VALE.id, seed = 5): Contest {
   };
 }
 
+const healOf = (item: ItemId) => (ITEMS[item].use as { amount: number }).amount;
 const kit = (sim: SimState, slot: number) => view(sim, slot).you!.kit!;
 const attack = (slot: number) => cmd(slot, { type: 'heroAction', action: 'attack' });
 const count = (sim: SimState, slot: number, item: string) => kit(sim, slot).inventory.find((i) => i.item === item)?.count ?? 0;
@@ -170,7 +172,7 @@ describe('Orchard contest: equipment drives the hero actions', () => {
     step(sim, [cmd(LIGHT, { type: 'equip', item: 'springheel_boots' })]);
     expect(kit(sim, LIGHT).evadeDistance).toBeGreaterThan(bare);
     const booted = dash();
-    expect(booted).toBeCloseTo((EVADE_TICKS + ITEMS.springheel_boots.evadeBonusTicks!) * EVADE_SPEED * TICK_DT, 5);
+    expect(booted).toBeCloseTo((EVADE_TICKS + ITEMS.springheel_boots.mods!.evadeTicks!) * EVADE_SPEED * TICK_DT, 5);
 
     // Into the wall (south face at z = 9.5): the longer dash is cut short at the stone.
     place(light, 0, 7.5, 0, 1);
@@ -190,7 +192,7 @@ describe('Orchard contest: equipment drives the hero actions', () => {
     const { sim, light } = c;
     light.inventory.spiral_charm = 1;
     light.inventory.salve = 3;
-    const base = ITEMS.salve.heal!;
+    const base = healOf('salve');
     expect(kit(sim, LIGHT).quick[0]).toBe('salve');
 
     // Full health: nothing is used up.
@@ -904,13 +906,16 @@ describe('Orchard contest: the wider catalogue', () => {
       place(light, -10, -10, 1, 0);
       post(scout, -10 + distance, -10, 1, 0);
       scout.hp = scout.maxHp = 1000;
+      scout.bleedTicks = 0;
       step(sim, [attack(LIGHT)]);
-      return 1000 - scout.hp;
+      return Math.round(1000 - scout.hp); // (a bleeding weapon's first tick lands with the blow)
     };
     for (const id of ITEM_IDS) {
       const w = ITEMS[id].weapon;
       if (!w) continue;
-      expect(strike(id, w.range - 0.3), `${id} in reach`).toBe(w.damage);
+      // The dummy is unhurt, a monster, and faces away: the weapon's own multipliers for that apply.
+      const expected = Math.round(w.damage * (w.vsMonsters ?? 1) * (w.opener ?? 1) * (w.backstab ?? 1));
+      expect(strike(id, w.range - 0.3), `${id} in reach`).toBe(expected);
       expect(strike(id, w.range + 1.4), `${id} out of reach`).toBe(0);
     }
     // Hatchet: also what stands beside you. Billhook: only what is straight ahead.
@@ -987,7 +992,7 @@ describe('Orchard contest: the wider catalogue', () => {
     const c = contest(ARENA.id);
     const { sim, light, dark, scout } = c;
     wear(c, LIGHT, light, 'ironbark_charm');
-    expect(kit(sim, LIGHT).maxHp).toBe(CONTEST.heroHp + ITEMS.ironbark_charm.maxHpBonus!);
+    expect(kit(sim, LIGHT).maxHp).toBe(CONTEST.heroHp + ITEMS.ironbark_charm.mods!.maxHp!);
     light.hp = light.maxHp;
     step(sim, [cmd(LIGHT, { type: 'unequip', slot: 'charm' })]);
     expect(kit(sim, LIGHT)).toMatchObject({ hp: CONTEST.heroHp, maxHp: CONTEST.heroHp });
@@ -1004,13 +1009,13 @@ describe('Orchard contest: the wider catalogue', () => {
     place(light, 20, -20, 1, 0);
     place(dark, 21.5, -20, -1, 0);
     step(sim, [attack(DARK_OWNER)]);
-    expect(dark.hp).toBe(dark.maxHp - ITEMS.thorn_charm.thorns!);
+    expect(dark.hp).toBe(dark.maxHp - ITEMS.thorn_charm.mods!.thorns!);
     // A thrown javelin from range is not answered.
     dark.equipment.weapon = 'javelin';
     run(sim, 60);
     place(dark, 27, -20, -1, 0);
     step(sim, [attack(DARK_OWNER)]);
-    expect(dark.hp).toBe(dark.maxHp - ITEMS.thorn_charm.thorns!);
+    expect(dark.hp).toBe(dark.maxHp - ITEMS.thorn_charm.mods!.thorns!);
 
     const noticed = (charm: boolean) => {
       const w = contest(ARENA.id);
@@ -1033,9 +1038,9 @@ describe('Orchard contest: the wider catalogue', () => {
     };
     light.hp = 20;
     use('apple');
-    expect(light.hp).toBe(20 + ITEMS.apple.heal!);
+    expect(light.hp).toBe(20 + healOf('apple'));
     use('cheese');
-    expect(light.hp).toBe(20 + ITEMS.apple.heal! + ITEMS.cheese.heal!);
+    expect(light.hp).toBe(20 + healOf('apple') + healOf('cheese'));
     expect(count(sim, LIGHT, 'apple') + count(sim, LIGHT, 'cheese')).toBe(0);
 
     // Stone: the Scout, facing away, goes to look where it landed, not at the hero.
@@ -1071,5 +1076,365 @@ describe('Orchard contest: the wider catalogue', () => {
     step(sim, [cmd(LIGHT, { type: 'assignQuick', slot: 0, item: 'coin' })]);
     expect(kit(sim, LIGHT).quick[0]).not.toBe('coin');
     expect(count(sim, LIGHT, 'coin')).toBe(5);
+  });
+});
+
+describe('Orchard contest: one hundred items', () => {
+  const wear = (c: Contest, slot: number, hero: ActorState, item: ItemId) => {
+    hero.inventory[item] = 1;
+    step(c.sim, [cmd(slot, { type: 'equip', item })]);
+  };
+  const use = (c: Contest, item: ItemId) => {
+    c.light.inventory[item] = (c.light.inventory[item] ?? 0) + 1;
+    run(c.sim, CONTEST.itemCooldownTicks);
+    step(c.sim, [cmd(LIGHT, { type: 'assignQuick', slot: 2, item })]);
+    step(c.sim, [cmd(LIGHT, { type: 'useQuick', slot: 2 })]);
+  };
+  /** A monster dummy with plenty of health, d metres ahead of the hero at (-10, -10) facing +x. */
+  const dummy = (c: Contest, d: number, facing = 1) => {
+    place(c.light, -10, -10, 1, 0);
+    post(c.scout, -10 + d, -10, facing, 0);
+    c.scout.hp = c.scout.maxHp = 1000;
+    c.scout.bleedTicks = 0;
+    c.scout.slowUntilTick = c.scout.stunUntilTick = 0;
+    return c.scout;
+  };
+
+  it('there are exactly 100 items, each with its own name, effect and icon', () => {
+    expect(ITEM_IDS).toHaveLength(100);
+    expect(new Set(ITEM_IDS.map((id) => ITEMS[id].name)).size).toBe(100);
+    const effects = ITEM_IDS.map((id) => effectText(ITEMS[id]));
+    expect(new Set(effects).size).toBe(100);
+    const icons = ITEM_IDS.map((id) => readFileSync(new URL(`../public/art/items/${id}.svg`, import.meta.url), 'utf8'));
+    for (const svg of icons) expect(svg.startsWith('<svg')).toBe(true);
+    expect(new Set(icons).size).toBe(100);
+    const kinds = (kind: string, slot?: string) => ITEM_IDS.filter((id) => ITEMS[id].kind === kind && ITEMS[id].slot === slot).length;
+    expect([kinds('gear', 'weapon'), kinds('gear', 'boots'), kinds('gear', 'charm'), kinds('active'), kinds('material')]).toEqual([27, 20, 27, 20, 6]);
+  });
+
+  it('weapon properties: bleed, slow, stun, lifesteal, pierce, pull, backstab and execute', () => {
+    const c = contest(ARENA.id);
+    const { sim, light, scout, guard } = c;
+    const arm = (item: ItemId) => { wear(c, LIGHT, light, item); run(sim, 90); };
+
+    arm('sickle');
+    let target = dummy(c, 1.5);
+    step(sim, [attack(LIGHT)]);
+    const afterCut = target.hp;
+    run(sim, 60);
+    expect(afterCut - target.hp).toBeCloseTo(ITEMS.sickle.weapon!.bleed!.dps * 2, 1);
+
+    arm('whip');
+    target = dummy(c, 4);
+    step(sim, [attack(LIGHT)]);
+    expect(target.slowUntilTick).toBeGreaterThan(sim.tick);
+    // Slowed: an ordered walk covers 60% of the usual ground.
+    const from = target.x;
+    step(sim, [cmd(DARK_OWNER, { type: 'monsterOrder', actorId: target.id, order: 'guard', x: 20, z: -10 })]);
+    run(sim, 30);
+    const slowed = target.x - from;
+    target.slowUntilTick = 0;
+    const from2 = target.x;
+    run(sim, 30);
+    expect(slowed).toBeLessThan((target.x - from2) * 0.75);
+
+    arm('flail');
+    target = dummy(c, 1.8);
+    step(sim, [attack(LIGHT)]);
+    const stunnedAt = { x: target.x, dir: target.dirX };
+    step(sim, [cmd(DARK_OWNER, { type: 'monsterOrder', actorId: target.id, order: 'guard', x: 20, z: -10 })]);
+    run(sim, ITEMS.flail.weapon!.stunTicks! - 3);
+    expect(target.x).toBe(stunnedAt.x);
+    run(sim, 30);
+    expect(target.x).not.toBe(stunnedAt.x);
+
+    arm('leech_blade');
+    target = dummy(c, 1.5);
+    light.hp = 50;
+    step(sim, [attack(LIGHT)]);
+    expect(light.hp).toBeCloseTo(50 + ITEMS.leech_blade.weapon!.damage * ITEMS.leech_blade.weapon!.lifesteal!, 5);
+    light.hp = light.maxHp;
+
+    arm('arbalest');
+    target = dummy(c, 5);
+    post(guard, -2, -10, 1, 0);
+    guard.hp = guard.maxHp = 1000;
+    step(sim, [attack(LIGHT)]);
+    expect(1000 - target.hp).toBe(ITEMS.arbalest.weapon!.damage);
+    expect(1000 - guard.hp).toBe(ITEMS.arbalest.weapon!.damage);
+    post(guard, -36, 36, 1, 0);
+
+    arm('butcher_hook');
+    target = dummy(c, 2.8);
+    step(sim, [attack(LIGHT)]);
+    expect(target.x).toBeCloseTo(-10 + 2.8 - 1.6, 5);
+
+    arm('stiletto');
+    target = dummy(c, 1.4, -1); // facing the hero
+    step(sim, [attack(LIGHT)]);
+    expect(1000 - target.hp).toBe(ITEMS.stiletto.weapon!.damage);
+    run(sim, 60);
+    target = dummy(c, 1.4, 1); // back turned
+    step(sim, [attack(LIGHT)]);
+    expect(1000 - target.hp).toBe(Math.round(ITEMS.stiletto.weapon!.damage * 2.5));
+
+    arm('woodaxe');
+    target = dummy(c, 1.6);
+    target.hp = 300;
+    step(sim, [attack(LIGHT)]);
+    expect(300 - target.hp).toBe(ITEMS.woodaxe.weapon!.damage * 2);
+  });
+
+  it('boots: Evade can hide, hurt, heal and shove; immunities hold; hurt heroes run faster', () => {
+    const c = contest(ARENA.id);
+    const { sim, light, dark, scout } = c;
+    const evade = () => { run(sim, 90); step(sim, [cmd(LIGHT, { type: 'heroAction', action: 'evade' })]); };
+
+    wear(c, LIGHT, light, 'mistwalker_boots');
+    place(light, -10, -10, 1, 0);
+    evade();
+    expect(light.hiddenUntilTick).toBeGreaterThan(sim.tick);
+
+    wear(c, LIGHT, light, 'bramble_boots');
+    let target = dummy(c, 1.6);
+    evade();
+    expect(1000 - target.hp).toBe(ITEMS.bramble_boots.mods!.evadeDamage!);
+
+    wear(c, LIGHT, light, 'pilgrim_sandals');
+    place(light, 10, 10, 1, 0);
+    light.hp = 40;
+    evade();
+    expect(light.hp).toBe(40 + ITEMS.pilgrim_sandals.mods!.evadeHeal!);
+
+    wear(c, LIGHT, light, 'ram_boots');
+    target = dummy(c, 1.6);
+    evade();
+    expect(target.x).toBeCloseTo(-10 + 1.6 + 2, 5);
+    post(scout, -36, 36, 1, 0);
+
+    wear(c, LIGHT, light, 'lastlegs_boots');
+    light.hp = light.maxHp * 0.3;
+    step(sim, []);
+    expect(light.speed).toBeCloseTo(TUNING.hero.speed * 1.3, 6);
+    light.hp = light.maxHp;
+
+    // Immunities, tested with the Dark Hero's blows.
+    const hit = (boots: ItemId, darkWeapon: ItemId) => {
+      wear(c, LIGHT, light, boots);
+      dark.inventory[darkWeapon] = 1;
+      dark.equipment.weapon = darkWeapon;
+      run(sim, 100);
+      light.bleedTicks = 0;
+      light.slowUntilTick = light.stunUntilTick = 0;
+      place(light, 20, -20, 1, 0);
+      place(dark, 21.6, -20, -1, 0);
+      step(sim, [attack(DARK_OWNER)]);
+    };
+    hit('ironshod_boots', 'cudgel');
+    expect(light.x).toBe(20);
+    hit('springheel_boots', 'cudgel');
+    expect(light.x).toBeLessThan(20);
+    hit('marsh_waders', 'whip');
+    expect(light.slowUntilTick).toBeLessThanOrEqual(sim.tick);
+    hit('bloodless_greaves', 'sickle');
+    expect(light.bleedTicks).toBe(0);
+    hit('springheel_boots', 'sickle');
+    expect(light.bleedTicks).toBeGreaterThan(0);
+  });
+
+  it('charms: regeneration, armour, attack speed, kill rewards, reach, revival and ritual changes', () => {
+    const c = contest(ARENA.id);
+    const { sim, light, mate, dark, scout } = c;
+    wear(c, LIGHT, light, 'heartwood_charm');
+    light.hp = 50;
+    run(sim, 60);
+    expect(light.hp).toBeCloseTo(50 + 3, 1);
+
+    wear(c, LIGHT, light, 'oakshield_charm');
+    place(light, 20, -20, 1, 0);
+    place(dark, 21.6, -20, -1, 0);
+    light.hp = 100;
+    step(sim, [attack(DARK_OWNER)]);
+    expect(100 - light.hp).toBe(Math.round(ITEMS.cleaver.weapon!.damage * 0.8));
+    place(dark, -36, 6);
+
+    wear(c, LIGHT, light, 'quickhand_charm');
+    dummy(c, 1.5);
+    step(sim, [attack(LIGHT)]);
+    expect(light.attackReadyTick - sim.tick + 1).toBe(Math.round(ITEMS.dagger.weapon!.cooldownTicks * 0.8));
+
+    wear(c, LIGHT, light, 'longarm_charm');
+    run(sim, 30);
+    let target = dummy(c, ITEMS.dagger.weapon!.range + 0.7 + 0.4); // beyond bare reach, inside the longer one
+    step(sim, [attack(LIGHT)]);
+    expect(target.hp).toBeLessThan(1000);
+
+    wear(c, LIGHT, light, 'reaper_charm');
+    run(sim, 30);
+    target = dummy(c, 1.5);
+    target.hp = 5;
+    light.hp = 60;
+    step(sim, [attack(LIGHT)]);
+    expect(target.dead).toBeDefined();
+    expect(light.hp).toBe(60 + ITEMS.reaper_charm.mods!.killHeal!);
+    run(sim, CONTEST.monsterReturnTicks + 2);
+    post(scout, -36, 36, 1, 0);
+
+    wear(c, LIGHT, light, 'magpie_charm');
+    c.sim.contest!.pickups.push({ id: 999, item: 'apple', count: 1, x: 12, z: 12, takenBy: [] });
+    place(light, 12 + CONTEST.pickupRadius * 2, 12);
+    step(sim, []);
+    expect(light.inventory.apple).toBe(1);
+
+    // Samaritan halves a rescue; a phoenix feather brings the fallen back stronger.
+    wear(c, LIGHT, light, 'phoenix_feather');
+    wear(c, LIGHT_MATE, mate, 'samaritan_charm');
+    place(light, 25, 25, 1, 0);
+    slay(c, light);
+    place(mate, 26.2, 25);
+    step(sim, [cmd(LIGHT_MATE, { type: 'revive' })]);
+    run(sim, CONTEST.rescueTicks / 2);
+    expect(light.dead).toBeUndefined();
+    expect(light.hp).toBe(light.maxHp * CONTEST.rescueHpFraction + 50);
+
+    // Pilgrim token shortens the ritual.
+    wear(c, LIGHT, light, 'pilgrim_token');
+    slay(c, light);
+    const shrine = { ...sim.contest!.sanctuaries[0]!, x: light.x, z: light.z };
+    sim.contest!.sanctuaries[0] = shrine;
+    step(sim, [cmd(LIGHT, { type: 'revive' })]);
+    const ritual = sim.contest!.rituals[0]!;
+    expect(ritual.duration).toBeCloseTo(ritualTicks(sim.tick - 1 - light.dead!.tick) * 0.6, 0);
+  });
+
+  it('actives: bandage, fire pot, flash powder, caltrops, throwing knife, draughts, antidote, horn and veil', () => {
+    const c = contest(ARENA.id);
+    const { sim, light, mate, dark, scout } = c;
+    light.hp = 40;
+    use(c, 'bandage');
+    run(sim, 90);
+    expect(light.hp).toBeCloseTo(40 + 7 * 3, 0);
+    light.hp = light.maxHp;
+
+    let target = dummy(c, 5);
+    use(c, 'firepot');
+    expect(1000 - target.hp).toBe(28);
+    target = dummy(c, -2);
+    use(c, 'firepot'); // the burst is 5 m ahead: something behind you is spared
+    expect(target.hp).toBe(1000);
+
+    target = dummy(c, 4);
+    use(c, 'flash_powder');
+    expect(target.stunUntilTick).toBeGreaterThan(sim.tick);
+    target = dummy(c, 3);
+    use(c, 'caltrops');
+    expect(target.slowUntilTick).toBeGreaterThan(sim.tick);
+
+    step(sim, [cmd(LIGHT, { type: 'unequip', slot: 'weapon' })]);
+    target = dummy(c, 6);
+    use(c, 'throwing_knife');
+    expect(1000 - target.hp).toBe(22);
+    step(sim, [cmd(LIGHT, { type: 'equip', item: 'dagger' })]);
+
+    use(c, 'fury_draught');
+    run(sim, 30);
+    target = dummy(c, 1.5);
+    step(sim, [attack(LIGHT)]);
+    expect(1000 - target.hp).toBe(ITEMS.dagger.weapon!.damage * 1.5);
+    post(scout, -36, 36, 1, 0);
+
+    use(c, 'iron_draught');
+    place(light, 20, -20, 1, 0);
+    place(dark, 21.6, -20, -1, 0);
+    light.hp = 100;
+    step(sim, [attack(DARK_OWNER)]);
+    expect(100 - light.hp).toBe(ITEMS.cleaver.weapon!.damage / 2);
+
+    dark.inventory.sickle = 1;
+    dark.equipment.weapon = 'sickle';
+    run(sim, 40);
+    step(sim, [attack(DARK_OWNER)]);
+    expect(light.bleedTicks).toBeGreaterThan(0);
+    use(c, 'antidote');
+    expect(light.bleedTicks).toBe(0);
+    step(sim, [attack(DARK_OWNER)]);
+    expect(light.bleedTicks).toBe(0); // immune for a while
+    place(dark, -36, 6);
+
+    place(light, 10, 10);
+    place(mate, 14, 10);
+    use(c, 'war_horn');
+    expect(mate.hasteUntilTick).toBeGreaterThan(sim.tick);
+    expect(light.hasteUntilTick).toBeGreaterThan(sim.tick);
+
+    // A veil hides the hero from a Scout looking straight at them, until they strike.
+    place(mate, 30, 30);
+    use(c, 'dusk_veil');
+    post(scout, 4, 10, 1, 0);
+    scout.brain!.targets = []; // the helper moves it by hand: forget the earlier fights
+    run(sim, 100);
+    expect(scout.brain!.mode).toBe('patrol');
+    step(sim, [attack(LIGHT)]);
+    expect(light.hiddenUntilTick).toBe(0);
+    expect(runUntil(sim, () => scout.brain!.mode === 'chase', 200)).toBeGreaterThan(0);
+
+    // Nothing to do: the item is kept.
+    post(scout, -36, 36, 1, 0);
+    scout.brain!.targets = [];
+    place(light, 30, -30);
+    light.hp = light.maxHp;
+    use(c, 'honeycake');
+    expect(light.inventory.honeycake).toBe(1);
+    use(c, 'blessed_water');
+    expect(light.inventory.blessed_water).toBe(1);
+  });
+
+  it('materials: salt and scrolls mend more, a candle halves purification, lockpicks speed sabotage, a coin turns death aside', () => {
+    const c = contest();
+    const { sim, light, mate, scout } = c;
+    const shrine = sim.contest!.sanctuaries[1]!;
+    place(light, shrine.x + 1, shrine.z);
+    shrine.ward = 0;
+    light.inventory.salt = 1;
+    step(sim, [cmd(LIGHT, { type: 'revive' })]);
+    run(sim, CONTEST.mendTicks);
+    expect(shrine.ward).toBeCloseTo(CONTEST.wardTicks * 0.7, 5);
+    expect(light.inventory.salt).toBeUndefined();
+    shrine.ward = 0;
+    light.inventory.scroll = 1;
+    step(sim, [cmd(LIGHT, { type: 'revive' })]);
+    run(sim, CONTEST.mendTicks);
+    expect(shrine.ward).toBe(CONTEST.wardTicks);
+
+    shrine.corruption = CONTEST.corruptTicks * 0.5;
+    shrine.ward = 0;
+    light.inventory.blessed_water = 1;
+    step(sim, [cmd(LIGHT, { type: 'assignQuick', slot: 2, item: 'blessed_water' })]);
+    step(sim, [cmd(LIGHT, { type: 'useQuick', slot: 2 })]);
+    expect(shrine.corruption).toBeLessThanOrEqual(CONTEST.corruptTicks * 0.2);
+
+    shrine.corrupted = true;
+    light.inventory.candle = 1;
+    step(sim, [cmd(LIGHT, { type: 'revive' })]);
+    run(sim, CONTEST.purifyTicks / 2 + 1);
+    expect(shrine.corrupted).toBe(false);
+    expect(light.inventory.candle).toBeUndefined();
+
+    place(light, OPERATION.x, OPERATION.z + 1.5, 0, -1);
+    light.inventory.lockpicks = 1;
+    step(sim, [cmd(LIGHT, { type: 'workOperation' })]);
+    run(sim, (OPERATION.sabotageSeconds - 1) * TICK_RATE);
+    expect(sim.operation!.active).toBe(false);
+    expect(light.inventory.lockpicks).toBe(1);
+
+    place(mate, -72, 12);
+    mate.inventory.coin = 1;
+    post(scout, 80, -60, 1, 0);
+    const back = { x: c.dark.x, z: c.dark.z };
+    place(c.dark, mate.x + 1.5, mate.z, -1, 0);
+    for (let i = 0; i < 400 && mate.inventory.coin; i++) step(sim, [attack(DARK_OWNER)]);
+    expect(mate.dead).toBeUndefined();
+    expect(mate.hp).toBe(1);
+    place(c.dark, back.x, back.z);
   });
 });

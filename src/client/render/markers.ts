@@ -314,10 +314,10 @@ export class MarkerLayer {
     const group = new THREE.Group();
     group.name = `pickup:${pickup.item}`;
     group.position.set(pickup.x, this.heightAt(pickup.x, pickup.z), pickup.z);
-    const name = ITEMS[pickup.item].icon;
+    const name = pickup.item;
     let texture = this.icons.get(name);
     if (!texture) {
-      texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}art/player-hud/${name}.webp`);
+      texture = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}art/items/${name}.svg`);
       texture.colorSpace = THREE.SRGBColorSpace;
       this.icons.set(name, texture);
     }

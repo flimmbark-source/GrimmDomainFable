@@ -37,6 +37,12 @@ function canWork(operation: OperationState, hero: ActorState, map: MapDef): bool
   return !operation.result && !hero.dead && hero.team === team && hero.intent.type === 'idle' && inRange(hero, map);
 }
 
+/** Seconds the current job takes this hero. Lockpicks make sabotage a second quicker. */
+function workSeconds(operation: OperationState, hero: ActorState | undefined): number {
+  if (!operation.active) return OPERATION.repairSeconds;
+  return OPERATION.sabotageSeconds - (hero?.inventory.lockpicks ? 1 : 0);
+}
+
 export function workOperation(sim: SimState, map: MapDef, hero: ActorState): void {
   const operation = sim.operation;
   if (!operation || operation.worker !== null || !canWork(operation, hero, map)) return;
@@ -55,7 +61,7 @@ export function updateOperation(sim: SimState, map: MapDef): void {
       operation.worker = null;
       operation.progress = 0;
     } else {
-      const seconds = operation.active ? OPERATION.sabotageSeconds : OPERATION.repairSeconds;
+      const seconds = workSeconds(operation, worker);
       if (++operation.progress >= seconds * TICK_RATE) {
         operation.active = !operation.active;
         operation.offlineTicks = 0;
@@ -76,7 +82,7 @@ export function updateOperation(sim: SimState, map: MapDef): void {
 
 export function projectOperation(operation: OperationState, map: MapDef, hero: ActorState | undefined): OperationView {
   const action = operation.active ? 'sabotage' : 'repair';
-  const seconds = operation.active ? OPERATION.sabotageSeconds : OPERATION.repairSeconds;
+  const seconds = workSeconds(operation, hero);
   return {
     x: OPERATION.x, z: OPERATION.z, active: operation.active,
     energy: Math.floor(operation.energy / TICK_RATE),

@@ -64,11 +64,13 @@ function updateSight(state: SimState, map: MapDef, monster: ActorState, brain: M
       }
       const d = distance(monster.x, monster.z, hero.x, hero.z);
       const byDistance = 1 - (1 - P.farRateFactor) * clamp(d / profile.viewRange, 0, 1);
-      const rate = (seen * hero.stealth.visibility * gearStats(hero.equipment).visibilityFactor * byDistance) / P.detectTicksClose;
+      const gear = gearStats(hero.equipment);
+      const hide = gear.visibility * (hero.sneaking ? gear.sneakVisibility : 1) * (hero.moving ? 1 : gear.stillVisibility);
+      const rate = (seen * hero.stealth.visibility * hide * byDistance) / P.detectTicksClose;
       memory.attention = memory.confirmed ? 1 : Math.min(1, memory.attention + rate);
       memory.visible = true;
     } else if (memory) {
-      memory.attention = Math.max(0, memory.attention - 1 / P.decayTicks);
+      memory.attention = Math.max(0, memory.attention - gearStats(hero.equipment).attentionDecay / P.decayTicks);
       memory.visible = false;
     }
   }

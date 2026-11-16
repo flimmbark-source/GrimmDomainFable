@@ -100,8 +100,19 @@ export interface ActorState {
   itemReadyTick: number;
   /** Quickening draught: runs faster until this tick. */
   hasteUntilTick: number;
-  /** Smoke pot: no monster can see this hero until this tick. */
+  /** Smoke, veil or mistwalker boots: no monster can see this hero until this tick. */
   hiddenUntilTick: number;
+  /** Afflictions and timed boons (any actor). Per-tick amounts are health per tick. */
+  bleedTicks: number;
+  bleedPerTick: number;
+  bleedSource: number | null;
+  slowUntilTick: number;
+  stunUntilTick: number;
+  guardUntilTick: number;
+  furyUntilTick: number;
+  regenTicks: number;
+  regenPerTick: number;
+  immuneUntilTick: number;
   /** Tick of the last damage taken (interrupts channels). */
   lastHitTick: number;
   /** PRIVATE to the owning seat: carried items by id, worn gear and quick slots. */
@@ -216,6 +227,8 @@ export interface RescueState {
   rescuerId: number;
   heroId: number;
   progress: number;
+  /** Ticks needed, fixed when the rescue starts. */
+  duration: number;
   startTick: number;
 }
 

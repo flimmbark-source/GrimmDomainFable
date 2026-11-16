@@ -14,7 +14,8 @@
  */
 import type { Command } from '../protocol.ts';
 import { distance, segmentWalkable, sightBlocked } from './geometry.ts';
-import { ITEMS, QUICK_SLOTS, evadeBonusTicks, gearStats, salveHeal, type ItemId } from './items.ts';
+import { FINDS } from './finds.ts';
+import { ITEMS, QUICK_SLOTS, gearStats, salveHeal, type ItemId, type WeaponDef } from './items.ts';
 import type { MapDef } from './map.ts';
 import { addEvidence, startInvestigate, startReturn } from './monster.ts';
 import { EVADE_TICKS, clampToMap, stopActor } from './movement.ts';
@@ -83,40 +84,8 @@ export const CONTEST = {
     { id: 1, name: 'North orchard wayshrine', x: -24, z: -32 },
   ],
   /** Finds on the Light approach. Each Light Hero collects their own share once. */
-  pickups: [
-    // The west road: the Light approach.
-    { id: 0, item: 'sling', count: 1, x: -78, z: 12 },
-    { id: 1, item: 'salve', count: 2, x: -66, z: 12.5 },
-    { id: 2, item: 'herb', count: 3, x: -64, z: -2 },
-    { id: 3, item: 'springheel_boots', count: 1, x: -48, z: 12 },
-    { id: 4, item: 'spiral_charm', count: 1, x: -30, z: 12 },
-    { id: 5, item: 'herb', count: 2, x: -12, z: -30 },
-    { id: 6, item: 'apple', count: 2, x: -82, z: 13 },
-    { id: 7, item: 'stone', count: 3, x: -72, z: 11.5 },
-    { id: 8, item: 'softsole_boots', count: 1, x: -58, z: 12.5 },
-    // The ford lane and the north bank.
-    { id: 9, item: 'twin_knives', count: 1, x: -70, z: -6 },
-    { id: 10, item: 'smoke', count: 2, x: -66, z: -22 },
-    { id: 11, item: 'dusk_charm', count: 1, x: -52, z: -30 },
-    // The village and the terraces.
-    { id: 12, item: 'billhook', count: 1, x: 2, z: 4 },
-    { id: 13, item: 'cheese', count: 2, x: 6, z: 12 },
-    { id: 14, item: 'coin', count: 5, x: 30, z: 14 },
-    { id: 15, item: 'ironbark_charm', count: 1, x: 3, z: 37.5 },
-    { id: 16, item: 'hatchet', count: 1, x: -40, z: 30 },
-    { id: 17, item: 'tonic', count: 2, x: 40, z: 36 },
-    // The mill and the east road.
-    { id: 18, item: 'catspaw_boots', count: 1, x: 50, z: 12 },
-    { id: 19, item: 'hand_crossbow', count: 1, x: 69, z: 13.2 },
-    // The old road, the ruin and the castle road.
-    { id: 20, item: 'thorn_charm', count: 1, x: -43.6, z: -54.6 },
-    { id: 21, item: 'scroll', count: 1, x: -30, z: -50 },
-    { id: 22, item: 'cudgel', count: 1, x: -10, z: -45 },
-    { id: 23, item: 'lockpicks', count: 1, x: 10, z: -34 },
-    { id: 24, item: 'whetstone_charm', count: 1, x: 20, z: -20 },
-    { id: 25, item: 'courier_boots', count: 1, x: 30, z: -30 },
-    { id: 26, item: 'tumbler_boots', count: 1, x: 60, z: -40 },
-  ] as { id: number; item: ItemId; count: number; x: number; z: number }[],
+  /** Where every find lies (see finds.ts). */
+  pickups: FINDS,
 };
 
 export function createContest(): ContestState {
@@ -144,23 +113,80 @@ export function outfitHero(hero: ActorState): void {
 
 const alive = (actor: ActorState): boolean => !actor.dead && actor.hp > 0;
 
-/** Running or sneaking speed for the hero's boots and any draught in effect. */
+/** Running or sneaking speed for the hero's boots, health and any draught in effect. */
 export function heroSpeed(hero: ActorState, tick: number): number {
   const gear = gearStats(hero.equipment);
-  const gait = hero.sneaking ? gear.sneakFactor ?? TUNING.hero.sneakSpeedFactor : 1;
-  return TUNING.hero.speed * gear.speedFactor * gait * (tick < hero.hasteUntilTick ? CONTEST.hasteFactor : 1);
+  const gait = hero.sneaking ? gear.sneakFactor || TUNING.hero.sneakSpeedFactor : 1;
+  const hurt = hero.hp < hero.maxHp * 0.4 ? gear.lowHpSpeed : 1;
+  return TUNING.hero.speed * gear.speed * gait * hurt * (tick < hero.hasteUntilTick ? CONTEST.hasteFactor : 1);
 }
 
 export function noiseFactorOf(hero: ActorState): number {
-  return gearStats(hero.equipment).noiseFactor;
+  return gearStats(hero.equipment).noise;
 }
 
 /** Re-derive what depends on worn gear. Called whenever gear or a timed effect changes. */
 function refresh(state: SimState, hero: ActorState): void {
   if (hero.kind !== 'hero' || hero.dead) return;
-  hero.maxHp = CONTEST.heroHp + gearStats(hero.equipment).maxHpBonus;
+  hero.maxHp = CONTEST.heroHp + gearStats(hero.equipment).maxHp;
   if (hero.hp > hero.maxHp) hero.hp = hero.maxHp;
   hero.speed = heroSpeed(hero, state.tick);
+}
+
+// ---------------------------------------------------------------------------
+// Afflictions
+// ---------------------------------------------------------------------------
+
+type Affliction = Pick<WeaponDef, 'bleed' | 'slowTicks' | 'stunTicks'>;
+
+/** Apply bleed, slow or stun, unless the target's gear or an antidote forbids it. */
+function afflict(state: SimState, target: ActorState, effect: Affliction, source: ActorState): void {
+  if (!alive(target) || state.tick < target.immuneUntilTick) return;
+  const gear = gearStats(target.equipment);
+  if (effect.bleed && !gear.bleedImmune) {
+    target.bleedTicks = effect.bleed.ticks;
+    target.bleedPerTick = effect.bleed.dps / 30;
+    target.bleedSource = source.id;
+  }
+  if (effect.slowTicks && !gear.slowImmune && state.tick + effect.slowTicks > target.slowUntilTick) target.slowUntilTick = state.tick + effect.slowTicks;
+  if (effect.stunTicks && !gear.stunImmune && state.tick + effect.stunTicks > target.stunUntilTick) {
+    target.stunUntilTick = state.tick + effect.stunTicks;
+    if (target.kind === 'hero') stopActor(target);
+  }
+}
+
+/** Shove a target along a direction, as far as the ground allows. Negative metres pull. */
+function shove(map: MapDef, target: ActorState, dirX: number, dirZ: number, metres: number): void {
+  if (!alive(target) || metres === 0 || gearStats(target.equipment).knockbackImmune) return;
+  const to = clampToMap(map, target.x + dirX * metres, target.z + dirZ * metres, target.radius);
+  if (!segmentWalkable(map, target.x, target.z, to.x, to.z, target.radius)) return;
+  target.x = to.x;
+  target.z = to.z;
+  if (target.kind === 'hero') stopActor(target);
+}
+
+function heal(state: SimState, hero: ActorState, amount: number): void {
+  if (amount <= 0 || !alive(hero) || hero.hp >= hero.maxHp) return;
+  hero.hp = Math.min(hero.maxHp, hero.hp + amount);
+  state.events.push({ kind: 'heal', x: hero.x, z: hero.z, radius: 4, actorId: hero.id });
+}
+
+function updateAfflictions(state: SimState): void {
+  for (const actor of state.actors) {
+    if (!alive(actor)) continue;
+    if (actor.bleedTicks > 0) {
+      actor.bleedTicks--;
+      actor.hp -= actor.bleedPerTick;
+      if (actor.hp <= 0) fall(state, actor, state.actors.find((a) => a.id === actor.bleedSource));
+      continue;
+    }
+    if (actor.kind !== 'hero') continue;
+    const regen = gearStats(actor.equipment).regen / 30 + (actor.regenTicks > 0 ? actor.regenPerTick : 0);
+    if (actor.regenTicks > 0) actor.regenTicks--;
+    if (regen > 0 && actor.hp < actor.maxHp) actor.hp = Math.min(actor.maxHp, actor.hp + regen);
+    // Speed follows health and timed effects without waiting for a command.
+    actor.speed = heroSpeed(actor, state.tick);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +212,94 @@ function take(hero: ActorState, item: ItemId): void {
   hero.quick = hero.quick.map((q) => (q === item ? null : q));
   const slot = ITEMS[item].slot;
   if (slot && hero.equipment[slot] === item) hero.equipment[slot] = null;
+}
+
+/** Use an active item. Returns false when the use would do nothing, so the item is kept. */
+function useItem(state: SimState, map: MapDef, hero: ActorState, item: ItemId): boolean {
+  const use = ITEMS[item].use;
+  if (!use) return false;
+  const gear = gearStats(hero.equipment);
+  const foes = state.actors.filter((a) => a.team !== hero.team && alive(a));
+  const near = (x: number, z: number, radius: number) => foes.filter((a) => distance(a.x, a.z, x, z) <= radius + a.radius);
+  const ahead = (metres: number) => clampToMap(map, hero.x + hero.dirX * metres, hero.z + hero.dirZ * metres, 0.3);
+  switch (use.kind) {
+    case 'heal':
+      if (hero.hp >= hero.maxHp) return false;
+      heal(state, hero, use.salve ? salveHeal(hero.equipment) : Math.round(use.amount * gear.food));
+      if (use.selfSlowTicks) hero.slowUntilTick = state.tick + use.selfSlowTicks;
+      return true;
+    case 'regen':
+      if (hero.hp >= hero.maxHp) return false;
+      hero.regenTicks = use.ticks;
+      hero.regenPerTick = use.perSecond / 30;
+      return true;
+    case 'smoke':
+      hero.hiddenUntilTick = state.tick + Math.round(use.ticks * gear.smokeDuration);
+      // Monsters nearby lose the hero. A chaser is left with only where it last saw them.
+      for (const monster of state.actors) {
+        if (!monster.brain || distance(monster.x, monster.z, hero.x, hero.z) > use.radius) continue;
+        monster.brain.targets = monster.brain.targets.filter((t) => t.actorId !== hero.id);
+      }
+      state.events.push({ kind: 'smoke', x: hero.x, z: hero.z, radius: 14, actorId: hero.id });
+      return true;
+    case 'veil':
+      hero.hiddenUntilTick = state.tick + Math.round(use.ticks * gear.smokeDuration);
+      return true;
+    case 'lure': {
+      const at = ahead(use.distance);
+      const radius = use.radius * gear.lureNoise;
+      state.noises.push({ x: at.x, z: at.z, radius, team: hero.team });
+      state.events.push({ kind: 'cache', x: at.x, z: at.z, radius, actorId: hero.id });
+      return true;
+    }
+    case 'haste':
+      hero.hasteUntilTick = state.tick + Math.round(use.ticks * gear.hasteDuration);
+      return true;
+    case 'guard':
+      hero.guardUntilTick = state.tick + Math.round(use.ticks * gear.hasteDuration);
+      return true;
+    case 'fury':
+      hero.furyUntilTick = state.tick + Math.round(use.ticks * gear.hasteDuration);
+      return true;
+    case 'cleanse':
+      hero.bleedTicks = 0;
+      hero.slowUntilTick = 0;
+      hero.stunUntilTick = 0;
+      hero.immuneUntilTick = state.tick + use.immuneTicks;
+      return true;
+    case 'bomb': {
+      const at = ahead(use.distance);
+      state.noises.push({ x: at.x, z: at.z, radius: 14, team: hero.team });
+      for (const target of near(at.x, at.z, use.radius)) if (!sightBlocked(map, at.x, at.z, target.x, target.z)) damage(state, target, use.damage, hero);
+      return true;
+    }
+    case 'flash':
+      for (const target of near(hero.x, hero.z, use.radius)) afflict(state, target, { stunTicks: use.stunTicks }, hero);
+      state.events.push({ kind: 'smoke', x: hero.x, z: hero.z, radius: 14, actorId: hero.id });
+      return true;
+    case 'caltrops':
+      for (const target of near(hero.x, hero.z, use.radius)) afflict(state, target, { slowTicks: use.slowTicks }, hero);
+      return true;
+    case 'knife': {
+      const target = lineTargets(map, hero, foes, use.range, 0.3)[0];
+      hero.actionMotion = { kind: 'attack', tick: state.tick };
+      if (target) damage(state, target, use.damage, hero);
+      return true;
+    }
+    case 'horn':
+      for (const ally of state.actors) {
+        if (ally.kind !== 'hero' || ally.team !== hero.team || !alive(ally) || distance(ally.x, ally.z, hero.x, hero.z) > use.radius) continue;
+        ally.hasteUntilTick = state.tick + Math.round(use.ticks * gear.hasteDuration);
+      }
+      state.events.push({ kind: 'howl', x: hero.x, z: hero.z, radius: 20, actorId: hero.id });
+      return true;
+    case 'purge': {
+      const shrine = state.contest!.sanctuaries.find((s) => !s.corrupted && s.corruption > 0 && distance(hero.x, hero.z, s.x, s.z) <= CONTEST.sanctuaryRadius);
+      if (!shrine) return false;
+      shrine.corruption = Math.max(0, shrine.corruption - use.fraction * CONTEST.corruptTicks);
+      return true;
+    }
+  }
 }
 
 type ItemCommand = Extract<Command, { type: 'equip' | 'unequip' | 'assignQuick' | 'useQuick' | 'dropItem' }>;
@@ -219,32 +333,12 @@ export function applyItemCommand(state: SimState, map: MapDef, hero: ActorState,
     }
     case 'useQuick': {
       const item = hero.quick[command.slot];
-      if (!item || !hero.inventory[item] || state.tick < hero.itemReadyTick) return;
-      const def = ITEMS[item];
+      if (!item || !hero.inventory[item] || state.tick < hero.itemReadyTick || state.tick < hero.stunUntilTick) return;
       // Only a use that does something consumes the item.
-      if (def.heal) {
-        if (hero.hp >= hero.maxHp) return;
-        const amount = item === 'salve' ? salveHeal(hero.equipment) : def.heal;
-        hero.hp = Math.min(hero.maxHp, hero.hp + amount);
-        state.events.push({ kind: 'heal', x: hero.x, z: hero.z, radius: 4, actorId: hero.id });
-      } else if (def.use === 'smoke') {
-        hero.hiddenUntilTick = state.tick + CONTEST.smokeTicks;
-        // Monsters nearby lose the hero. A chaser is left with only where it last saw them.
-        for (const monster of state.actors) {
-          if (!monster.brain || distance(monster.x, monster.z, hero.x, hero.z) > CONTEST.smokeRadius) continue;
-          monster.brain.targets = monster.brain.targets.filter((t) => t.actorId !== hero.id);
-        }
-        state.events.push({ kind: 'smoke', x: hero.x, z: hero.z, radius: 14, actorId: hero.id });
-      } else if (def.use === 'lure') {
-        const at = clampToMap(map, hero.x + hero.dirX * CONTEST.lureDistance, hero.z + hero.dirZ * CONTEST.lureDistance, 0.3);
-        state.noises.push({ x: at.x, z: at.z, radius: CONTEST.lureNoiseRadius, team: hero.team });
-        state.events.push({ kind: 'cache', x: at.x, z: at.z, radius: CONTEST.lureNoiseRadius, actorId: hero.id });
-      } else if (def.use === 'haste') {
-        hero.hasteUntilTick = state.tick + CONTEST.hasteTicks;
-        refresh(state, hero);
-      } else return;
-      hero.itemReadyTick = state.tick + CONTEST.itemCooldownTicks;
+      if (!useItem(state, map, hero, item)) return;
+      hero.itemReadyTick = state.tick + Math.round(CONTEST.itemCooldownTicks * gearStats(hero.equipment).itemCooldown);
       take(hero, item);
+      refresh(state, hero);
       return;
     }
     case 'dropItem': {
@@ -262,9 +356,10 @@ export function applyItemCommand(state: SimState, map: MapDef, hero: ActorState,
 function collectPickups(state: SimState, contest: ContestState): void {
   for (const hero of state.actors) {
     if (hero.kind !== 'hero' || hero.team !== 'light' || hero.slot === null || !alive(hero)) continue;
+    const radius = CONTEST.pickupRadius * gearStats(hero.equipment).pickupRadius;
     for (const pickup of contest.pickups) {
       if (pickup.takenBy.includes(hero.slot) || (CONTEST.sharedFinds && (pickup.takenBy.length > 0 || state.slots[hero.slot]?.occupant !== 'human'))) continue;
-      if (distance(hero.x, hero.z, pickup.x, pickup.z) > CONTEST.pickupRadius) continue;
+      if (distance(hero.x, hero.z, pickup.x, pickup.z) > radius) continue;
       pickup.takenBy.push(hero.slot);
       give(hero, pickup.item, pickup.count);
       state.events.push({ kind: 'pickup', x: hero.x, z: hero.z, radius: 3, actorId: hero.id });
@@ -278,18 +373,50 @@ function collectPickups(state: SimState, contest: ContestState): void {
 
 /** Ticks of Evade travel for this hero's current boots. */
 export function evadeTicksOf(hero: ActorState): number {
-  return EVADE_TICKS + evadeBonusTicks(hero.equipment);
+  return EVADE_TICKS + gearStats(hero.equipment).evadeTicks;
+}
+
+/** What boots add at the start of an Evade. */
+export function onEvade(state: SimState, map: MapDef, hero: ActorState): void {
+  if (!state.contest) return;
+  const gear = gearStats(hero.equipment);
+  if (gear.evadeSmokeTicks) hero.hiddenUntilTick = state.tick + Math.round(gear.evadeSmokeTicks * gear.smokeDuration);
+  heal(state, hero, gear.evadeHeal);
+  if (!gear.evadeDamage && !gear.evadeKnockback) return;
+  for (const target of state.actors) {
+    if (target.team === hero.team || !alive(target)) continue;
+    const d = distance(hero.x, hero.z, target.x, target.z);
+    if (d > 2.4 + target.radius || d < 1e-6) continue;
+    if (gear.evadeDamage) damage(state, target, gear.evadeDamage, hero);
+    shove(map, target, (target.x - hero.x) / d, (target.z - hero.z) / d, gear.evadeKnockback);
+  }
+}
+
+/** Enemies on a straight line ahead of the hero, nearest first; cover stops the line. */
+function lineTargets(map: MapDef, hero: ActorState, enemies: ActorState[], range: number, halfWidth: number): ActorState[] {
+  const found: { target: ActorState; along: number }[] = [];
+  for (const target of enemies) {
+    const dx = target.x - hero.x;
+    const dz = target.z - hero.z;
+    const along = hero.dirX * dx + hero.dirZ * dz;
+    const across = hero.dirX * dz - hero.dirZ * dx;
+    if (along < 0 || along > range + target.radius || (across < 0 ? -across : across) > halfWidth + target.radius) continue;
+    if (sightBlocked(map, hero.x, hero.z, target.x, target.z)) continue;
+    found.push({ target, along });
+  }
+  return found.sort((a, b) => a.along - b.along || a.target.id - b.target.id).map((f) => f.target);
 }
 
 /**
  * Attack with the equipped weapon from where the hero stands. Returns false
- * when nothing happened (no weapon, dead, or still recovering from a swing).
+ * when nothing happened (no weapon, dead, stunned, or still recovering).
  */
 export function heroAttack(state: SimState, map: MapDef, hero: ActorState, aim?: { x: number; z: number }): boolean {
   const gear = gearStats(hero.equipment);
   const weapon = gear.weapon;
-  if (!state.contest || !weapon || !alive(hero) || state.tick < hero.attackReadyTick) return false;
-  const inReach = (target: ActorState, d: number) => d <= weapon.range + target.radius && !sightBlocked(map, hero.x, hero.z, target.x, target.z);
+  if (!state.contest || !weapon || !alive(hero) || state.tick < hero.attackReadyTick || state.tick < hero.stunUntilTick) return false;
+  const range = weapon.range + gear.range;
+  const inReach = (target: ActorState, d: number) => d <= range + target.radius && !sightBlocked(map, hero.x, hero.z, target.x, target.z);
   const enemies = state.actors.filter((a) => a.team !== hero.team && alive(a));
 
   // Turn to an enemy the hero can reach and see: the one nearest the point
@@ -313,50 +440,58 @@ export function heroAttack(state: SimState, map: MapDef, hero: ActorState, aim?:
     hero.dirZ = (face.z - hero.z) / faceD;
   }
 
-  const hits: ActorState[] = [];
-  let firstAlong = Infinity;
-  for (const target of enemies) {
-    const dx = target.x - hero.x;
-    const dz = target.z - hero.z;
-    const d = Math.sqrt(dx * dx + dz * dz);
-    if (!inReach(target, d)) continue;
-    const along = hero.dirX * dx + hero.dirZ * dz;
-    if (weapon.pattern === 'arc') {
-      if (d > 1e-6 && along < weapon.halfArcCos * d) continue;
-      hits.push(target);
-    } else {
-      const across = hero.dirX * dz - hero.dirZ * dx;
-      if (along < 0 || (across < 0 ? -across : across) > weapon.halfWidth + target.radius || along >= firstAlong) continue;
-      firstAlong = along;
-      hits[0] = target;
-    }
+  let hits: ActorState[];
+  if (weapon.pattern === 'arc') {
+    hits = enemies.filter((target) => {
+      const dx = target.x - hero.x;
+      const dz = target.z - hero.z;
+      const d = Math.sqrt(dx * dx + dz * dz);
+      return inReach(target, d) && !(d > 1e-6 && hero.dirX * dx + hero.dirZ * dz < weapon.halfArcCos * d);
+    });
+  } else {
+    hits = lineTargets(map, hero, enemies, range, weapon.halfWidth);
+    if (!weapon.pierce) hits = hits.slice(0, 1);
   }
 
-  hero.attackReadyTick = state.tick + weapon.cooldownTicks;
+  hero.attackReadyTick = state.tick + Math.round(weapon.cooldownTicks * gear.attackSpeed);
   hero.actionMotion = { kind: 'attack', tick: state.tick, weapon: hero.equipment.weapon! };
-  const radius = CONTEST.attackNoiseRadius * hero.stealth.noise * gear.noiseFactor;
-  state.noises.push({ x: hero.x, z: hero.z, radius, team: hero.team });
-  for (const target of hits) {
-    damage(state, target, Math.round(weapon.damage * gear.damageFactor), hero);
-    // A heavy blow shoves a survivor back, as far as the ground allows.
-    if (weapon.knockback && alive(target)) {
-      const to = clampToMap(map, target.x + hero.dirX * weapon.knockback, target.z + hero.dirZ * weapon.knockback, target.radius);
-      if (segmentWalkable(map, target.x, target.z, to.x, to.z, target.radius)) {
-        target.x = to.x;
-        target.z = to.z;
-        if (target.kind === 'hero') stopActor(target);
-      }
-    }
+  hero.hiddenUntilTick = 0; // striking gives you away
+  if (!weapon.silent) {
+    const radius = CONTEST.attackNoiseRadius * hero.stealth.noise * gear.noise;
+    state.noises.push({ x: hero.x, z: hero.z, radius, team: hero.team });
   }
+  const always = gear.damage * (state.tick < hero.furyUntilTick ? 1.5 : 1) * (hero.hp < hero.maxHp * 0.3 ? gear.lastStand : 1);
+  let dealt = 0;
+  for (const target of hits) {
+    let factor = always * (target.kind === 'monster' ? (weapon.vsMonsters ?? 1) * gear.vsMonsters : (weapon.vsHeroes ?? 1) * gear.vsHeroes);
+    if (weapon.opener && target.hp >= target.maxHp) factor *= weapon.opener;
+    if (weapon.execute && target.hp < target.maxHp * 0.35) factor *= weapon.execute;
+    // From behind: the target is facing roughly the way the blow travels.
+    if (weapon.backstab && target.dirX * hero.dirX + target.dirZ * hero.dirZ > 0.5) factor *= weapon.backstab;
+    const before = target.hp;
+    damage(state, target, Math.round(weapon.damage * factor), hero);
+    dealt += before - (target.hp > 0 ? target.hp : 0);
+    afflict(state, target, weapon, hero);
+    let push = (weapon.knockback ?? 0) + gear.knockback;
+    if (push < 0) {
+      // A pull never drags the target through its puller.
+      const gap = distance(hero.x, hero.z, target.x, target.z) - hero.radius - target.radius;
+      push = gap > 0 ? -Math.min(-push, gap) : 0;
+    }
+    shove(map, target, hero.dirX, hero.dirZ, push);
+  }
+  heal(state, hero, dealt * ((weapon.lifesteal ?? 0) + gear.lifesteal));
   return true;
 }
 
 export function damage(state: SimState, target: ActorState, amount: number, source: ActorState, reflected = false): void {
   if (!state.contest || !alive(target)) return;
+  const gear = gearStats(target.equipment);
   // Thorns: a close attacker is hurt in return (never a reflection of a reflection).
-  const thorns = reflected || target.kind !== 'hero' ? 0 : gearStats(target.equipment).thorns;
+  const thorns = reflected || target.kind !== 'hero' ? 0 : gear.thorns;
   if (thorns && distance(source.x, source.z, target.x, target.z) <= 3.2) damage(state, source, thorns, target, true);
-  target.hp -= amount;
+  const taken = gear.armor * (state.tick < target.guardUntilTick ? 0.5 : 1);
+  target.hp -= taken === 1 ? amount : Math.round(amount * taken);
   target.lastHitTick = state.tick;
   state.events.push({ kind: 'hit', x: target.x, z: target.z, radius: 12, actorId: target.id });
   const operation = state.operation;
@@ -374,9 +509,27 @@ export function damage(state: SimState, target: ActorState, amount: number, sour
     }
     return;
   }
+  fall(state, target, source);
+}
+
+/** Health has run out. A lucky coin turns it aside; otherwise the actor falls. */
+function fall(state: SimState, target: ActorState, source: ActorState | undefined): void {
+  if (target.kind === 'hero' && target.inventory.coin) {
+    take(target, 'coin');
+    target.hp = 1;
+    target.bleedTicks = 0;
+    return;
+  }
   target.hp = 0;
-  // Something falls. Light Hero: the body stays here and the player becomes
-  // a ghost. Dark Hero or monster: out of the fight until it returns.
+  target.bleedTicks = 0;
+  target.slowUntilTick = target.stunUntilTick = 0;
+  if (source && source.kind === 'hero' && source.id !== target.id && alive(source)) {
+    const gear = gearStats(source.equipment);
+    heal(state, source, gear.killHeal);
+    if (gear.killHasteTicks) source.hasteUntilTick = state.tick + gear.killHasteTicks;
+  }
+  // Light Hero: the body stays here and the player becomes a ghost.
+  // Dark Hero or monster: out of the fight until it returns.
   stopActor(target);
   if (target.brain) {
     target.brain.targets = [];
@@ -392,14 +545,14 @@ export function damage(state: SimState, target: ActorState, amount: number, sour
   target.dead = { tick: state.tick, x: target.x, z: target.z };
   if (target.team === 'light') target.speed = CONTEST.ghostSpeed;
   else target.dead.returnTick = state.tick + CONTEST.darkReturnTicks;
-  state.contest.rescues = state.contest.rescues.filter((r) => r.rescuerId !== target.id);
+  state.contest!.rescues = state.contest!.rescues.filter((r) => r.rescuerId !== target.id);
 }
 
 /** A monster that has run its confirmed target down bites it. */
 function monsterAttacks(state: SimState): void {
   for (const monster of [...state.actors]) {
     const brain = monster.brain;
-    if (!brain || brain.mode !== 'chase' || monster.hp <= 0 || state.tick < monster.attackReadyTick) continue;
+    if (!brain || brain.mode !== 'chase' || !alive(monster) || state.tick < monster.attackReadyTick || state.tick < monster.stunUntilTick) continue;
     const memory = brain.chaseId === null ? undefined : memoryOf(brain, brain.chaseId);
     if (!memory?.visible) continue;
     const target = state.actors.find((a) => a.id === brain.chaseId);
@@ -420,13 +573,15 @@ function restore(state: SimState, hero: ActorState, x: number, z: number, hp: nu
   const contest = state.contest!;
   hero.x = x;
   hero.z = z;
-  hero.hp = hp;
+  hero.hp = hp > hero.maxHp ? hero.maxHp : hp;
   delete hero.dead;
   delete hero.ritualLostTick;
   stopActor(hero);
   hero.sneaking = false;
   hero.hasteUntilTick = 0;
   hero.hiddenUntilTick = 0;
+  hero.bleedTicks = hero.regenTicks = 0;
+  hero.slowUntilTick = hero.stunUntilTick = hero.guardUntilTick = hero.furyUntilTick = 0;
   if (hero.kind === 'hero') hero.speed = heroSpeed(hero, state.tick);
   contest.rescues = contest.rescues.filter((r) => r.heroId !== hero.id);
   contest.rituals = contest.rituals.filter((r) => r.heroId !== hero.id);
@@ -475,14 +630,14 @@ export function startRevive(state: SimState, map: MapDef, actor: ActorState): vo
     if (!sanctuary || contest.rituals.some((r) => r.heroId === actor.id)) return;
     stopActor(actor);
     delete actor.ritualLostTick;
-    contest.rituals.push({ heroId: actor.id, sanctuaryId: sanctuary.id, progress: 0, duration: ritualTicks(state.tick - actor.dead.tick) });
+    contest.rituals.push({ heroId: actor.id, sanctuaryId: sanctuary.id, progress: 0, duration: ritualTicks(state.tick - actor.dead.tick) * gearStats(actor.equipment).ritual });
     return;
   }
   if (actor.intent.type !== 'idle' || contest.rescues.some((r) => r.rescuerId === actor.id)) return;
   if (contest.works.some((w) => w.heroId === actor.id)) return;
   const fallen = rescuableBody(state, map, actor);
   if (fallen) {
-    contest.rescues.push({ rescuerId: actor.id, heroId: fallen.id, progress: 0, startTick: state.tick });
+    contest.rescues.push({ rescuerId: actor.id, heroId: fallen.id, progress: 0, startTick: state.tick, duration: CONTEST.rescueTicks * gearStats(actor.equipment).rescue });
     return;
   }
   // No body to tend: mend or purify the wayshrine the hero stands in.
@@ -536,6 +691,17 @@ function updateSanctuaries(state: SimState, contest: ContestState): void {
   }
 }
 
+/** The material this hero would spend to mend wards, weakest first, and the share of the wards it restores. */
+const MEND_SHARE: [ItemId, number][] = [['herb', CONTEST.mendFraction], ['salt', 0.7], ['scroll', 1]];
+function mendMaterial(hero: ActorState): [ItemId, number] | undefined {
+  return MEND_SHARE.find(([item]) => hero.inventory[item]);
+}
+
+/** Ticks a mend or a purification takes this hero. A candle halves a purification. */
+export function shrineWorkTicks(hero: ActorState, kind: 'mend' | 'purify'): number {
+  return kind === 'mend' ? CONTEST.mendTicks : CONTEST.purifyTicks * (hero.inventory.candle ? 0.5 : 1);
+}
+
 /** What a living Light Hero standing in a wayshrine's circle could do for it right now. */
 export function shrineWorkFor(state: SimState, hero: ActorState): { sanctuary: SanctuaryState; kind: 'mend' | 'purify' } | undefined {
   const contest = state.contest;
@@ -543,7 +709,7 @@ export function shrineWorkFor(state: SimState, hero: ActorState): { sanctuary: S
   const sanctuary = contest.sanctuaries.find((s) => distance(hero.x, hero.z, s.x, s.z) <= CONTEST.sanctuaryRadius);
   if (!sanctuary || contest.works.some((w) => w.sanctuaryId === sanctuary.id && w.heroId !== hero.id)) return undefined;
   if (sanctuary.corrupted) return { sanctuary, kind: 'purify' };
-  if (sanctuary.ward < CONTEST.wardTicks && hero.inventory.herb) return { sanctuary, kind: 'mend' };
+  if (sanctuary.ward < CONTEST.wardTicks && mendMaterial(hero)) return { sanctuary, kind: 'mend' };
   return undefined;
 }
 
@@ -559,14 +725,16 @@ function updateShrineWork(state: SimState, contest: ContestState): void {
     }
     // A wayshrine cannot be cleansed while Dark forces still hold it.
     if (work.kind === 'purify' && state.actors.some((a) => a.team === 'dark' && alive(a) && distance(a.x, a.z, sanctuary.x, sanctuary.z) <= CONTEST.siegeRadius)) continue;
-    if (++work.progress < (work.kind === 'purify' ? CONTEST.purifyTicks : CONTEST.mendTicks)) continue;
+    if (++work.progress < shrineWorkTicks(hero, work.kind)) continue;
     if (work.kind === 'purify') {
       sanctuary.corrupted = false;
       sanctuary.corruption = 0;
       sanctuary.ward = CONTEST.wardTicks * CONTEST.purifiedWardFraction;
+      if (hero.inventory.candle) take(hero, 'candle');
     } else {
-      take(hero, 'herb');
-      sanctuary.ward = Math.min(CONTEST.wardTicks, sanctuary.ward + CONTEST.wardTicks * CONTEST.mendFraction);
+      const [material, share] = mendMaterial(hero)!;
+      take(hero, material);
+      sanctuary.ward = Math.min(CONTEST.wardTicks, sanctuary.ward + CONTEST.wardTicks * share * gearStats(hero.equipment).mend);
     }
     state.events.push({ kind: 'revive', x: sanctuary.x, z: sanctuary.z, radius: 12, actorId: hero.id });
     contest.works = contest.works.filter((w) => w !== work);
@@ -584,7 +752,7 @@ function updateRecovery(state: SimState, map: MapDef, contest: ContestState): vo
       contest.rescues = contest.rescues.filter((r) => r !== rescue);
       continue;
     }
-    if (++rescue.progress >= CONTEST.rescueTicks) restore(state, fallen, body.x, body.z, fallen.maxHp * CONTEST.rescueHpFraction);
+    if (++rescue.progress >= rescue.duration) restore(state, fallen, body.x, body.z, fallen.maxHp * CONTEST.rescueHpFraction + gearStats(fallen.equipment).reviveHp);
   }
   for (const ritual of [...contest.rituals]) {
     const ghost = state.actors.find((a) => a.id === ritual.heroId);
@@ -614,9 +782,8 @@ export function updateContest(state: SimState, map: MapDef): void {
   if (!contest) return;
   collectPickups(state, contest);
   monsterAttacks(state);
+  updateAfflictions(state);
   updateSanctuaries(state, contest);
   updateShrineWork(state, contest);
   updateRecovery(state, map, contest);
-  // A draught wearing off changes speed without any command.
-  for (const hero of state.actors) if (hero.hasteUntilTick === state.tick) refresh(state, hero);
 }

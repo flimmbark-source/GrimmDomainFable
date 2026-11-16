@@ -10,7 +10,7 @@
  *  - The full SimState is server-only. Clients receive projection.ts output.
  */
 import { SLOT_COUNT, teamOfSlot, type ActorKind, type Command, type HeroAction, type SlotCommand, type SlotId, type Team } from '../protocol.ts';
-import { CONTEST, applyItemCommand, heroSpeed, noiseFactorOf, cancelRevive, createContest, evadeTicksOf, heroAttack, outfitHero, startRevive, updateContest } from './contest.ts';
+import { CONTEST, applyItemCommand, heroSpeed, noiseFactorOf, onEvade, cancelRevive, createContest, evadeTicksOf, heroAttack, outfitHero, startRevive, updateContest } from './contest.ts';
 import { distance, sightBlocked } from './geometry.ts';
 import { gearStats } from './items.ts';
 import { getMap, type MapDef, type Point } from './map.ts';
@@ -129,6 +129,16 @@ function spawnActor(
     itemReadyTick: 0,
     hasteUntilTick: 0,
     hiddenUntilTick: 0,
+    bleedTicks: 0,
+    bleedPerTick: 0,
+    bleedSource: null,
+    slowUntilTick: 0,
+    stunUntilTick: 0,
+    guardUntilTick: 0,
+    furyUntilTick: 0,
+    regenTicks: 0,
+    regenPerTick: 0,
+    immuneUntilTick: 0,
     lastHitTick: -1,
     inventory: {},
     equipment: { weapon: null, boots: null, charm: null },
@@ -216,8 +226,16 @@ export function step(state: SimState, commands: readonly SlotCommand[]): SimStat
 
   for (const actor of state.actors) {
     if (actor.dead && actor.brain) continue; // routed: out of play until it returns
-    if (actor.brain) thinkMonster(state, actor, map);
-    moveActor(actor, map);
+    // Stunned: no decisions and no movement. Slowed: 60% speed for this step.
+    const stunned = state.tick < actor.stunUntilTick;
+    if (actor.brain && !stunned) thinkMonster(state, actor, map);
+    if (stunned) actor.moving = false;
+    else if (state.tick < actor.slowUntilTick) {
+      const speed = actor.speed;
+      actor.speed = speed * 0.6;
+      moveActor(actor, map);
+      actor.speed = speed;
+    } else moveActor(actor, map);
     if (actor.kind === 'hero') {
       const queued = actor.queuedAction;
       // An Attack order stops as soon as the clicked point is within the
@@ -334,14 +352,14 @@ function setGait(state: SimState, actor: ActorState, sneak: boolean): void {
 
 function whistle(state: SimState, actor: ActorState): void {
   if (actor.dead || state.tick < actor.whistleReadyTick) return;
-  actor.whistleReadyTick = state.tick + TUNING.hero.whistleCooldownTicks;
+  actor.whistleReadyTick = state.tick + Math.round(TUNING.hero.whistleCooldownTicks * gearStats(actor.equipment).whistleCooldown);
   const radius = TUNING.hero.whistleNoiseRadius * actor.stealth.noise;
   state.noises.push({ x: actor.x, z: actor.z, radius, team: actor.team });
   state.events.push({ kind: 'whistle', x: actor.x, z: actor.z, radius, actorId: actor.id });
 }
 
 function performHeroAction(state: SimState, map: MapDef, actor: ActorState, action: HeroAction): void {
-  if (actor.dead) return;
+  if (actor.dead || state.tick < actor.stunUntilTick) return;
   switch (action) {
     case 'sneak': setGait(state, actor, !actor.sneaking); break;
     case 'whistle': whistle(state, actor); break;
@@ -356,8 +374,9 @@ function performHeroAction(state: SimState, map: MapDef, actor: ActorState, acti
       // Boots lengthen the dash; movement.ts still stops it at any collider.
       const ticks = evadeTicksOf(actor);
       actor.intent = { type: 'evade', ticks, after };
-      actor.evadeReadyTick = state.tick + ticks + Math.round(CONTEST.evadeCooldownTicks * gearStats(actor.equipment).evadeRecoveryFactor);
+      actor.evadeReadyTick = state.tick + ticks + Math.round(CONTEST.evadeCooldownTicks * gearStats(actor.equipment).evadeRecovery);
       actor.actionMotion = { kind: 'evade', tick: state.tick };
+      onEvade(state, map, actor);
       break;
     }
   }

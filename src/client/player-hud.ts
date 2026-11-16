@@ -10,11 +10,8 @@ import './player-hud.css';
 
 const ICON_ROOT = `${import.meta.env.BASE_URL}art/player-hud/`;
 const icon = (name: string) => `<img src="${ICON_ROOT}${name}.webp" alt="" draggable="false">`;
-/** An item's icon; items that share painted art are told apart by a colour shift. */
-const itemIcon = (id: ItemId) => {
-  const def = ITEMS[id];
-  return `<img src="${ICON_ROOT}${def.icon}.webp" alt="" draggable="false"${def.hue ? ` style="filter: hue-rotate(${def.hue}deg) saturate(1.25)"` : ''}>`;
-};
+/** Every item has its own icon (see scripts/make-item-icons.mjs). */
+const itemIcon = (id: ItemId) => `<img src="${import.meta.env.BASE_URL}art/items/${id}.svg" alt="" draggable="false">`;
 const GEAR_LABEL: Record<GearSlot, string> = { weapon: 'Weapon', boots: 'Boots', charm: 'Charm' };
 
 const actions = [
