@@ -55,6 +55,34 @@ const SHARED_DEFS =
   '<feOffset in="SourceAlpha" dx="-2.2" dy="-2.4" result="o2"/><feComposite in="SourceAlpha" in2="o2" operator="out" result="e2"/>' +
   '<feGaussianBlur in="e2" stdDeviation="1.3" result="b2"/><feFlood flood-color="#140b05" flood-opacity="0.42"/><feComposite in2="b2" operator="in" result="lo"/>' +
   '<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="lo"/><feMergeNode in="hi"/></feMerge></filter>';
+/**
+ * Weapons and boots: a stronger, two-scale bevel so each part reads as a
+ * rounded solid, like the painted dagger and boots. A crisp rim and a broad
+ * soft highlight on the lit side; a dark edge and a wide form shadow on the
+ * far side. Every band is clipped to the shape.
+ */
+const band = (dx, dy, blur, color, opacity, name) =>
+  `<feOffset in="SourceAlpha" dx="${dx}" dy="${dy}" result="${name}o"/><feComposite in="SourceAlpha" in2="${name}o" operator="out" result="${name}e"/>` +
+  `<feGaussianBlur in="${name}e" stdDeviation="${blur}" result="${name}b"/><feComposite in="${name}b" in2="SourceAlpha" operator="in" result="${name}c"/>` +
+  `<feFlood flood-color="${color}" flood-opacity="${opacity}"/><feComposite in2="${name}c" operator="in" result="${name}"/>`;
+const SCULPT_DEFS =
+  '<filter id="sculpt" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">' +
+  band(4.2, 4.6, 2.4, '#fff4dc', 0.3, 'wide') + band(1.2, 1.4, 0.45, '#fff6e2', 0.8, 'rim') +
+  band(-5.5, -6, 3.2, '#0e0703', 0.55, 'form') + band(-1.5, -1.7, 0.7, '#120a05', 0.55, 'edge') +
+  '<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="form"/><feMergeNode in="edge"/><feMergeNode in="wide"/><feMergeNode in="rim"/></feMerge></filter>' +
+  // The same light alone, for shapes whose planes are painted separately underneath.
+  '<filter id="sculptLight" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">' +
+  band(4.2, 4.6, 2.4, '#fff4dc', 0.3, 'wide') + band(1.2, 1.4, 0.45, '#fff6e2', 0.8, 'rim') +
+  band(-5.5, -6, 3.2, '#0e0703', 0.55, 'form') + band(-1.5, -1.7, 0.7, '#120a05', 0.55, 'edge') +
+  '<feMerge><feMergeNode in="form"/><feMergeNode in="edge"/><feMergeNode in="wide"/><feMergeNode in="rim"/></feMerge></filter>';
+let sculpted = false;
+/**
+ * Two planes meeting along a ridge, as the painted pieces are cut: the lit
+ * half a touch brighter, the far half darker. In each shape's own box, so a
+ * long blade splits along its length and a broad head splits diagonally.
+ */
+const PLANES_DEF = '<linearGradient id="planes" x1="0" y1="0" x2="1" y2="1"><stop offset="0.5" stop-color="#fff6e6" stop-opacity="0.16"/><stop offset="0.5" stop-color="#0b0603" stop-opacity="0.2"/></linearGradient>';
+
 /** Whole-icon finish: painted grain, then a soft shadow under the object. */
 const paintFilter = (seed) =>
   `<filter id="paint" x="-20%" y="-20%" width="140%" height="145%" color-interpolation-filters="sRGB">` +
@@ -68,7 +96,14 @@ const JOIN = 'stroke-linejoin="round" stroke-linecap="round"';
 /** One solid shape in the painted style: lit fill with bevel, facets, then a thin warm outline on top. */
 function solid(tag, geo, c) {
   if (c === 'none') return `<${tag} ${geo} fill="none" stroke="${INK}" stroke-width="2.2" ${JOIN}/>`;
-  return `<${tag} ${geo} fill="${fill(c)}" filter="url(#bev)"/><${tag} ${geo} fill="${facets()}"/>` +
+  // 'none-fill:<colour>': planes are already painted; add only the bevel light and the outline.
+  if (c.startsWith('none-fill:')) {
+    const base = c.slice(10);
+    return `<${tag} ${geo} fill="#000" filter="url(#sculptLight)"/><${tag} ${geo} fill="${facets()}"/>` +
+      `<${tag} ${geo} fill="none" stroke="${outline(base)}" stroke-width="2.1" ${JOIN}/>`;
+  }
+  return `<${tag} ${geo} fill="${fill(c)}" filter="url(#${sculpted ? 'sculpt' : 'bev'})"/><${tag} ${geo} fill="${facets()}"/>` +
+    (sculpted ? `<${tag} ${geo} fill="url(#planes)"/>` : '') +
     `<${tag} ${geo} fill="none" stroke="${outline(c)}" stroke-width="2.1" ${JOIN}/>`;
 }
 const path = (d, c) => solid('path', `d="${d}"`, c);
@@ -114,14 +149,44 @@ const GLYPH = {
 const glyph = (name, x, y, c, scale = 1) => at(x, y, scale, `<g stroke="${dark(c, 0.7)}" stroke-width="0.9" stroke-opacity="0.7" paint-order="stroke">${GLYPH[name](c)}</g>`);
 
 // ---- Weapon parts, drawn upright (point up) and turned afterwards -------------------------
-const grip = (y0, y1, c = LEATHER, w = 7) => rect(48 - w / 2, y0, w, y1 - y0, c, 3);
-const haft = (y0, y1, c = WOOD, w = 6) => rect(48 - w / 2, y0, w, y1 - y0, c, 3);
-const guard = (y, w, c = GOLD, h = 6) => rect(48 - w / 2, y - h / 2, w, h, c, 3);
-const pommel = (y, c = GOLD, r = 5) => circle(48, y, r, c);
-/** A straight blade from y = base up to y = tip; `w` at the base. */
-const blade = (base, tip, w, c = STEEL) => path(`M${48 - w / 2} ${base} L${48 - w / 2} ${tip + 12} L48 ${tip} L${48 + w / 2} ${tip + 12} L${48 + w / 2} ${base}Z`, c) + shine(`M${48 - w / 5} ${base - 4} V${tip + 16}`);
+/** A leather-wrapped grip: diagonal turns of the wrap, each with a lit edge. */
+function grip(y0, y1, c = LEATHER, w = 7) {
+  const x0 = 48 - w / 2;
+  const turns = [];
+  for (let y = y0 + 3.5; y < y1 - 1; y += 3.6) turns.push(`M${x0 + 0.6} ${y + 1.6} L${x0 + w - 0.6} ${y - 1.6}`);
+  return rect(x0, y0, w, y1 - y0, c, 3) + line(turns.join(' '), dark(c, 0.62), 1.5) +
+    line(turns.map((t) => t.replace(/(\d+(\.\d+)?) (\d+(\.\d+)?)(?= L)/, (_, x, _a, y) => `${x} ${Number(y) + 1.1}`)).join(' '), light(c, 0.3), 0.7);
+}
+/** A wooden haft with grain running along it and a lit stripe. */
+function haft(y0, y1, c = WOOD, w = 6) {
+  const x0 = 48 - w / 2;
+  const len = y1 - y0;
+  const grain = `M${x0 + w * 0.35} ${y0 + 3} C${x0 + w * 0.5} ${y0 + len * 0.35} ${x0 + w * 0.2} ${y0 + len * 0.6} ${x0 + w * 0.4} ${y1 - 3}` +
+    ` M${x0 + w * 0.7} ${y0 + len * 0.15} C${x0 + w * 0.8} ${y0 + len * 0.45} ${x0 + w * 0.6} ${y0 + len * 0.7} ${x0 + w * 0.75} ${y1 - 5}`;
+  return rect(x0, y0, w, len, c, 3) + line(grain, dark(c, 0.45), 0.9) + line(`M${x0 + 1.3} ${y0 + 3} V${y1 - 3}`, light(c, 0.4), 1.1);
+}
+/** A cross-guard with a raised bead in the middle and a lit top edge. */
+const guard = (y, w, c = GOLD, h = 6) => rect(48 - w / 2, y - h / 2, w, h, c, 3) + circle(48, y, h * 0.42, light(c, 0.1)) +
+  line(`M${48 - w / 2 + 2} ${y - h / 2 + 1.3} H${48 + w / 2 - 2}`, light(c, 0.55), 1);
+/** A round pommel with a hard glint. */
+const pommel = (y, c = GOLD, r = 5) => circle(48, y, r, c) + `<circle cx="${48 - r * 0.35}" cy="${y - r * 0.38}" r="${r * 0.28}" fill="#fff8e8" fill-opacity="0.85"/>`;
+/**
+ * A straight blade in two planes, like the painted dagger: the lit half and
+ * the shaded half meet at a central ridge. A bright edge runs down the lit side.
+ */
+function blade(base, tip, w, c = STEEL) {
+  const l = 48 - w / 2;
+  const r = 48 + w / 2;
+  const shoulder = tip + Math.min(12, (base - tip) * 0.3);
+  const whole = `M${l} ${base} L${l} ${shoulder} L48 ${tip} L${r} ${shoulder} L${r} ${base}Z`;
+  return flat(`M${l} ${base} L${l} ${shoulder} L48 ${tip} L48 ${base}Z`, light(c, 0.22)) + flat(`M48 ${base} L48 ${tip} L${r} ${shoulder} L${r} ${base}Z`, dark(c, 0.28)) +
+    solid('path', `d="${whole}"`, 'none-fill:' + c) +
+    line(`M48 ${base - 1} L48 ${tip + 2}`, light(c, 0.65), 1.1) + line(`M${48 + 0.8} ${base - 1} L${48 + 0.8} ${tip + 4}`, dark(c, 0.45), 0.7) +
+    line(`M${l + 1} ${base - 2} L${l + 1} ${shoulder} L${48 - 0.6} ${tip + 2.5}`, '#fffaf0', 0.9);
+}
 const curved = (base, tip, w, bend, c = STEEL) => path(`M${48 - w / 2} ${base} C${48 - w / 2 + bend} ${(base + tip) / 2} ${48 + bend} ${tip + 10} ${48 + bend * 1.5} ${tip} C${48 + w / 2 + bend} ${tip + 18} ${48 + w / 2 + bend * 0.6} ${(base + tip) / 2} ${48 + w / 2} ${base}Z`, c);
-const axeHead = (y, size, c = STEEL, side = 1) => path(`M48 ${y - size * 0.35} C${48 + side * size * 0.6} ${y - size * 0.7} ${48 + side * size} ${y - size * 0.6} ${48 + side * size} ${y - size * 0.6} C${48 + side * size * 1.25} ${y} ${48 + side * size} ${y + size * 0.6} ${48 + side * size} ${y + size * 0.6} C${48 + side * size * 0.6} ${y + size * 0.7} 48 ${y + size * 0.35} 48 ${y + size * 0.35}Z`, c);
+const axeEdge = (y, size, c, side) => line(`M${48 + side * size * 0.9} ${y - size * 0.5} C${48 + side * size * 1.13} ${y - size * 0.15} ${48 + side * size * 1.13} ${y + size * 0.15} ${48 + side * size * 0.9} ${y + size * 0.5}`, light(c, 0.6), 2.2);
+const axeHead = (y, size, c = STEEL, side = 1) => path(`M48 ${y - size * 0.35} C${48 + side * size * 0.6} ${y - size * 0.7} ${48 + side * size} ${y - size * 0.6} ${48 + side * size} ${y - size * 0.6} C${48 + side * size * 1.25} ${y} ${48 + side * size} ${y + size * 0.6} ${48 + side * size} ${y + size * 0.6} C${48 + side * size * 0.6} ${y + size * 0.7} 48 ${y + size * 0.35} 48 ${y + size * 0.35}Z`, c) + axeEdge(y, size, c, side);
 const fletch = (y, c) => path(`M48 ${y} L40 ${y + 12} L48 ${y + 8} L56 ${y + 12}Z`, c);
 
 const W = {
@@ -155,31 +220,89 @@ const W = {
 };
 
 // ---- Boots ----------------------------------------------------------------------------------
-const BOOT = {
-  tall: 'M30 12 H54 V52 C70 54 82 62 82 74 V80 H26 C24 60 28 40 30 12Z',
-  ankle: 'M32 30 H54 V54 C70 56 82 64 82 74 V80 H26 C24 66 30 50 32 30Z',
-  shoe: 'M30 46 H50 C56 56 72 58 82 68 V78 H24 C22 66 26 56 30 46Z',
-  wader: 'M28 6 H56 V50 C72 52 84 62 84 74 V82 H24 C22 58 26 34 28 6Z',
-  greave: 'M32 10 L56 14 V52 C70 54 80 62 80 74 V80 H28 C26 60 28 36 32 10Z',
+/**
+ * Boots are built like the painted pair: a rounded shaft, a flared cuff turned
+ * down over it, a domed toe cap sewn onto the foot, straps with buckles (or
+ * laces, or plates), ankle creases, and a thick sole on a heel. `top` is where
+ * the shaft starts; each style below varies only these choices.
+ */
+const BOOT_STYLE = {
+  tall: { top: 16, cuff: true, closure: 'straps' },
+  ankle: { top: 34, cuff: true, closure: 'laces' },
+  shoe: { top: 50, cuff: false, closure: 'laces' },
+  wader: { top: 6, cuff: true, closure: 'straps' },
+  greave: { top: 14, cuff: false, closure: 'plates' },
 };
-/** One boot: shaft, sole, turned-down cuff, laces or straps, a fold, and the item's mark. */
 function oneBoot(shape, c, trim, mark, markColor) {
-  const cuffY = { tall: 12, ankle: 30, shoe: 46, wader: 6, greave: 12 }[shape];
-  const shaftEnd = shape === 'shoe' ? 58 : 52;
-  const lace = shape === 'greave' ? dark(c, 0.45) : light(trim, 0.1);
-  const laces = [];
-  for (let y = cuffY + 12; y < shaftEnd - 2; y += 8) laces.push(`M36 ${y} L52 ${y + 3}`);
-  return path(BOOT[shape], c) + rect(22, 78, 64, 8, dark(c, 0.55), 3) + rect(27, cuffY - 3, 30, 9, trim, 3) +
-    (laces.length ? line(laces.join(' '), dark(c, 0.7), 3.6) + line(laces.join(' '), lace, 1.8) : '') +
-    line(`M54 ${shaftEnd + 2} C62 ${shaftEnd + 4} 70 ${shaftEnd + 8} 76 ${shaftEnd + 14}`, dark(c, 0.5), 1.6) +
-    shine(`M31 ${cuffY + 12} V${shaftEnd - 2}`) + glyph(mark, 62, 70, markColor, 0.75);
+  const { top, cuff, closure } = BOOT_STYLE[shape];
+  // Chunky like the painted pair: a wide shaft and a short, round foot.
+  const shaftL = shape === 'wader' ? 22 : 24;
+  const shaftR = shape === 'wader' ? 60 : 58;
+  const ankle = Math.max(top + 10, 58);
+  const leather = dark(c, 0.62);
+  // Shaft and foot as one rounded piece: slight taper, then the foot swells to a domed toe.
+  const body = `M${shaftL} ${top} C${shaftL - 1} ${top + (ankle - top) * 0.45} ${shaftL - 1} ${ankle - 6} ${shaftL} ${ankle} ` +
+    `C${shaftL - 1} ${ankle + 8} ${shaftL - 1} ${ankle + 14} ${shaftL} 80 H76 C83 80 85 74 82 68 C79 62 70 ${ankle + 1} ${shaftR + 3} ${ankle - 2} ` +
+    `C${shaftR + 1} ${ankle - 8} ${shaftR + 1} ${top + (ankle - top) * 0.45} ${shaftR} ${top}Z`;
+  let out = path(body, c);
+  // Toe cap, sewn on: a lighter domed panel with a stitched seam.
+  const toe = `M${shaftR} ${ankle + 2} C69 ${ankle + 3} 80 ${ankle + 7} 83 70 C84 76 81 80 76 80 H${shaftR - 4} C${shaftR - 7} 73 ${shaftR - 5} ${ankle + 7} ${shaftR} ${ankle + 2}Z`;
+  out += path(toe, light(c, 0.1));
+  out += `<path d="M${shaftR + 1} ${ankle + 5} C68 ${ankle + 6} 77 ${ankle + 9} 80 70" fill="none" stroke="${light(c, 0.55)}" stroke-width="1" stroke-dasharray="1.6 1.8"/>`;
+  // Ankle creases where the leather bends.
+  out += line(`M${shaftL + 3} ${ankle - 1} C${shaftL + 9} ${ankle + 3} ${shaftL + 15} ${ankle + 3} ${shaftR - 3} ${ankle - 2} M${shaftL + 5} ${ankle + 5} C${shaftL + 10} ${ankle + 8} ${shaftL + 16} ${ankle + 8} ${shaftR - 6} ${ankle + 4}`, leather, 1.2);
+  out += line(`M${shaftL + 4} ${ankle} C${shaftL + 9} ${ankle + 4} ${shaftL + 15} ${ankle + 4} ${shaftR - 4} ${ankle - 1}`, light(c, 0.35), 0.6);
+  // Closure.
+  const span = ankle - top - (cuff ? 16 : 6);
+  if (closure === 'straps') {
+    for (const k of [0.3, 0.75]) {
+      const y = top + (cuff ? 14 : 4) + span * k;
+      out += path(`M${shaftL - 1} ${y} C${shaftL + 8} ${y + 2} ${shaftR - 8} ${y + 2} ${shaftR + 1} ${y - 1} L${shaftR + 1} ${y + 4} C${shaftR - 8} ${y + 7} ${shaftL + 8} ${y + 7} ${shaftL - 1} ${y + 5}Z`, dark(c, 0.35));
+      out += rect(shaftR - 9, y - 0.5, 6, 6, trim, 1.2) + rect(shaftR - 7.5, y + 1, 3, 3, dark(trim, 0.5), 0.5);
+    }
+  } else if (closure === 'laces') {
+    const x0 = shaftR - 14;
+    const x1 = shaftR - 3;
+    const lace = [];
+    for (let y = top + (cuff ? 15 : 5); y < ankle - 3; y += 5) lace.push(`M${x0} ${y} L${x1} ${y + 4} M${x1} ${y} L${x0} ${y + 4}`);
+    out += line(lace.join(' '), leather, 2.6) + line(lace.join(' '), light(trim, 0.15), 1.2);
+  } else {
+    for (let y = top + 9; y < ankle - 4; y += 9) {
+      out += path(`M${shaftL - 1} ${y} C${shaftL + 9} ${y - 2} ${shaftR - 9} ${y - 2} ${shaftR + 1} ${y} V${y + 5} C${shaftR - 9} ${y + 3} ${shaftL + 9} ${y + 3} ${shaftL - 1} ${y + 5}Z`, light(c, 0.12));
+      out += `<circle cx="${shaftL + 3}" cy="${y + 2.5}" r="1" fill="${dark(c, 0.6)}"/><circle cx="${shaftR - 3}" cy="${y + 2.5}" r="1" fill="${dark(c, 0.6)}"/>`;
+    }
+  }
+  // Cuff turned down over the shaft, flaring out, with the dark opening above it.
+  if (cuff) {
+    out += `<ellipse cx="${(shaftL + shaftR) / 2}" cy="${top - 1}" rx="${(shaftR - shaftL) / 2 + 3}" ry="3.6" fill="${dark(c, 0.75)}"/>`;
+    out += path(`M${shaftL - 4} ${top - 2} C${shaftL + 6} ${top - 6} ${shaftR - 6} ${top - 6} ${shaftR + 4} ${top - 2} L${shaftR + 2} ${top + 13} C${shaftR - 8} ${top + 16} ${shaftL + 8} ${top + 16} ${shaftL - 2} ${top + 13}Z`, trim);
+    out += line(`M${shaftL - 1} ${top + 14} C${shaftL + 8} ${top + 17} ${shaftR - 8} ${top + 17} ${shaftR + 1} ${top + 14}`, dark(c, 0.7), 1.4);
+  } else {
+    out += `<ellipse cx="${(shaftL + shaftR) / 2}" cy="${top + 1}" rx="${(shaftR - shaftL) / 2}" ry="2.6" fill="${dark(c, 0.75)}"/>` +
+      path(`M${shaftL - 1} ${top - 1} C${shaftL + 8} ${top - 4} ${shaftR - 8} ${top - 4} ${shaftR + 1} ${top - 1} L${shaftR + 1} ${top + 3} C${shaftR - 8} ${top} ${shaftL + 8} ${top} ${shaftL - 1} ${top + 3}Z`, trim);
+  }
+  // A thick sole with a lit welt, and a block heel.
+  out += path(`M${shaftL + 1} 84 H${shaftL + 15} L${shaftL + 14} 91 H${shaftL + 2}Z`, dark(c, 0.72));
+  out += path(`M${shaftL - 2} 78 H78 C86 78 88 84 83 87 H${shaftL} C${shaftL - 4} 87 ${shaftL - 5} 81 ${shaftL - 2} 78Z`, dark(c, 0.62));
+  out += line(`M${shaftL} 79.4 H78 C83 79.4 85 81 85 82`, light(trim, 0.2), 1.2);
+  out += glyph(mark, 69, 72, markColor, 0.7);
+  return out;
 }
-/** A pair, like the painted boots: the far boot set back, darker and a little smaller. */
+/** A pair, like the painted boots: the far boot set back and to the left, a little darker. */
 function boot(shape, c, trim, mark, markColor, extra = '') {
-  return at(-6, -4, 0.92, oneBoot(shape, dark(c, 0.22), dark(trim, 0.22), mark, dark(markColor, 0.3))) +
-    at(8, 8, 0.92, oneBoot(shape, c, trim, mark, markColor) + extra);
+  return at(-10, -5, 0.9, oneBoot(shape, dark(c, 0.18), dark(trim, 0.18), mark, dark(markColor, 0.25))) +
+    at(12, 7, 0.9, oneBoot(shape, c, trim, mark, markColor) + extra);
 }
-const sandal = (c, strap) => rect(18, 70, 66, 10, c, 5) + line('M28 70 C34 46 48 46 52 70 M52 70 C60 54 72 56 76 70', INK, 9) + line('M28 70 C34 46 48 46 52 70 M52 70 C60 54 72 56 76 70', strap, 5) + glyph('heart', 40, 40, '#ff8fa0', 0.8);
+/** One sandal: a thick footbed seen at three-quarters, crossed straps with a buckle, a heel strap. */
+function oneSandal(c, strap) {
+  return path('M18 72 C18 64 30 62 46 63 C62 64 80 64 84 70 C87 76 82 80 74 80 H24 C19 80 18 76 18 72Z', light(c, 0.15)) +
+    path('M17 74 C17 80 20 84 26 84 H76 C84 84 88 80 86 74 C82 79 76 80 74 80 H24 C20 80 18 78 17 74Z', dark(c, 0.45)) +
+    path('M24 70 C24 56 30 50 36 50 C42 50 44 58 44 66 L40 66 C40 60 39 55 36 55 C32 55 29 60 29 70Z', strap) +
+    path('M44 66 C48 54 58 50 64 54 C70 58 70 64 68 68 L63 67 C64 62 62 58 59 58 C54 58 51 62 49 67Z', strap) +
+    path('M38 62 C46 60 56 60 64 62 L64 67 C56 65 46 65 38 67Z', dark(strap, 0.15)) + rect(48, 60.5, 6, 6, GOLD, 1.2) +
+    `<path d="M24 72 C40 70 62 70 80 72" fill="none" stroke="${light(c, 0.5)}" stroke-width="0.9" stroke-dasharray="1.6 1.8"/>`;
+}
+const sandal = (c, strap) => at(-6, -10, 0.9, oneSandal(dark(c, 0.15), dark(strap, 0.15))) + at(8, 6, 0.9, oneSandal(c, strap)) + glyph('heart', 74, 26, '#ff8fa0', 0.9);
 const B = {
   springheel_boots: () => boot('tall', '#a5642f', GOLD, 'up', '#ffe48a', line('M30 90 q6 -6 12 0 t12 0 t12 0', STEEL, 3)),
   softsole_boots: () => boot('ankle', '#3f8f52', '#d7e7b8', 'leaf', '#d9f5b0'),
@@ -309,10 +432,11 @@ for (const [id, draw] of Object.entries(ALL)) {
   }
   defs = '';
   gid = 0;
+  sculpted = id in W || id in B;
   const body = draw();
   // FIT is replaced below once the drawing's real bounds are measured.
   const framed = `<g filter="url(#paint)"><g id="art" transform="FIT">${body}</g></g>`;
-  writeFileSync(resolve(out, `${id}.svg`), `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 96 96"><title>${id}</title><defs>${SHARED_DEFS}${paintFilter(count + 3)}${defs}</defs>${framed}</svg>\n`);
+  writeFileSync(resolve(out, `${id}.svg`), `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 96 96"><title>${id}</title><defs>${SHARED_DEFS}${SCULPT_DEFS}${PLANES_DEF}${paintFilter(count + 3)}${defs}</defs>${framed}</svg>\n`);
   count++;
 }
 // Fit each drawing to the frame like the painted set, which fills it edge to
