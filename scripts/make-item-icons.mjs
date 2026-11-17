@@ -2,18 +2,23 @@
 //
 //   node scripts/make-item-icons.mjs
 //
-// Original vector art built from a small kit of shapes, so all 100 icons share
-// one style: dark outline, two-tone fill, a light edge. They are stand-ins
-// that tell every item apart at a glance; an artist can replace any file
-// without touching code (the file name is the item id).
-import { mkdirSync, writeFileSync } from 'node:fs';
+//   (needs Playwright, which the browser checks already use, to measure each drawing)
+//
+// Original vector art built from a small kit of shapes, in the style of the
+// painted HUD icons in public/art/player-hud: lit from the top left, chiselled
+// facets, a thin warm outline, a bright rim on lit edges, a shaded far edge,
+// a fine painted grain and a soft drop shadow, with the object filling the
+// frame. Every shape gets that treatment through the helpers below, so the
+// item drawings themselves stay plain geometry. An artist can replace any
+// file without touching code (the file name is the item id).
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const out = resolve(dirname(fileURLToPath(import.meta.url)), '../public/art/items');
 mkdirSync(out, { recursive: true });
 
-const INK = '#1c130d';
+const INK = '#24160d';
 const STEEL = '#b9c2cc';
 const WOOD = '#8a5a34';
 const GOLD = '#e2b450';
@@ -27,20 +32,52 @@ const dark = (c, t = 0.35) => mixTo(c, [20, 12, 8], t);
 
 let defs = '';
 let gid = 0;
-/** A two-tone fill for a colour. */
+/** Light from the top left: a bright spot, the base colour, a deep far side. */
 function fill(c) {
+  if (c === 'none') return 'none';
   const id = `g${gid++}`;
-  defs += `<linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${light(c)}"/><stop offset="0.55" stop-color="${c}"/><stop offset="1" stop-color="${dark(c)}"/></linearGradient>`;
+  defs += `<radialGradient id="${id}" cx="0.3" cy="0.26" r="0.92"><stop offset="0" stop-color="${light(c, 0.42)}"/><stop offset="0.25" stop-color="${light(c, 0.12)}"/><stop offset="0.55" stop-color="${c}"/><stop offset="1" stop-color="${dark(c, 0.66)}"/></radialGradient>`;
   return `url(#${id})`;
 }
-const S = `stroke="${INK}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"`;
-const path = (d, c, extra = '') => `<path d="${d}" fill="${fill(c)}" ${S} ${extra}/>`;
+/** Chiselled planes laid over a shape, turned a little differently each time. */
+function facets() {
+  const id = `f${gid++}`;
+  defs += `<pattern id="${id}" width="17" height="15" patternUnits="userSpaceOnUse" patternTransform="rotate(${(gid * 47) % 180})">` +
+    '<path d="M0 0 L17 0 L6 8Z" fill="#fff" fill-opacity="0.1"/><path d="M6 8 L17 0 L17 15Z" fill="#000" fill-opacity="0.08"/>' +
+    '<path d="M0 0 L6 8 L0 15Z" fill="#000" fill-opacity="0.05"/><path d="M0 15 L6 8 L17 15Z" fill="#fff" fill-opacity="0.05"/></pattern>';
+  return `url(#${id})`;
+}
+const SHARED_DEFS =
+  // Per-shape bevel: a warm rim on the lit edge, a soft shade on the far edge.
+  '<filter id="bev" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">' +
+  '<feOffset in="SourceAlpha" dx="1.5" dy="1.7" result="o1"/><feComposite in="SourceAlpha" in2="o1" operator="out" result="e1"/>' +
+  '<feGaussianBlur in="e1" stdDeviation="0.55" result="b1"/><feFlood flood-color="#fff3d6" flood-opacity="0.62"/><feComposite in2="b1" operator="in" result="hi"/>' +
+  '<feOffset in="SourceAlpha" dx="-2.2" dy="-2.4" result="o2"/><feComposite in="SourceAlpha" in2="o2" operator="out" result="e2"/>' +
+  '<feGaussianBlur in="e2" stdDeviation="1.3" result="b2"/><feFlood flood-color="#140b05" flood-opacity="0.42"/><feComposite in2="b2" operator="in" result="lo"/>' +
+  '<feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="lo"/><feMergeNode in="hi"/></feMerge></filter>';
+/** Whole-icon finish: painted grain, then a soft shadow under the object. */
+const paintFilter = (seed) =>
+  `<filter id="paint" x="-20%" y="-20%" width="140%" height="145%" color-interpolation-filters="sRGB">` +
+  `<feTurbulence type="fractalNoise" baseFrequency="0.22" numOctaves="2" seed="${seed}" result="n"/>` +
+  '<feColorMatrix in="n" type="matrix" values="0.14 0.14 0.14 0 0.29  0.14 0.14 0.14 0 0.29  0.14 0.14 0.14 0 0.29  0 0 0 0 1" result="ng"/>' +
+  '<feBlend in="ng" in2="SourceGraphic" mode="soft-light" result="t"/><feComposite in="t" in2="SourceAlpha" operator="in" result="tex"/>' +
+  '<feDropShadow in="tex" dx="1.2" dy="2.6" stdDeviation="1.7" flood-color="#000" flood-opacity="0.55"/></filter>';
+
+const outline = (c) => (c === 'none' ? INK : dark(c, 0.68));
+const JOIN = 'stroke-linejoin="round" stroke-linecap="round"';
+/** One solid shape in the painted style: lit fill with bevel, facets, then a thin warm outline on top. */
+function solid(tag, geo, c) {
+  if (c === 'none') return `<${tag} ${geo} fill="none" stroke="${INK}" stroke-width="2.2" ${JOIN}/>`;
+  return `<${tag} ${geo} fill="${fill(c)}" filter="url(#bev)"/><${tag} ${geo} fill="${facets()}"/>` +
+    `<${tag} ${geo} fill="none" stroke="${outline(c)}" stroke-width="2.1" ${JOIN}/>`;
+}
+const path = (d, c) => solid('path', `d="${d}"`, c);
 const flat = (d, c) => `<path d="${d}" fill="${fill(c)}"/>`;
-const line = (d, c, w = 3) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
-const cord = (d, c = CORD, w = 4) => line(d, INK, w + 3) + line(d, c, w);
-const circle = (x, y, r, c) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill(c)}" ${S}/>`;
-const rect = (x, y, w, h, c, r = 2) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill(c)}" ${S}/>`;
-const shine = (d) => line(d, 'rgba(255,255,255,0.7)', 2);
+const line = (d, c, w = 3) => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" ${JOIN}/>`;
+const cord = (d, c = CORD, w = 4) => line(d, dark(c, 0.7), w + 2.4) + line(d, c, w) + line(d, light(c, 0.35), Math.max(1, w * 0.3));
+const circle = (x, y, r, c) => solid('circle', `cx="${x}" cy="${y}" r="${r}"`, c);
+const rect = (x, y, w, h, c, r = 2) => solid('rect', `x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}"`, c);
+const shine = (d) => line(d, 'rgba(255,246,224,0.6)', 1.7);
 const turn = (angle, body, cx = 48, cy = 48) => `<g transform="rotate(${angle} ${cx} ${cy})">${body}</g>`;
 const at = (x, y, scale, body) => `<g transform="translate(${x} ${y}) scale(${scale})">${body}</g>`;
 
@@ -74,7 +111,7 @@ const GLYPH = {
   arrows: (c) => `<path d="M-9 0 L-3 -6 V-2 H3 V-6 L9 0 L3 6 V2 H-3 V6Z" fill="${c}"/>`,
   scales: (c) => line('M0 -9 V8 M-8 -5 H8 M-8 -5 L-11 3 H-5Z M8 -5 L5 3 H11Z M-5 9 H5', c, 2.2),
 };
-const glyph = (name, x, y, c, scale = 1) => at(x, y, scale, GLYPH[name](c));
+const glyph = (name, x, y, c, scale = 1) => at(x, y, scale, `<g stroke="${dark(c, 0.7)}" stroke-width="0.9" stroke-opacity="0.7" paint-order="stroke">${GLYPH[name](c)}</g>`);
 
 // ---- Weapon parts, drawn upright (point up) and turned afterwards -------------------------
 const grip = (y0, y1, c = LEATHER, w = 7) => rect(48 - w / 2, y0, w, y1 - y0, c, 3);
@@ -99,7 +136,7 @@ const W = {
   javelin: () => turn(45, haft(20, 92, '#a8774a', 4) + blade(24, 2, 10) + rect(45, 60, 6, 10, '#8a2f2f') + fletch(80, '#c44')),
   rapier: () => turn(40, grip(70, 86, '#2b2b3a', 6) + pommel(88, GOLD, 4) + path('M30 70 C30 58 66 58 66 70 C60 66 36 66 30 70Z', GOLD) + blade(66, 4, 5, '#d5dde6')),
   sickle: () => turn(-20, grip(56, 86) + path('M45 58 C30 40 34 12 62 10 C78 10 84 22 82 30 C74 20 58 20 54 34 C52 44 52 52 51 58Z', STEEL)),
-  flail: () => turn(20, haft(46, 90, WOOD, 7) + cord('M48 46 C52 36 60 32 62 26', '#8f979f', 3) + circle(64, 20, 12, '#6f7780') + [0, 60, 120, 180, 240, 300].map((a) => `<path d="M64 6 L61 12 H67Z" fill="${STEEL}" ${S} transform="rotate(${a} 64 20)"/>`).join('')),
+  flail: () => turn(20, haft(46, 90, WOOD, 7) + cord('M48 46 C52 36 60 32 62 26', '#8f979f', 3) + circle(64, 20, 12, '#6f7780') + [0, 60, 120, 180, 240, 300].map((a) => `<g transform="rotate(${a} 64 20)">${path('M64 6 L61 12 H67Z', STEEL)}</g>`).join('')),
   warhammer: () => turn(30, haft(34, 92, '#5c4130', 7) + rect(26, 10, 44, 26, '#7c858e', 4) + rect(22, 14, 8, 18, '#5f6870') + rect(66, 14, 8, 18, '#5f6870') + shine('M32 16 H60')),
   scythe: () => turn(25, haft(14, 92, '#6b4a2f', 5) + path('M46 16 C20 14 6 28 4 44 C16 30 32 26 50 26Z', STEEL) + rect(44, 50, 12, 5, '#6b4a2f')),
   stiletto: () => turn(40, grip(64, 82, '#2a2233', 6) + guard(64, 20, '#6b5a8a', 5) + circle(48, 86, 4.5, '#b05cff') + path('M45 62 L48 6 L51 62Z', '#8e98a8')),
@@ -125,10 +162,22 @@ const BOOT = {
   wader: 'M28 6 H56 V50 C72 52 84 62 84 74 V82 H24 C22 58 26 34 28 6Z',
   greave: 'M32 10 L56 14 V52 C70 54 80 62 80 74 V80 H28 C26 60 28 36 32 10Z',
 };
-function boot(shape, c, trim, mark, markColor, extra = '') {
+/** One boot: shaft, sole, turned-down cuff, laces or straps, a fold, and the item's mark. */
+function oneBoot(shape, c, trim, mark, markColor) {
   const cuffY = { tall: 12, ankle: 30, shoe: 46, wader: 6, greave: 12 }[shape];
-  return path(BOOT[shape], c) + rect(22, 78, 64, 8, dark(c, 0.5), 3) + rect(27, cuffY - 3, 30, 9, trim, 3) +
-    shine(`M34 ${cuffY + 12} V${shape === 'shoe' ? 60 : 50}`) + glyph(mark, 58, 66, markColor, 0.75) + extra;
+  const shaftEnd = shape === 'shoe' ? 58 : 52;
+  const lace = shape === 'greave' ? dark(c, 0.45) : light(trim, 0.1);
+  const laces = [];
+  for (let y = cuffY + 12; y < shaftEnd - 2; y += 8) laces.push(`M36 ${y} L52 ${y + 3}`);
+  return path(BOOT[shape], c) + rect(22, 78, 64, 8, dark(c, 0.55), 3) + rect(27, cuffY - 3, 30, 9, trim, 3) +
+    (laces.length ? line(laces.join(' '), dark(c, 0.7), 3.6) + line(laces.join(' '), lace, 1.8) : '') +
+    line(`M54 ${shaftEnd + 2} C62 ${shaftEnd + 4} 70 ${shaftEnd + 8} 76 ${shaftEnd + 14}`, dark(c, 0.5), 1.6) +
+    shine(`M31 ${cuffY + 12} V${shaftEnd - 2}`) + glyph(mark, 62, 70, markColor, 0.75);
+}
+/** A pair, like the painted boots: the far boot set back, darker and a little smaller. */
+function boot(shape, c, trim, mark, markColor, extra = '') {
+  return at(-6, -4, 0.92, oneBoot(shape, dark(c, 0.22), dark(trim, 0.22), mark, dark(markColor, 0.3))) +
+    at(8, 8, 0.92, oneBoot(shape, c, trim, mark, markColor) + extra);
 }
 const sandal = (c, strap) => rect(18, 70, 66, 10, c, 5) + line('M28 70 C34 46 48 46 52 70 M52 70 C60 54 72 56 76 70', INK, 9) + line('M28 70 C34 46 48 46 52 70 M52 70 C60 54 72 56 76 70', strap, 5) + glyph('heart', 40, 40, '#ff8fa0', 0.8);
 const B = {
@@ -138,7 +187,7 @@ const B = {
   courier_boots: () => boot('tall', '#b23a48', '#f1d9a0', 'wing', '#fff1c8'),
   tumbler_boots: () => boot('ankle', '#2f9a8a', '#f0e0a0', 'arrows', '#fff3b8'),
   mistwalker_boots: () => boot('tall', '#8f9bb0', '#e6ecf5', 'wave', '#ffffff'),
-  bramble_boots: () => boot('ankle', '#5d7a2f', '#3a2a1c', 'thorn', '#f2e6c0', `<path d="M22 70 L10 66 L22 62Z" fill="${STEEL}" ${S}/>`),
+  bramble_boots: () => boot('ankle', '#5d7a2f', '#3a2a1c', 'thorn', '#f2e6c0', path('M22 70 L10 66 L22 62Z', STEEL)),
   pilgrim_sandals: () => sandal('#c9a36a', '#8a5a34'),
   shadowstep_boots: () => boot('tall', '#2b2438', '#5c4a80', 'moon', '#c9b8ff'),
   lastlegs_boots: () => boot('ankle', '#8a2f2a', '#e0b060', 'heart', '#ffd0c0'),
@@ -146,7 +195,7 @@ const B = {
   marsh_waders: () => boot('wader', '#5a6b3a', '#2f3a22', 'drop', '#a8d8f0'),
   reaver_boots: () => boot('tall', '#3a2a2a', '#b3202c', 'skull', '#f2ead8'),
   statue_slippers: () => boot('shoe', '#b9b4a6', '#8f8b80', 'eye', '#f7f3e6'),
-  ram_boots: () => boot('greave', '#6b4a2f', '#d8d2c0', 'crown', '#f2ead8', `<path d="M82 68 L94 72 L82 78Z" fill="${STEEL}" ${S}/>`),
+  ram_boots: () => boot('greave', '#6b4a2f', '#d8d2c0', 'crown', '#f2ead8', path('M82 68 L94 72 L82 78Z', STEEL)),
   bloodless_greaves: () => boot('greave', '#d8d2c8', '#a23a3a', 'cross', '#c2313c'),
   longstride_boots: () => boot('wader', '#a8774a', '#5c4130', 'up', '#ffe9b0'),
   featherlight_shoes: () => boot('shoe', '#e6dcc8', '#9ac0d8', 'feather', '#7fb0d0'),
@@ -155,7 +204,9 @@ const B = {
 };
 
 // ---- Charms: a cord, a pendant, a mark -----------------------------------------------------
-const CORD_LOOP = cord('M22 8 C22 34 40 36 48 40 C56 36 74 34 74 8', '#6b3f24', 3);
+// The cord is left out when the icon is fitted to the frame, so like the painted
+// charm it runs off the top edge and the pendant is drawn large.
+const CORD_LOOP = `<g class="nofit">${cord('M14 -8 C16 26 38 34 48 40 C58 34 80 26 82 -8', '#6b3f24', 4)}</g>`;
 const PENDANT = {
   disc: (c) => circle(48, 60, 22, c),
   drop: (c) => path('M48 34 C62 50 70 58 70 66 A22 22 0 0 1 26 66 C26 58 34 50 48 34Z', c),
@@ -219,7 +270,7 @@ const A = {
   antidote: () => round('#3fae6a', 'cross', '#eafff0'),
   firepot: () => pot('#a3452a', '#5c2a1a', 'flame', '#ffd24a') + line('M48 30 C48 20 40 18 40 10', '#5c3a1c', 3) + glyph('flame', 40, 8, '#ff8a2a', 0.5),
   flash_powder: () => path('M30 36 H66 L74 82 C70 90 26 90 22 82Z', '#e6dcc8') + line('M32 36 C40 28 56 28 64 36', '#8a5a34', 4) + glyph('sun', 48, 62, '#f2b33a', 1.3),
-  caltrops: () => [[30, 62, 0], [62, 66, 40], [46, 34, 80]].map(([x, y, a]) => `<g transform="translate(${x} ${y}) rotate(${a})"><path d="M0 -16 L4 -3 L16 6 L3 5 L0 16 L-3 5 L-16 6 L-4 -3Z" fill="${fill('#8f979f')}" ${S}/></g>`).join(''),
+  caltrops: () => [[30, 62, 0], [62, 66, 40], [46, 34, 80]].map(([x, y, a]) => `<g transform="translate(${x} ${y}) rotate(${a})">${path('M0 -16 L4 -3 L16 6 L3 5 L0 16 L-3 5 L-16 6 L-4 -3Z', '#8f979f')}</g>`).join(''),
   throwing_knife: () => turn(45, path('M48 4 L58 44 H38Z', STEEL) + rect(44, 44, 8, 30, '#2b2b3a', 2) + circle(48, 82, 7, 'none') + `<circle cx="48" cy="82" r="6" fill="none" stroke="${INK}" stroke-width="6"/><circle cx="48" cy="82" r="6" fill="none" stroke="${STEEL}" stroke-width="2.5"/>` + shine('M46 38 L48 12')),
   war_horn: () => path('M12 30 C20 24 30 26 34 34 C46 58 62 70 84 70 V86 C54 88 30 72 18 46 C14 40 10 36 12 30Z', '#e6dcc8') + rect(78, 66, 10, 24, GOLD, 3) + rect(30, 40, 8, 12, GOLD, 2) + cord('M34 46 C40 20 70 22 84 66', '#8a2f2a', 2.5),
   blessed_water: () => round('#7fc8f0', 'drop', '#ffffff') + glyph('sun', 48, 26, GOLD, 0.45),
@@ -237,12 +288,76 @@ const M = {
 };
 
 const ALL = { ...W, ...B, ...C, ...A, ...M };
+
+/**
+ * Items that already have a painted icon in the HUD set use it as is, wrapped
+ * in SVG so every item's art lives at public/art/items/<id>.svg. Everything
+ * else is drawn above in the same style.
+ */
+const PAINTED = {
+  dagger: 'dagger', springheel_boots: 'boots', spiral_charm: 'charm', salve: 'salve', apple: 'apple', stone: 'stone',
+  herb: 'herb', cheese: 'cheese', lockpicks: 'picks', scroll: 'scroll', smoke: 'smoke',
+};
+const paintedDir = resolve(dirname(fileURLToPath(import.meta.url)), '../public/art/player-hud');
 let count = 0;
 for (const [id, draw] of Object.entries(ALL)) {
+  if (PAINTED[id]) {
+    const data = readFileSync(resolve(paintedDir, `${PAINTED[id]}.webp`)).toString('base64');
+    writeFileSync(resolve(out, `${id}.svg`), `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 96 96"><title>${id}</title><image href="data:image/webp;base64,${data}" width="96" height="96"/></svg>\n`);
+    count++;
+    continue;
+  }
   defs = '';
   gid = 0;
   const body = draw();
-  writeFileSync(resolve(out, `${id}.svg`), `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 96 96"><title>${id}</title><defs>${defs}</defs>${body}</svg>\n`);
+  // FIT is replaced below once the drawing's real bounds are measured.
+  const framed = `<g filter="url(#paint)"><g id="art" transform="FIT">${body}</g></g>`;
+  writeFileSync(resolve(out, `${id}.svg`), `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 96 96"><title>${id}</title><defs>${SHARED_DEFS}${paintFilter(count + 3)}${defs}</defs>${framed}</svg>\n`);
   count++;
 }
+// Fit each drawing to the frame like the painted set, which fills it edge to
+// edge. The bounds come from a real browser (Playwright, as for the checks).
+const { createRequire } = await import('node:module');
+const { chromium } = createRequire(import.meta.url)('playwright');
+const browser = await chromium.launch();
+const page = await browser.newPage();
+await page.setContent('<html></html>');
+const BOX = 82; // the painted icons fill about 85% of the frame; leave room for the outline and shadow
+for (const id of Object.keys(ALL)) {
+  if (PAINTED[id]) continue;
+  const file = resolve(out, `${id}.svg`);
+  const svg = readFileSync(file, 'utf8');
+  // Measured from rendered pixels: a box round rotated parts would be too loose.
+  const bare = svg.replace('transform="FIT"', '').replace('filter="url(#paint)"', '').replace('class="nofit"', 'visibility="hidden"');
+  const b = await page.evaluate(async (src) => {
+    const img = new Image();
+    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(src)))}`;
+    await img.decode();
+    const size = 384;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const g = canvas.getContext('2d');
+    g.drawImage(img, 0, 0, size, size);
+    const { data } = g.getImageData(0, 0, size, size);
+    let x0 = size, y0 = size, x1 = -1, y1 = -1;
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      if (data[(y * size + x) * 4 + 3] < 24) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+    const k = 96 / size;
+    return { x: x0 * k, y: y0 * k, w: (x1 - x0 + 1) * k, h: (y1 - y0 + 1) * k };
+  }, bare);
+  // A charm's pendant sits low with room above for its cord, as in the painted charm.
+  const pendant = svg.includes('class="nofit"');
+  const box = pendant ? 64 : BOX;
+  const scale = Math.min(box / b.w, box / b.h, 1.7);
+  const cx = b.x + b.w / 2;
+  const cy = b.y + b.h / 2;
+  const fit = `translate(48 ${pendant ? 56 : 47}) scale(${scale.toFixed(3)}) translate(${(-cx).toFixed(2)} ${(-cy).toFixed(2)})`;
+  writeFileSync(file, svg.replace('transform="FIT"', `transform="${fit}"`));
+}
+await browser.close();
 console.log(`wrote ${count} icons to ${out}`);

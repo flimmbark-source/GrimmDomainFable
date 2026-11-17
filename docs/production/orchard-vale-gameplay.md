@@ -109,7 +109,7 @@ Not verified: frame rate and feel on real graphics hardware (the run draws about
 - **Ghosts have no spirit layer** beyond a colour wash: no ghost paths, obstacles or senses (D-035 to D-037).
 - **Dark death, monster death and bot behaviour are placeholders.** Final Dark victory rules and bot takeover timing are still open in the decision register.
 - **A dropped connection is silent.** If the server drops a client during a long load, the page still says Connected and stops updating. Reload to rejoin.
-- **Art.** Heroes, monsters and wayshrines are original low-poly stand-ins built in code, with a simple walk and weapon-arm swing. All 100 item icons are distinct vector drawings generated in code, not painted art. Any icon can be replaced by dropping a file into `public/art/items`.
+- **Art.** Heroes, monsters and wayshrines are original low-poly stand-ins built in code, with a simple walk and weapon-arm swing. Item icons follow the painted HUD set: 11 items use those paintings directly and the other 89 are generated in code in the same style (top-left light, facets, grain, warm outline, drop shadow). They are not hand-painted; any icon can be replaced by dropping a file into `public/art/items`.
 - **The 100 items are untuned and unplayed.** Each effect is covered by a test that it works, not that it is fair or fun. Bots do not use most of them. The live two-browser script was not run against this catalogue.
 - Dropped items vanish. Afflictions (bleeding, slowed, stunned) and timed boons have no HUD indicator yet. Heroes still pass through each other.
 
